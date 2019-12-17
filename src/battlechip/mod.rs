@@ -1,15 +1,20 @@
 
 
+
+use serde::{Deserialize, Serialize, Serializer};
 use regex::{Regex, Captures};
 use crate::battlechip::elements::Elements;
 use crate::battlechip::skills::Skills;
 use std::str::FromStr;
+use std::cmp::Ordering;
+use unicode_normalization::UnicodeNormalization;
 
 use simple_error::SimpleError;
 
 mod elements;
 mod skills;
 
+#[derive(Deserialize)]
 pub enum Ranges {
     Itself,
     Close,
@@ -41,6 +46,16 @@ impl std::fmt::Display for Ranges {
     }
 }
 
+impl Serialize for Ranges {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+        where
+            S: Serializer,
+    {
+        serializer.serialize_str(format!("{}", self).as_str())
+    }
+}
+
+#[derive(Serialize, Deserialize)]
 pub enum ChipType {
     Standard,
     Mega,
@@ -72,21 +87,41 @@ impl std::fmt::Display for ChipType {
     }
 }
 
-
-
+#[allow(non_snake_case)]
+#[derive(Serialize, Deserialize)]
 pub struct BattleChip {
-    pub name: String,
-    pub elements: Vec<Elements>,
-    pub skills: Vec<Skills>,
-    pub range: Ranges,
-    pub damage: String,
-    pub r#type: ChipType,
-    pub hits: String,
-    pub description: String,
-    pub all: String,
-    pub skill_target: Skills,
-    pub skill_user: Skills,
+    pub Name: String,
+    pub Elements: Vec<Elements>,
+    pub Skills: Vec<Skills>,
+    pub Range: Ranges,
+    pub Damage: String,
+    pub r#Type: ChipType,
+    pub Hits: String,
+    pub Description: String,
+    pub All: String,
+    pub SkillTarget: Skills,
+    pub SkillUser: Skills,
 }
+
+impl Ord for BattleChip {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.Name.to_lowercase().cmp(&other.Name.to_lowercase())
+    }
+}
+
+impl PartialOrd for BattleChip {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(&other))
+    }
+}
+
+impl PartialEq for BattleChip {
+    fn eq(&self, other: &Self) -> bool {
+        self.Name == other.Name
+    }
+}
+
+impl Eq for BattleChip {}
 
 impl BattleChip {
     pub fn new<T: Into<String>>(
@@ -103,17 +138,17 @@ impl BattleChip {
         skill_user: Option<Skills>,
     ) -> BattleChip {
         BattleChip {
-            name: name.into(),
-            elements,
-            skills: skills.unwrap_or(std::vec![Skills::None]),
-            range,
-            damage: damage.into(),
-            r#type: r#type.unwrap_or(ChipType::Standard),
-            hits: hits.into(),
-            description: description.into(),
-            all: all.into(),
-            skill_target: skill_target.unwrap_or(Skills::None),
-            skill_user: skill_user.unwrap_or(Skills::None),
+            Name: name.into().nfc().collect::<String>(),
+            Elements: elements,
+            Skills: skills.unwrap_or(std::vec![Skills::None]),
+            Range: range,
+            Damage: damage.into().nfc().collect::<String>(),
+            r#Type: r#type.unwrap_or(ChipType::Standard),
+            Hits: hits.into().nfc().collect::<String>(),
+            Description: description.into().nfkd().collect::<String>(),
+            All: all.into().nfc().collect::<String>(),
+            SkillTarget: skill_target.unwrap_or(Skills::None),
+            SkillUser: skill_user.unwrap_or(Skills::None),
         }
     }
 
@@ -145,11 +180,8 @@ impl BattleChip {
         //let RE : Regex = Regex::new(r"(.+?)\s-\s(.+?)\s\|\s(.+?)\s\|\s(.+?)\s\|\s(\d+d\d+|--)\s?(?:damage)?\s?\|?\s?(Mega|Giga)?\s\|\s(\d+|\d+-\d+|--)\s?(?:hits?)\.?").unwrap();
         //let R_SAVE : Regex = Regex::new(r"an?\s(\w+)\scheck\sof\s\[DC\s\d+\s\+\s(\w+)]").unwrap();
         let chip_val: Captures = RE.captures(first_line).ok_or(SimpleError::new("Failed at capture stage"))?;
-        /*if chip_res.is_none() {
-            return Err(());
-        }
-        let chip_val = chip_res?;*/
-        let chip_name = chip_val.get(1).ok_or(SimpleError::new("Could not get name"))?.as_str();
+
+        let chip_name = chip_val.get(1).ok_or(SimpleError::new("Could not get name"))?.as_str().trim();
         let chip_range = Ranges::from_str(chip_val.get(4).ok_or(SimpleError::new("Failed to convert range"))?.as_str())?;
         let chip_damage = chip_val.get(5).ok_or(SimpleError::new("failed to get damage"))?.as_str();
         let chip_hits = chip_val.get(7).ok_or(SimpleError::new("failed to get hits"))?.as_str();
@@ -159,31 +191,13 @@ impl BattleChip {
         } else {
             chip_type = ChipType::Standard;
         }
-        //let elements = chip_val.get(2).unwrap().as_str();//.split(", ").collect();
-        /*let mut parsed_elements: Vec<Elements> = vec![];
-        for element in chip_val.get(2).unwrap().as_str().split(", ") {
-            let res = Elements::from_str(element);
-            if res.is_err() {
-                return Err(());
-            }
-            else {
-                parsed_elements.push(res.unwrap());
-            }
-        }
-        parsed_elements.shrink_to_fit();*/
+
         let parsed_elements = BattleChip::parse_elements(chip_val.get(2)
                             .ok_or(SimpleError::new("failed to parse element"))?.as_str())?;
         //let skills : Vec<&str> = chip_val.get(3).unwrap().as_str().split(", ").collect();
         let parsed_skills = BattleChip::parse_skills(chip_val.get(3)
             .ok_or(SimpleError::new("failed to parse skills"))?.as_str())?;
-        /*for skill in chip_val.get(3)?.as_str().split(", ") {
-            let res = Skills::from_str(skill);
-            if res.is_err() {
-                return Err(());
-            } else {
-                parsed_skills.push(res.unwrap());
-            }
-        }*/
+
         let skill_user : Skills;
         let skill_target : Skills;
         let skill_res = R_SAVE.captures(second_line);
@@ -199,9 +213,7 @@ impl BattleChip {
             skill_target = Skills::from_str(skill_target_res).unwrap_or(Skills::None);
         }
 
-        /*let mut chip_all = String::from(first_line);
-        chip_all.push('\n');
-        chip_all.push_str(second_line);*/
+
         let chip_all = format!("{}\n{}", first_line, second_line);
 
         let to_ret = Box::new(BattleChip::new(
@@ -220,7 +232,5 @@ impl BattleChip {
 
         return Ok(to_ret);
     }
-
-
 
 }

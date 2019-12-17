@@ -9,6 +9,8 @@ edition = "2018"
 [dependencies]
 reqwest = "*"
 serde_json = "*"
+serde = "*"
 regex = "*"
 lazy_static = "*"
 simple-error = "*"
+unicode-normalization = "*"

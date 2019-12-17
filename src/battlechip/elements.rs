@@ -1,5 +1,7 @@
 use simple_error::SimpleError;
+use serde::{Deserialize, Serialize};
 
+#[derive(Serialize, Deserialize)]
 pub enum Elements {
     Fire,
     Aqua,
