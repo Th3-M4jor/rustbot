@@ -1,2 +1,5 @@
 /target
 **/*.rs.bk
+/chips.json
+/rustbot.iml
+.vs
