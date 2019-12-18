@@ -30,6 +30,7 @@ impl EventHandler for Handler {
             // authentication error, or lack of permissions to post in the
             // channel, so log to stdout when some error happens, with a
             // description of it.
+            let chip = ctx.data.read().get::<ChipLibrary>().expect("library not found");
             if let Err(why) = msg.channel_id.say(&ctx.http, "Pong!") {
                 println!("Error sending message: {:?}", why);
             }
@@ -64,7 +65,10 @@ fn main() {
 
     let token = fs::read_to_string("./token.txt").expect("token not loaded");
     let mut client = Client::new(&token, Handler).expect("Err creating client");
-
+    {
+        let mut data = client.data.write();
+        data.insert::<ChipLibrary>(chip_library);
+    }
     // Finally, start a single shard, and start listening to events.
     //
     // Shards will automatically attempt to reconnect, and will perform
