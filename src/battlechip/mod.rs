@@ -10,6 +10,8 @@ use std::cmp::Ordering;
 use unicode_normalization::UnicodeNormalization;
 
 use simple_error::SimpleError;
+use serde::export::Formatter;
+use serde::export::fmt::Error;
 
 mod elements;
 mod skills;
@@ -122,6 +124,12 @@ impl PartialEq for BattleChip {
 }
 
 impl Eq for BattleChip {}
+
+impl std::fmt::Display for BattleChip {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
+        return write!(f, "```{}```", self.All);
+    }
+}
 
 impl BattleChip {
     pub fn new<T: Into<String>>(

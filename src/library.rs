@@ -1,11 +1,13 @@
 use std::collections::HashMap;
 
+
+use serenity::prelude::*;
+
 use serde_json;
 use simple_error::SimpleError;
 
 use crate::battlechip::BattleChip;
 use std::fs;
-
 const CHIP_URL: &'static str = "https://docs.google.com/feeds/download/documents/export/Export?id=1lvAKkymOplIJj6jS-N5__9aLIDXI6bETIMz01MK9MfY&exportFormat=txt";
 
 pub struct ChipLibrary {
@@ -21,6 +23,7 @@ impl ChipLibrary {
 
     //returns number of chips loaded or a simple error
     pub fn load_chips(&mut self) -> Result<usize, SimpleError> {
+
         self.chips.clear();
 
         //get chip text and replace necessary characters for compatibility
@@ -41,7 +44,6 @@ impl ChipLibrary {
                     bad_chips.push(String::from(chip_text_arr[i]));
                 },
             }
-
         }
 
         chips.shrink_to_fit();
@@ -68,4 +70,12 @@ impl ChipLibrary {
             return Ok(self.chips.len());
         }
     }
+
+    pub fn get<T: Into<String>>(&self, to_get: T) -> Option<&Box<BattleChip>> {
+        return self.chips.get(to_get.into().to_lowercase().as_str());
+    }
+}
+
+impl TypeMapKey for ChipLibrary {
+    type Value = ChipLibrary;
 }
