@@ -11,7 +11,7 @@ use serenity::{
 };
 use crate::library::ChipLibrary;
 use std::process::exit;
-use std::sync::Arc;
+//use std::sync::Arc;
 //use serenity::model::gateway::Activity;
 
 mod battlechip;
@@ -27,8 +27,16 @@ impl EventHandler for Handler {
     // events can be dispatched simultaneously.
     fn message(&self, ctx: Context, msg: Message) {
         if msg.content.starts_with("%") {
-            let args : Vec<&str> = msg.content.split(" ").collect();
-
+            let mut args : Vec<&str> = msg.content.split(" ").collect();
+            let new_first = args[0].replacen("%", "", 1);
+            args[0] = new_first.as_str();
+            //args[0] = args[0].replacen("%", "", 1).as_str();
+            match new_first.to_lowercase().as_str() {
+                "chip" => Handler::send_chip(&ctx, &msg, &args),
+                "die" => Handler::check_exit(&ctx, &msg, &args),
+                _ => Handler::send_chip(&ctx, &msg, &args),
+            }
+            //Handler::send_chip(&ctx, &msg, &args);
         } else if msg.content == "!ping" {
             // Sending a message can fail, due to a network error, an
             // authentication error, or lack of permissions to post in the
@@ -66,7 +74,7 @@ impl EventHandler for Handler {
         let guild = serenity::model::guild::Guild::get(&ctx,434770085761253377).expect("could not find bentTest");
         let owner = guild.member(&ctx, 254394113934229504).expect("could not grab major");//.user.get_mut();
         let major = owner.user.read();
-        let res = major.dm(&ctx, |m| {
+        major.dm(&ctx, |m| {
             m.content("logged in, and ready");
             return m;
         }).expect("could not dm owner");
@@ -74,7 +82,7 @@ impl EventHandler for Handler {
 }
 
 impl Handler {
-    fn send_chip_as_arg(&self, ctx: Context, msg: Message, args: Vec<&str>) {
+    fn send_chip(ctx: &Context, msg: &Message, args: &Vec<&str>) {
         let to_get;
         if args.len() < 2 {
             to_get = args[0];
@@ -82,15 +90,16 @@ impl Handler {
             to_get = args[1];
         }
         let data = ctx.data.read();
-        let locked_library = data.get::<ChipLibrary>().expect("library not found");
-        if locked_library.is_poisoned() {
-            exit(210);
-        }
-        let library = locked_library.read().expect("library was poisoned");
+        let library = data.get::<ChipLibrary>().expect("library not found");
+
+        //let library = locked_library.read().expect("library was poisoned");
 
         let chip = library.get(to_get);
         if chip.is_some() {
-            msg.channel_id.say(&ctx.http, chip.unwrap());
+
+            if let Err(why) = msg.channel_id.say(&ctx.http, chip.unwrap()) {
+                println!("Could not send message: {:?}", why);
+            }
             return;
         }
         //else no chip
@@ -98,18 +107,27 @@ impl Handler {
         //let chip_search = library.contains(to_get);
         let chip_search;
         match library.contains(to_get) {
-            Some(T) => chip_search = T,
+            Some(t) => chip_search = t,
             _ => {
-
+                chip_search = library.distance(to_get);
             },
         }
+        let to_send: String = chip_search.join(", ");
+        if let Err(why) = msg.channel_id.say(&ctx.http, format!("Did you mean: {}", to_send)) {
+            println!("Could not send message: {:?}", why);
+        }
 
+    }
+    fn check_exit( _: &Context, msg: &Message, _: &Vec<&str>) {
+        if msg.author.id == 254394113934229504 {
+            exit(0);
+        }
     }
 }
 
 fn main() {
-    let chip_library_mutex = Arc::new(RwLock::new(ChipLibrary::new()));
-    let mut chip_library = chip_library_mutex.write();
+    //let chip_library_mutex = RwLock::new(ChipLibrary::new());
+    let mut chip_library = ChipLibrary::new();
     let load_res = chip_library.load_chips();
     match load_res {
         Ok(s) => {
@@ -119,13 +137,12 @@ fn main() {
             println!("{}", e.to_string());
         }
     }
-    drop(chip_library);
 
     let token = fs::read_to_string("./token.txt").expect("token not loaded");
     let mut client = Client::new(&token, Handler).expect("Err creating client");
     {
         let mut data = client.data.write();
-        data.insert::<Arc<std::sync::RwLock<ChipLibrary>>>(chip_library_mutex);
+        data.insert::<ChipLibrary>(chip_library);
     }
     // Finally, start a single shard, and start listening to events.
     //

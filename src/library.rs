@@ -71,16 +71,16 @@ impl ChipLibrary {
         }
     }
 
-    pub fn get<T: Into<String>>(&self, to_get: T) -> Option<&Box<BattleChip>> {
-        return self.chips.get(to_get.into().to_lowercase().as_str());
+    pub fn get(&self, to_get: &str) -> Option<&Box<BattleChip>> {
+        return self.chips.get(&to_get.to_lowercase());
     }
 
-    pub fn contains<T: Into<String>>(&self, to_get: T) -> Option<Vec<String>> {
-        let to_search = to_get.into().to_lowercase().as_str();
+    pub fn contains(&self, to_get: &str) -> Option<Vec<String>> {
+        let to_search = to_get.to_lowercase();
         let mut to_ret : Vec<String> = vec![];
         for key in self.chips.keys() {
-            if key.contains(to_search) {
-                to_ret.push(self.chips.get(key).unwrap().Name);
+            if key.contains(&to_search) {
+                to_ret.push(self.chips.get(key).unwrap().Name.clone());
                 if to_ret.len() > 5 {
                     break;
                 }
@@ -90,11 +90,11 @@ impl ChipLibrary {
         return Some(to_ret);
     }
 
-    pub fn distance<T: Into<String>>(&self, to_get: T) -> Vec<String> {
+    pub fn distance(&self, _to_get: &str) -> Vec<String> {
         unimplemented!();
     }
 }
 
 impl TypeMapKey for ChipLibrary {
-    type Value = std::sync::Arc<std::sync::RwLock<ChipLibrary>>;
+    type Value = ChipLibrary;
 }
