@@ -12,7 +12,7 @@ use crate::battlechip::elements::Elements;
 use crate::battlechip::skills::Skills;
 use std::fs;
 use std::str::FromStr;
-use crate::distance::get_levenshtein;
+use crate::distance;
 
 const CHIP_URL: &'static str = "https://docs.google.com/feeds/download/documents/export/Export?id=1lvAKkymOplIJj6jS-N5__9aLIDXI6bETIMz01MK9MfY&exportFormat=txt";
 
@@ -96,9 +96,25 @@ impl ChipLibrary {
         return Some(to_ret);
     }
 
-    pub fn distance(&self, _to_get: &str) -> Vec<String> {
-        unimplemented!();
-        //get_levenshtein();
+    pub fn distance(&self, to_get: &str) -> Vec<String> {
+        let mut distances : Vec<(usize,String)> = vec![];
+        for val in self.chips.values() {
+            let dist_res = distance::get_damereau_levenshtein_distance(
+                &to_get.to_lowercase(), &val.Name.to_lowercase()
+            );
+            match dist_res {
+                Ok(d) => distances.push((d,val.Name.clone())),
+                Err(_) => continue,
+            }
+        }
+        distances.sort_unstable_by(|a,b| a.0.cmp(&b.0));
+        distances.truncate(5);
+        distances.shrink_to_fit();
+        let mut to_ret : Vec<String> = vec![];
+        for val in distances {
+            to_ret.push(val.1.clone());
+        }
+        return to_ret;
     }
 
     pub fn search_element(&self, to_get: &str) -> Option<Vec<String>> {

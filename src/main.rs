@@ -35,6 +35,7 @@ impl EventHandler for Handler {
             match new_first.to_lowercase().as_str() {
                 "chip" => Handler::send_chip(&ctx, &msg, &args),
                 "die" => Handler::check_exit(&ctx, &msg, &args),
+                "skill" => Handler::send_skill(&ctx, &msg, &args),
                 _ => Handler::send_chip(&ctx, &msg, &args),
             }
             //Handler::send_chip(&ctx, &msg, &args);
@@ -98,7 +99,7 @@ impl Handler {
         let chip = library.get(to_get);
         if chip.is_some() {
 
-            if let Err(why) = msg.channel_id.say(&ctx.http, chip.unwrap()) {
+            if let Err(why) = msg.reply(&ctx.http, chip.unwrap()) {
                 println!("Could not send message: {:?}", why);
             }
             return;
@@ -109,12 +110,12 @@ impl Handler {
         let chip_search;
         match library.name_contains(to_get) {
             Some(t) => chip_search = t,
-            _ => {
+            None => {
                 chip_search = library.distance(to_get);
             },
         }
         let to_send: String = chip_search.join(", ");
-        if let Err(why) = msg.channel_id.say(&ctx.http, format!("Did you mean: {}", to_send)) {
+        if let Err(why) = msg.reply(&ctx.http, format!("Did you mean: {}", to_send)) {
             println!("Could not send message: {:?}", why);
         }
 
@@ -124,6 +125,42 @@ impl Handler {
             exit(0);
         }
     }
+    fn send_skill(ctx: &Context, msg: &Message, args: &Vec<&str>) {
+        if args.len() < 2 {
+            if let Err(why) = msg.reply(&ctx.http, "you must provide a skill") {
+                println!("Could not send message: {:?}", why);
+            }
+            return;
+        }
+        let data = ctx.data.read();
+        let library = data.get::<ChipLibrary>().expect("library not found");
+        let skill_res = library.search_skill(args[1]);
+        if skill_res.is_some() {
+            if let Err(why) = Handler::send_string_vec(&ctx, &msg, &skill_res.unwrap()){
+                println!("Could not send message: {:?}", why);
+            }
+        }
+
+    }
+
+    fn send_string_vec(ctx: &Context, msg: &Message, to_send: &Vec<String>) -> serenity::Result<Message> {
+        let mut reply = String::new();
+        for val in to_send {
+
+            //a single message cannot be greater than 2000 chars
+            if reply.len() + val.len() > 1950 {
+                msg.channel_id.say(&ctx.http, &reply)?;
+                reply.clear();
+            }
+            reply.push_str(val.as_str());
+            reply.push_str(", ");
+        }
+        //remove last ", "
+        reply.pop();
+        reply.pop();
+        return msg.channel_id.say(&ctx.http, &reply);
+    }
+
 }
 
 fn main() {
