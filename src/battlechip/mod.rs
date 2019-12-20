@@ -13,8 +13,8 @@ use simple_error::SimpleError;
 use serde::export::Formatter;
 use serde::export::fmt::Error;
 
-mod elements;
-mod skills;
+pub(crate) mod elements;
+pub(crate) mod skills;
 
 #[derive(Deserialize)]
 pub enum Ranges {

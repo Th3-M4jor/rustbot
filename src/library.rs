@@ -7,7 +7,11 @@ use serde_json;
 use simple_error::SimpleError;
 
 use crate::battlechip::BattleChip;
+use crate::battlechip::elements::Elements;
+use crate::battlechip::skills::Skills;
 use std::fs;
+use std::str::FromStr;
+
 const CHIP_URL: &'static str = "https://docs.google.com/feeds/download/documents/export/Export?id=1lvAKkymOplIJj6jS-N5__9aLIDXI6bETIMz01MK9MfY&exportFormat=txt";
 
 pub struct ChipLibrary {
@@ -92,6 +96,45 @@ impl ChipLibrary {
 
     pub fn distance(&self, _to_get: &str) -> Vec<String> {
         unimplemented!();
+    }
+
+    pub fn search_element(&self, to_get: &str) -> Option<Vec<String>> {
+        //let elem_res = Elements::from_str(to_get);
+        let elem_to_get;
+        match Elements::from_str(to_get) {
+            Ok(e) => elem_to_get = e,
+            Err(_) => return None,
+        }
+        let mut to_ret : Vec<String> = vec![];
+        for val in self.chips.values() {
+            if val.Elements.contains(&elem_to_get) {
+                to_ret.push(val.Name.clone());
+            }
+        }
+        if to_ret.is_empty() {
+            return None;
+        }
+        to_ret.sort_unstable();
+        return Some(to_ret);
+    }
+
+    pub fn search_skill(&self, to_get: &str) -> Option<Vec<String>> {
+        let skill_to_get;
+        match Skills::from_str(to_get) {
+            Ok(s) => skill_to_get = s,
+            Err(_) => return None,
+        }
+        let mut to_ret : Vec<String> = vec![];
+        for val in self.chips.values() {
+            if val.Skills.contains(&skill_to_get) {
+                to_ret.push(val.Name.clone());
+            }
+        }
+        if to_ret.is_empty() {
+            return None;
+        }
+        to_ret.sort_unstable();
+        return Some(to_ret);
     }
 }
 
