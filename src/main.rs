@@ -16,6 +16,7 @@ use std::process::exit;
 
 mod battlechip;
 mod library;
+mod distance;
 
 struct Handler;
 
@@ -106,7 +107,7 @@ impl Handler {
 
         //let chip_search = library.contains(to_get);
         let chip_search;
-        match library.contains(to_get) {
+        match library.name_contains(to_get) {
             Some(t) => chip_search = t,
             _ => {
                 chip_search = library.distance(to_get);

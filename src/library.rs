@@ -6,11 +6,13 @@ use serenity::prelude::*;
 use serde_json;
 use simple_error::SimpleError;
 
+
 use crate::battlechip::BattleChip;
 use crate::battlechip::elements::Elements;
 use crate::battlechip::skills::Skills;
 use std::fs;
 use std::str::FromStr;
+use crate::distance::get_levenshtein;
 
 const CHIP_URL: &'static str = "https://docs.google.com/feeds/download/documents/export/Export?id=1lvAKkymOplIJj6jS-N5__9aLIDXI6bETIMz01MK9MfY&exportFormat=txt";
 
@@ -79,7 +81,7 @@ impl ChipLibrary {
         return self.chips.get(&to_get.to_lowercase());
     }
 
-    pub fn contains(&self, to_get: &str) -> Option<Vec<String>> {
+    pub fn name_contains(&self, to_get: &str) -> Option<Vec<String>> {
         let to_search = to_get.to_lowercase();
         let mut to_ret : Vec<String> = vec![];
         for key in self.chips.keys() {
@@ -96,6 +98,7 @@ impl ChipLibrary {
 
     pub fn distance(&self, _to_get: &str) -> Vec<String> {
         unimplemented!();
+        //get_levenshtein();
     }
 
     pub fn search_element(&self, to_get: &str) -> Option<Vec<String>> {
@@ -120,13 +123,55 @@ impl ChipLibrary {
 
     pub fn search_skill(&self, to_get: &str) -> Option<Vec<String>> {
         let skill_to_get;
-        match Skills::from_str(to_get) {
+
+        let skill_res = Skills::from_str(to_get);
+        match skill_res {
             Ok(s) => skill_to_get = s,
             Err(_) => return None,
         }
         let mut to_ret : Vec<String> = vec![];
         for val in self.chips.values() {
             if val.Skills.contains(&skill_to_get) {
+                to_ret.push(val.Name.clone());
+            }
+        }
+        if to_ret.is_empty() {
+            return None;
+        }
+        to_ret.sort_unstable();
+        return Some(to_ret);
+    }
+
+    pub fn search_skill_check(&self, to_get: &str) -> Option<Vec<String>> {
+        let skill_to_get;
+        let skill_res = Skills::from_str(to_get);
+        match skill_res {
+            Ok(s) => skill_to_get = s,
+            Err(_) => return None,
+        }
+        let mut to_ret : Vec<String> = vec![];
+        for val in self.chips.values() {
+            if val.SkillTarget == skill_to_get {
+                to_ret.push(val.Name.clone());
+            }
+        }
+        if to_ret.is_empty() {
+            return None;
+        }
+        to_ret.sort_unstable();
+        return Some(to_ret);
+    }
+
+    pub fn search_by_skill_user(&self, to_get: &str) -> Option<Vec<String>> {
+        let skill_to_get;
+        let skill_res = Skills::from_str(to_get);
+        match skill_res {
+            Ok(s) => skill_to_get = s,
+            Err(_) => return None,
+        }
+        let mut to_ret : Vec<String> = vec![];
+        for val in self.chips.values() {
+            if val.SkillUser == skill_to_get {
                 to_ret.push(val.Name.clone());
             }
         }
