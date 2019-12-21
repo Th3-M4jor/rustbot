@@ -158,7 +158,7 @@ impl ChipLibrary {
         return Some(to_ret);
     }
 
-    pub fn search_skill_check(&self, to_get: &str) -> Option<Vec<String>> {
+    pub fn search_skill_target(&self, to_get: &str) -> Option<Vec<String>> {
         let skill_to_get;
         let skill_res = Skills::from_str(to_get);
         match skill_res {
@@ -178,7 +178,7 @@ impl ChipLibrary {
         return Some(to_ret);
     }
 
-    pub fn search_by_skill_user(&self, to_get: &str) -> Option<Vec<String>> {
+    pub fn search_skill_user(&self, to_get: &str) -> Option<Vec<String>> {
         let skill_to_get;
         let skill_res = Skills::from_str(to_get);
         match skill_res {
@@ -197,6 +197,28 @@ impl ChipLibrary {
         to_ret.sort_unstable();
         return Some(to_ret);
     }
+
+    pub fn search_skill_check(&self, to_get: &str) -> Option<Vec<String>> {
+        let skill_to_get;
+        let skill_res = Skills::from_str(to_get);
+        match skill_res {
+            Ok(s) => skill_to_get = s,
+            Err(_) => return None,
+        }
+        let mut to_ret : Vec<String> = vec![];
+        for val in self.chips.values() {
+            if val.SkillTarget == skill_to_get || val.SkillUser == skill_to_get {
+                to_ret.push(val.Name.clone());
+            }
+        }
+        if to_ret.is_empty() {
+            return None;
+        }
+        to_ret.sort_unstable();
+        return Some(to_ret);
+    }
+
+
 }
 
 impl TypeMapKey for ChipLibrary {

@@ -36,7 +36,7 @@ pub fn get_damerau_levenshtein_distance(first: &str, second: &str) -> Result<usi
             let test3 = p[i - 1] + cost;
             d[i] = std::cmp::min(std::cmp::min(test1, test2), test3);
         }
-        let mut d_placeholder = p;
+        let d_placeholder = p;
         p = d;
         d = d_placeholder;
 
