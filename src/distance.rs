@@ -1,7 +1,7 @@
 
 use simple_error::SimpleError;
 
-pub fn get_damereau_levenshtein_distance(first: &str, second: &str) -> Result<usize, SimpleError> {
+pub fn get_damerau_levenshtein_distance(first: &str, second: &str) -> Result<usize, SimpleError> {
     if first.is_empty() || second.is_empty() {
         return Err(SimpleError::new("empty string was in test"));
     }

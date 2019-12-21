@@ -99,7 +99,7 @@ impl ChipLibrary {
     pub fn distance(&self, to_get: &str) -> Vec<String> {
         let mut distances : Vec<(usize,String)> = vec![];
         for val in self.chips.values() {
-            let dist_res = distance::get_damereau_levenshtein_distance(
+            let dist_res = distance::get_damerau_levenshtein_distance(
                 &to_get.to_lowercase(), &val.Name.to_lowercase()
             );
             match dist_res {
