@@ -1,5 +1,6 @@
 use std::collections::HashMap;
-
+use std::sync::RwLock;
+use std::sync::Arc;
 
 use serenity::prelude::*;
 
@@ -222,5 +223,5 @@ impl ChipLibrary {
 }
 
 impl TypeMapKey for ChipLibrary {
-    type Value = ChipLibrary;
+    type Value = Arc<RwLock<ChipLibrary>>;
 }

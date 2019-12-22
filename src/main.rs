@@ -3,6 +3,7 @@ extern crate lazy_static;
 
 use serde_json;
 use serde::Deserialize;
+use std::sync::{Arc,RwLock};
 
 #[derive(Deserialize)]
 pub struct BotData {
@@ -28,7 +29,7 @@ mod library;
 mod distance;
 
 lazy_static! {
-    static ref CONFIG: BotData = {
+    static ref BOT_CONFIG: BotData = {
         let json_str = fs::read_to_string("./config.json").expect("config not found");
         return serde_json::from_str(&json_str).expect("bad config json");
     };
@@ -72,10 +73,10 @@ impl EventHandler for Handler {
     fn ready(&self, ctx: Context, ready: Ready) {
         println!("{} is connected!", ready.user.name);
         let guild = serenity::model::guild::Guild::get(
-            &ctx, CONFIG.main_server
+            &ctx, BOT_CONFIG.main_server
         ).expect("could not find bentTest");
         let owner = guild.member(
-            &ctx, CONFIG.owner
+            &ctx, BOT_CONFIG.owner
         ).expect("could not grab major");
         let major = owner.user.read();
         major.dm(&ctx, |m| {
@@ -94,8 +95,8 @@ impl Handler {
             to_get = args[1];
         }
         let data = ctx.data.read();
-        let library = data.get::<ChipLibrary>().expect("chip library not found");
-
+        let library_lock = data.get::<ChipLibrary>().expect("chip library not found");
+        let library = library_lock.read().expect("library was poisoned, panicking");
         //let library = locked_library.read().expect("library was poisoned");
 
         let chip = library.get(to_get);
@@ -122,7 +123,7 @@ impl Handler {
     }
 
     fn check_exit(_: &Context, msg: &Message, _: &Vec<&str>) {
-        if msg.author.id == 254394113934229504 {
+        if msg.author.id == BOT_CONFIG.owner {
             exit(0);
         }
     }
@@ -135,7 +136,8 @@ impl Handler {
             return;
         }
         let data = ctx.data.read();
-        let library = data.get::<ChipLibrary>().expect("chip library not found");
+        let library_lock = data.get::<ChipLibrary>().expect("chip library not found");
+        let library = library_lock.read().expect("chip library poisoned, panicking");
         let skill_res;// = library.search_skill(args[1]);
         match args[0].to_lowercase().as_str() {
             "skill" => skill_res = library.search_skill(args[1]),
@@ -163,7 +165,8 @@ impl Handler {
             return;
         }
         let data = ctx.data.read();
-        let library = data.get::<ChipLibrary>().expect("chip library not found");
+        let library_lock = data.get::<ChipLibrary>().expect("chip library not found");
+        let library = library_lock.read().expect("chip library poisoned, panicking");
         let elem_res = library.search_element(args[1]);
         if elem_res.is_some() {
             if let Err(why) = Handler::send_string_vec(&ctx, &msg, &elem_res.unwrap()) {
@@ -173,8 +176,12 @@ impl Handler {
     }
 
     fn reload(ctx: &Context, msg: &Message, _: &Vec<&str>) {
-        let mut data = ctx.data.write();
-        let chip_library = data.get_mut::<ChipLibrary>().expect("chip library not found");
+        if msg.author.id != BOT_CONFIG.owner && !BOT_CONFIG.admins.contains(msg.author.id.as_u64()) {
+            return;
+        }
+        let data = ctx.data.read();
+        let chip_library_lock = data.get::<ChipLibrary>().expect("chip library not found");
+        let mut chip_library = chip_library_lock.write().expect("chip library was poisoned, panicking");
         let chip_reload_res = chip_library.load_chips();
         let str_to_send;
         match chip_reload_res {
@@ -206,23 +213,28 @@ impl Handler {
 }
 
 fn main() {
-    //let chip_library_mutex = RwLock::new(ChipLibrary::new());
-    let mut chip_library = ChipLibrary::new();
-    let chip_load_res = chip_library.load_chips();
-    match chip_load_res {
-        Ok(s) => {
-            println!("{} chips were loaded", s);
-        }
-        Err(e) => {
-            println!("{}", e.to_string());
+    let chip_library_mutex = Arc::new(RwLock::new(ChipLibrary::new()));
+    //let mut chip_library = ChipLibrary::new();
+
+    {
+        let mut chip_library = chip_library_mutex.write().unwrap();
+        let chip_load_res = chip_library.load_chips();
+        match chip_load_res {
+            Ok(s) => {
+                println!("{} chips were loaded", s);
+            }
+            Err(e) => {
+                println!("{}", e.to_string());
+            }
         }
     }
 
-    let token = fs::read_to_string("./token.txt").expect("token not loaded");
-    let mut client = Client::new(&token, Handler).expect("Err creating client");
+    //let token = fs::read_to_string("./token.txt").expect("token not loaded");
+    let mut client = Client::new(&BOT_CONFIG.token, Handler).expect("Err creating client");
+    // set scope to ensure that lock is released immediately
     {
         let mut data = client.data.write();
-        data.insert::<ChipLibrary>(chip_library);
+        data.insert::<ChipLibrary>(chip_library_mutex);
     }
     // Finally, start a single shard, and start listening to events.
     //
