@@ -3,7 +3,8 @@ extern crate lazy_static;
 
 use serde_json;
 use serde::Deserialize;
-use std::sync::{Arc,RwLock};
+use std::sync::{Arc, RwLock};
+use std::collections::HashMap;
 
 #[derive(Deserialize)]
 pub struct BotData {
@@ -33,6 +34,21 @@ lazy_static! {
         let json_str = fs::read_to_string("./config.json").expect("config not found");
         return serde_json::from_str(&json_str).expect("bad config json");
     };
+
+    static ref COMMANDS: HashMap<String, BotCommand> = {
+        let mut cmd_map = HashMap::new();
+
+        //need cast to BotCommand here once and rest are implicit to avoid compiler error due to type mismatch
+        cmd_map.insert("chip".to_string(), send_chip as BotCommand);
+        cmd_map.insert("die".to_string(), check_exit);
+        cmd_map.insert("skill".to_string(), send_skill);
+        cmd_map.insert("skilluser".to_string(), send_skill);
+        cmd_map.insert("skilltarget".to_string(), send_skill);
+        cmd_map.insert("skillcheck".to_string(), send_skill);
+        cmd_map.insert("element".to_string(), send_element);
+        cmd_map.insert("reload".to_string(), reload);
+        return cmd_map;
+    };
 }
 
 struct Handler;
@@ -51,17 +67,24 @@ impl EventHandler for Handler {
         let new_first = args[0].replacen("%", "", 1);
         args[0] = new_first.as_str();
         //args[0] = args[0].replacen("%", "", 1).as_str();
-        match new_first.to_lowercase().as_str() {
-            "chip" => Handler::send_chip(&ctx, &msg, &args),
-            "die" => Handler::check_exit(&ctx, &msg, &args),
-            "skill" => Handler::send_skill(&ctx, &msg, &args),
-            "skilluser" => Handler::send_skill(&ctx, &msg, &args),
-            "skilltarget" => Handler::send_skill(&ctx, &msg, &args),
-            "skillcheck" => Handler::send_skill(&ctx, &msg, &args),
-            "element" => Handler::send_element(&ctx, &msg, &args),
-            "reload" => Handler::reload(&ctx, &msg, &args),
-            _ => Handler::send_chip(&ctx, &msg, &args),
+        let cmd_res = COMMANDS.get(&new_first.to_lowercase());
+        match cmd_res {
+            Some(cmd) => cmd(&ctx,&msg,&args),
+            None => send_chip(&ctx, &msg, &args),
         }
+        /*
+        match new_first.to_lowercase().as_str() {
+            "chip" => send_chip(&ctx, &msg, &args),
+            "die" => check_exit(&ctx, &msg, &args),
+            "skill" => send_skill(&ctx, &msg, &args),
+            "skilluser" => send_skill(&ctx, &msg, &args),
+            "skilltarget" => send_skill(&ctx, &msg, &args),
+            "skillcheck" => send_skill(&ctx, &msg, &args),
+            "element" => send_element(&ctx, &msg, &args),
+            "reload" => reload(&ctx, &msg, &args),
+            _ => send_chip(&ctx, &msg, &args),
+        }
+        */
     }
 
     // Set a handler to be called on the `ready` event. This is called when a
@@ -73,10 +96,10 @@ impl EventHandler for Handler {
     fn ready(&self, ctx: Context, ready: Ready) {
         println!("{} is connected!", ready.user.name);
         let guild = serenity::model::guild::Guild::get(
-            &ctx, BOT_CONFIG.main_server
+            &ctx, BOT_CONFIG.main_server,
         ).expect("could not find bentTest");
         let owner = guild.member(
-            &ctx, BOT_CONFIG.owner
+            &ctx, BOT_CONFIG.owner,
         ).expect("could not grab major");
         let major = owner.user.read();
         major.dm(&ctx, |m| {
@@ -85,8 +108,6 @@ impl EventHandler for Handler {
         }).expect("could not dm owner");
     }
 }
-
-impl Handler {
     fn send_chip(ctx: &Context, msg: &Message, args: &Vec<&str>) {
         let to_get;
         if args.len() < 2 {
@@ -101,7 +122,7 @@ impl Handler {
 
         let chip = library.get(to_get);
         if chip.is_some() {
-            if let Err(why) = msg.reply(ctx, format!("{}", chip.unwrap())) {
+            if let Err(why) = msg.channel_id.say(&ctx.http, format!("{}", chip.unwrap())) {
                 println!("Could not send message: {:?}", why);
             }
             return;
@@ -117,7 +138,7 @@ impl Handler {
             }
         }
         let to_send: String = chip_search.join(", ");
-        if let Err(why) = msg.reply(ctx, format!("Did you mean: {}", to_send)) {
+        if let Err(why) = msg.channel_id.say(&ctx.http, format!("Did you mean: {}", to_send)) {
             println!("Could not send message: {:?}", why);
         }
     }
@@ -130,7 +151,7 @@ impl Handler {
 
     fn send_skill(ctx: &Context, msg: &Message, args: &Vec<&str>) {
         if args.len() < 2 {
-            if let Err(why) = msg.reply(ctx, "you must provide a skill") {
+            if let Err(why) = msg.channel_id.say(&ctx.http, "you must provide a skill") {
                 println!("Could not send message: {:?}", why);
             }
             return;
@@ -147,19 +168,18 @@ impl Handler {
             _ => panic!("should not have gotten here"),
         }
         if skill_res.is_some() {
-            if let Err(why) = Handler::send_string_vec(&ctx, &msg, &skill_res.unwrap()) {
+            if let Err(why) = send_string_vec(&ctx, &msg, &skill_res.unwrap()) {
                 println!("Could not send message: {:?}", why);
             }
             return;
         }
-        if let Err(why) = msg.reply(ctx, "nothing matched your search") {
+        if let Err(why) = msg.channel_id.say(&ctx.http, "nothing matched your search") {
             println!("Could not send message: {:?}", why);
         }
     }
-
     fn send_element(ctx: &Context, msg: &Message, args: &Vec<&str>) {
         if args.len() < 2 {
-            if let Err(why) = msg.reply(ctx, "you must provide an element") {
+            if let Err(why) = msg.channel_id.say(&ctx.http, "you must provide an element") {
                 println!("Could not send message: {:?}", why);
             }
             return;
@@ -169,7 +189,7 @@ impl Handler {
         let library = library_lock.read().expect("chip library poisoned, panicking");
         let elem_res = library.search_element(args[1]);
         if elem_res.is_some() {
-            if let Err(why) = Handler::send_string_vec(&ctx, &msg, &elem_res.unwrap()) {
+            if let Err(why) = send_string_vec(&ctx, &msg, &elem_res.unwrap()) {
                 println!("Could not send message: {:?}", why);
             }
         }
@@ -210,9 +230,21 @@ impl Handler {
         reply.pop();
         return msg.channel_id.say(&ctx.http, &reply);
     }
-}
+
+type BotCommand = fn(&Context, &Message, &Vec<&str>) -> ();
 
 fn main() {
+    /*
+    let mut cmd_map: HashMap<String, BotCommand> = HashMap::new();
+    cmd_map.insert("chip".to_string(), send_chip);
+    cmd_map.insert("die".to_string(), check_exit);
+    cmd_map.insert("skill".to_string(), send_skill);
+    cmd_map.insert("skilluser".to_string(), send_skill);
+    cmd_map.insert("skilltarget".to_string(), send_skill);
+    cmd_map.insert("skillcheck".to_string(), send_skill);
+    cmd_map.insert("element".to_string(), send_element);
+    cmd_map.insert("reload".to_string(), reload);
+    */
     let chip_library_mutex = Arc::new(RwLock::new(ChipLibrary::new()));
     //let mut chip_library = ChipLibrary::new();
 
