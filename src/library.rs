@@ -14,6 +14,7 @@ use crate::battlechip::skills::Skills;
 use std::fs;
 use std::str::FromStr;
 use crate::distance;
+use std::borrow::BorrowMut;
 
 const CHIP_URL: &'static str = "https://docs.google.com/feeds/download/documents/export/Export?id=1lvAKkymOplIJj6jS-N5__9aLIDXI6bETIMz01MK9MfY&exportFormat=txt";
 
@@ -37,8 +38,19 @@ impl ChipLibrary {
         let chip_text = reqwest::get(CHIP_URL)
             .expect("no request result").text().expect("no response text")
             .replace("â€™", "'").replace("\u{FEFF}", "");
-        let chip_text_arr: Vec<&str> =
+        let mut chip_text_arr: Vec<&str> =
             chip_text.split("\n").filter(|&i| !i.trim().is_empty()).collect();
+
+        //load in custom chips if any
+        let special_chips_res = fs::read_to_string("./custom_chips.txt");
+        let special_chip_text;
+        if special_chips_res.is_ok() {
+            special_chip_text = special_chips_res.unwrap();
+            let mut special_chip_arr : Vec<&str> =
+                special_chip_text.split("\n").filter(|&i| !i.trim().is_empty()).collect();
+            chip_text_arr.append(special_chip_arr.borrow_mut());
+        }
+
         let mut chips: Vec<Box<BattleChip>> = vec![];
         let mut bad_chips: Vec<String> = vec![];
         for i in (0..chip_text_arr.len()).step_by(2) {
