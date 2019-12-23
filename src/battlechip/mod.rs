@@ -11,7 +11,6 @@ use unicode_normalization::UnicodeNormalization;
 
 use simple_error::SimpleError;
 use serde::export::Formatter;
-use serde::export::fmt::Error;
 
 pub(crate) mod elements;
 pub(crate) mod skills;
@@ -126,7 +125,7 @@ impl PartialEq for BattleChip {
 impl Eq for BattleChip {}
 
 impl std::fmt::Display for BattleChip {
-    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
         return write!(f, "```{}```", self.All);
     }
 }

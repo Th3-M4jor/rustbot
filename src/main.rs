@@ -12,12 +12,14 @@ use serenity::{
 
 use crate::bot_data::BotData;
 use crate::library::ChipLibrary;
+use crate::ncp_library::NCPLibrary;
 use crate::dice::DieRoll;
 use std::borrow::BorrowMut;
 //use regex::Replacer;
 
 mod battlechip;
 mod library;
+mod ncp_library;
 mod distance;
 mod bot_data;
 mod dice;
@@ -39,6 +41,7 @@ lazy_static! {
         cmd_map.insert("reload".to_string(), reload);
         cmd_map.insert("roll".to_string(), roll);
         cmd_map.insert("rollstats".to_string(), roll_stats);
+        cmd_map.insert("ncp".to_string(), send_ncp);
         return cmd_map;
     };
 }
@@ -125,6 +128,13 @@ fn send_chip(ctx: &Context, msg: &Message, args: &[&str]) {
             chip_search = library.distance(to_get);
         }
     }
+    if chip_search.len() == 1 {
+        let found_chip = library.get(&chip_search[0]).unwrap();
+        if let Err(why) = msg.channel_id.say(&ctx.http, format!("{}", found_chip)) {
+            println!("Could not send message: {:?}", why);
+        }
+        return;
+    }
     let to_send: String = chip_search.join(", ");
     if let Err(why) = msg.channel_id.say(&ctx.http, format!("Did you mean: {}", to_send)) {
         println!("Could not send message: {:?}", why);
@@ -136,6 +146,8 @@ fn check_exit(ctx: &Context, msg: &Message, _: &[&str]) {
     let config = data.get::<BotData>().expect("config not found");
 
     if msg.author.id == config.owner {
+        ctx.invisible();
+        ctx.shard.shutdown_clean();
         exit(0);
     }
 }
@@ -193,17 +205,26 @@ fn reload(ctx: &Context, msg: &Message, _: &[&str]) {
     if msg.author.id != config.owner && !config.admins.contains(msg.author.id.as_u64()) {
         return;
     }
-
-    let chip_library_lock = data.get::<ChipLibrary>().expect("chip library not found");
-    let mut chip_library = chip_library_lock.write().expect("chip library was poisoned, panicking");
-    let chip_reload_res = chip_library.load_chips();
-    let str_to_send;
-    match chip_reload_res {
-        Ok(s) => str_to_send = format!("{} chips loaded", s),
-        Err(e) => str_to_send = format!("{}", e.to_string()),
+    {
+        let chip_library_lock = data.get::<ChipLibrary>().expect("chip library not found");
+        let mut chip_library = chip_library_lock.write().expect("chip library was poisoned, panicking");
+        let chip_reload_res = chip_library.load_chips();
+        let str_to_send;
+        match chip_reload_res {
+            Ok(s) => str_to_send = format!("{} chips loaded", s),
+            Err(e) => str_to_send = format!("{}", e.to_string()),
+        }
+        if let Err(why) = msg.channel_id.say(&ctx.http, str_to_send) {
+            println!("Could not send message: {:?}", why);
+        }
     }
-    if let Err(why) = msg.channel_id.say(&ctx.http, str_to_send) {
-        println!("Could not send message: {:?}", why);
+    {
+        let ncp_library_lock = data.get::<NCPLibrary>().expect("ncp library not found");
+        let mut ncp_library = ncp_library_lock.write().expect("chip library was poisoned, panicking");
+        let count = ncp_library.load_programs();
+        if let Err(why) = msg.channel_id.say(&ctx.http, format!("{} NCPs loaded", count)) {
+            println!("Could not send message: {:?}", why);
+        }
     }
 }
 
@@ -261,6 +282,49 @@ fn roll_stats(ctx: &Context, msg: &Message, _ : &[&str]) {
 
 }
 
+fn send_ncp(ctx: &Context, msg: &Message, args: &[&str]) {
+    if args.len() < 2 {
+        if let Err(why) = msg.channel_id.say(&ctx.http, "you must provide a name") {
+            println!("Could not send message: {:?}", why);
+        }
+        return;
+    }
+    let data = ctx.data.read();
+    let library_lock = data.get::<NCPLibrary>().expect("chip library not found");
+    let library = library_lock.read().expect("library was poisoned, panicking");
+    let ncp = library.get(args[1]);
+
+    if ncp.is_some() {
+        if let Err(why) = msg.channel_id.say(&ctx.http, format!("{}", ncp.unwrap())) {
+            println!("Could not send message: {:?}", why);
+        }
+        return;
+    }
+
+    //else is none
+    let ncp_search;
+    match library.name_contains(args[1]) {
+        Some(t) => ncp_search = t,
+        None => {
+            ncp_search = library.distance(args[1]);
+        }
+    }
+
+    if ncp_search.len() == 1 {
+        let found_ncp = library.get(&ncp_search[0]).unwrap();
+        if let Err(why) = msg.channel_id.say(&ctx.http, format!("{}", found_ncp)) {
+            println!("Could not send message: {:?}", why);
+        }
+        return;
+    }
+
+    let to_send: String = ncp_search.join(", ");
+    if let Err(why) = msg.channel_id.say(&ctx.http, format!("Did you mean: {}", to_send)) {
+        println!("Could not send message: {:?}", why);
+    }
+
+}
+
 fn send_string_vec(ctx: &Context, msg: &Message, to_send: &Vec<String>) -> serenity::Result<Message> {
     let mut reply = String::new();
     for val in to_send {
@@ -283,6 +347,8 @@ type BotCommand = fn(&Context, &Message, &[&str]) -> ();
 
 fn main() {
     let chip_library_mutex = Arc::new(RwLock::new(ChipLibrary::new()));
+    let ncp_library_mutex = Arc::new(RwLock::new(NCPLibrary::new()));
+
     //let mut chip_library = ChipLibrary::new();
 
     {
@@ -296,6 +362,9 @@ fn main() {
                 println!("{}", e.to_string());
             }
         }
+        let mut ncp_library = ncp_library_mutex.write().unwrap();
+        let ncp_count = ncp_library.load_programs();
+        println!("{} programs loaded", ncp_count);
     }
 
     let config = BotData::new();
@@ -305,6 +374,7 @@ fn main() {
     {
         let mut data = client.data.write();
         data.insert::<ChipLibrary>(chip_library_mutex);
+        data.insert::<NCPLibrary>(ncp_library_mutex);
         data.insert::<BotData>(config);
     }
     // Finally, start a single shard, and start listening to events.
