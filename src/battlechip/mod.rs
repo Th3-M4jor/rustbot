@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize, Serializer};
 use regex::{Regex, Captures};
 use crate::battlechip::elements::Elements;
 use crate::battlechip::skills::Skills;
+use crate::chip_library::LibraryObject;
 use std::str::FromStr;
 use std::cmp::Ordering;
 use unicode_normalization::UnicodeNormalization;
@@ -127,6 +128,12 @@ impl Eq for BattleChip {}
 impl std::fmt::Display for BattleChip {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
         return write!(f, "```{}```", self.All);
+    }
+}
+
+impl LibraryObject for BattleChip {
+    fn get_name(&self) -> &str {
+        return &self.Name
     }
 }
 

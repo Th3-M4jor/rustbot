@@ -11,7 +11,7 @@ use serenity::{
 };
 
 use crate::bot_data::BotData;
-use crate::library::ChipLibrary;
+use crate::chip_library::{ChipLibrary, Library};
 use crate::ncp_library::NCPLibrary;
 use crate::dice::DieRoll;
 use std::borrow::BorrowMut;
@@ -19,7 +19,7 @@ use std::fs;
 //use regex::Replacer;
 
 mod battlechip;
-mod library;
+mod chip_library;
 mod ncp_library;
 mod distance;
 mod bot_data;
@@ -91,16 +91,50 @@ impl EventHandler for Handler {
         println!("{} is connected!", ready.user.name);
         let guild = serenity::model::guild::Guild::get(
             &ctx, config.main_server,
-        ).expect("could not find bentTest");
+        ).expect("could not find main server");
         let owner = guild.member(
             &ctx, config.owner,
-        ).expect("could not grab major");
-        let major = owner.user.read();
-        major.dm(&ctx, |m| {
+        ).expect("could not grab owner");
+        let owner_user = owner.user.read();
+        owner_user.dm(&ctx, |m| {
             m.content("logged in, and ready");
             return m;
         }).expect("could not dm owner");
     }
+}
+
+///fn say(ctx: Context, msg: Message, say: an expression returning a string)
+macro_rules! say {
+    ($ctx: ident, $msg: ident, $say: expr) => {
+        if let Err(why) = $msg.channel_id.say(&$ctx.http, $say) {
+            println!("Could not send message: {:?}", why);
+        }
+    };
+}
+
+///fn search(ctx: Context, msg: Message, search: &str, lib: Library)
+macro_rules! search {
+    ($ctx: ident, $msg: ident, $search: expr, $lib: ident) => {
+        {
+            let item = $lib.get($search);
+            if item.is_some() {
+                say!($ctx, $msg, format!("{}", item.unwrap()));
+                return;
+            }
+            let item_search;
+            match $lib.name_contains($search) {
+                Some(t) => item_search = t,
+                None => item_search = $lib.distance($search),
+            }
+            if item_search.len() == 1 {
+                let found_item = $lib.get(&item_search[0]).unwrap();
+                say!($ctx, $msg, format!("{}", found_item));
+                return;
+            }
+            let to_send: String = item_search.join(", ");
+            say!($ctx, $msg, format!("Did you mean: {}", to_send));
+        }
+    };
 }
 
 fn send_chip(ctx: &Context, msg: &Message, args: &[&str]) {
@@ -114,35 +148,7 @@ fn send_chip(ctx: &Context, msg: &Message, args: &[&str]) {
     let library_lock = data.get::<ChipLibrary>().expect("chip library not found");
     let library = library_lock.read().expect("library was poisoned, panicking");
     //let library = locked_library.read().expect("library was poisoned");
-
-    let chip = library.get(to_get);
-    if chip.is_some() {
-        if let Err(why) = msg.channel_id.say(&ctx.http, format!("{}", chip.unwrap())) {
-            println!("Could not send message: {:?}", why);
-        }
-        return;
-    }
-    //else no chip
-
-    //let chip_search = library.contains(to_get);
-    let chip_search;
-    match library.name_contains(to_get) {
-        Some(t) => chip_search = t,
-        None => {
-            chip_search = library.distance(to_get);
-        }
-    }
-    if chip_search.len() == 1 {
-        let found_chip = library.get(&chip_search[0]).unwrap();
-        if let Err(why) = msg.channel_id.say(&ctx.http, format!("{}", found_chip)) {
-            println!("Could not send message: {:?}", why);
-        }
-        return;
-    }
-    let to_send: String = chip_search.join(", ");
-    if let Err(why) = msg.channel_id.say(&ctx.http, format!("Did you mean: {}", to_send)) {
-        println!("Could not send message: {:?}", why);
-    }
+    search!(ctx, msg, to_get, library);
 }
 
 fn check_exit(ctx: &Context, msg: &Message, _: &[&str]) {
@@ -158,9 +164,7 @@ fn check_exit(ctx: &Context, msg: &Message, _: &[&str]) {
 
 fn send_skill(ctx: &Context, msg: &Message, args: &[&str]) {
     if args.len() < 2 {
-        if let Err(why) = msg.channel_id.say(&ctx.http, "you must provide a skill") {
-            println!("Could not send message: {:?}", why);
-        }
+        say!(ctx, msg, "you must provide a skill");
         return;
     }
     let data = ctx.data.read();
@@ -180,16 +184,12 @@ fn send_skill(ctx: &Context, msg: &Message, args: &[&str]) {
         }
         return;
     }
-    if let Err(why) = msg.channel_id.say(&ctx.http, "nothing matched your search") {
-        println!("Could not send message: {:?}", why);
-    }
+    say!(ctx, msg, "nothing matched your search");
 }
 
 fn send_element(ctx: &Context, msg: &Message, args: &[&str]) {
     if args.len() < 2 {
-        if let Err(why) = msg.channel_id.say(&ctx.http, "you must provide an element") {
-            println!("Could not send message: {:?}", why);
-        }
+        say!(ctx, msg, "you must provide an element");
         return;
     }
     let data = ctx.data.read();
@@ -218,32 +218,25 @@ fn reload(ctx: &Context, msg: &Message, _: &[&str]) {
             Ok(s) => str_to_send = format!("{} chips loaded", s),
             Err(e) => str_to_send = format!("{}", e.to_string()),
         }
-        if let Err(why) = msg.channel_id.say(&ctx.http, str_to_send) {
-            println!("Could not send message: {:?}", why);
-        }
+
+        say!(ctx, msg,str_to_send);
     }
     {
         let ncp_library_lock = data.get::<NCPLibrary>().expect("ncp library not found");
         let mut ncp_library = ncp_library_lock.write().expect("chip library was poisoned, panicking");
         let count = ncp_library.load_programs();
-        if let Err(why) = msg.channel_id.say(&ctx.http, format!("{} NCPs loaded", count)) {
-            println!("Could not send message: {:?}", why);
-        }
+        say!(ctx, msg, format!("{} NCPs loaded", count));
     }
 }
 
 fn roll(ctx: &Context, msg: &Message, args: &[&str]) {
     if args.len() < 2 {
-
-        if let Err(why) = msg.channel_id.say(
-            &ctx.http,
-            format!("{}, you must supply a number of dice to roll", msg.author.mention())
-        ) {
-            println!("Could not send message: {:?}", why);
-        }
-        return;
+        say!(ctx, msg, format!("{}, you must supply a number of dice to roll", msg.author.mention()));
     }
+
+    //grab all but the first argument which is the command name
     let to_join = &args[1..];
+
     let to_roll = to_join.join(" ");
     let mut results : Vec<i64> = vec![];
     let amt = DieRoll::roll_dice(&to_roll, results.borrow_mut());
@@ -258,9 +251,7 @@ fn roll(ctx: &Context, msg: &Message, args: &[&str]) {
     } else {
         reply = format!("{}, you rolled: {}\n{}", msg.author.mention(), amt, repl_str);
     }
-    if let Err(why) = msg.channel_id.say(&ctx.http, reply) {
-        println!("Could not send message: {:?}", why);
-    }
+    say!(ctx, msg, reply);
 
 }
 
@@ -277,62 +268,32 @@ fn roll_stats(ctx: &Context, msg: &Message, _ : &[&str]) {
 
         *i = rolls.iter().fold(0, |acc, val| acc + val);
     }
+
+    say!(ctx, msg, format!("{}, 4d6 drop the lowest:\n{:?}", msg.author.mention(), stats));
+    /*
     if let Err(why) = msg.channel_id.say(
         &ctx.http,
     format!("{}, 4d6 drop the lowest:\n{:?}", msg.author.mention(), stats)
     ) {
         println!("Could not send message: {:?}", why);
     }
+    */
 
 }
 
 fn send_ncp(ctx: &Context, msg: &Message, args: &[&str]) {
     if args.len() < 2 {
-        if let Err(why) = msg.channel_id.say(&ctx.http, "you must provide a name") {
-            println!("Could not send message: {:?}", why);
-        }
+        say!(ctx, msg, "you must provide a name");
         return;
     }
     let data = ctx.data.read();
     let library_lock = data.get::<NCPLibrary>().expect("chip library not found");
     let library = library_lock.read().expect("library was poisoned, panicking");
-    let ncp = library.get(args[1]);
-
-    if ncp.is_some() {
-        if let Err(why) = msg.channel_id.say(&ctx.http, format!("{}", ncp.unwrap())) {
-            println!("Could not send message: {:?}", why);
-        }
-        return;
-    }
-
-    //else is none
-    let ncp_search;
-    match library.name_contains(args[1]) {
-        Some(t) => ncp_search = t,
-        None => {
-            ncp_search = library.distance(args[1]);
-        }
-    }
-
-    if ncp_search.len() == 1 {
-        let found_ncp = library.get(&ncp_search[0]).unwrap();
-        if let Err(why) = msg.channel_id.say(&ctx.http, format!("{}", found_ncp)) {
-            println!("Could not send message: {:?}", why);
-        }
-        return;
-    }
-
-    let to_send: String = ncp_search.join(", ");
-    if let Err(why) = msg.channel_id.say(&ctx.http, format!("Did you mean: {}", to_send)) {
-        println!("Could not send message: {:?}", why);
-    }
-
+    search!(ctx, msg, args[1], library);
 }
 
 fn send_help(ctx: &Context, msg: &Message, _ : &[&str]) {
-    if let Err(why) = msg.channel_id.say(&ctx.http, format!("```{}```", *HELP)) {
-        println!("Could not send message: {:?}", why);
-    }
+    say!(ctx, msg, format!("```{}```", *HELP));
 }
 
 fn send_string_vec(ctx: &Context, msg: &Message, to_send: &Vec<String>) -> serenity::Result<Message> {

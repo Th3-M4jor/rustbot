@@ -8,6 +8,7 @@ use serde_json;
 use regex::Regex;
 use std::fs;
 use crate::distance;
+use crate::chip_library::{LibraryObject, Library};
 use unicode_normalization::UnicodeNormalization;
 use std::fmt::Formatter;
 
@@ -21,6 +22,12 @@ pub struct NCP {
     pub Color: String,
     pub All: String,
     pub Description: String,
+}
+
+impl LibraryObject for NCP {
+    fn get_name(&self) -> &str {
+        return &self.Name;
+    }
 }
 
 impl NCP {
@@ -57,6 +64,51 @@ pub struct NCPLibrary {
 
 
 const COLORS : &[&str] = &["white", "pink", "yellow", "green", "blue", "red", "gray"];
+
+
+impl Library for NCPLibrary {
+    type LibObj = NCP;
+    fn get(&self, to_get: &str) -> Option<&Box<NCP>> {
+        return self.library.get(&to_get.to_lowercase());
+    }
+
+    fn name_contains(&self, to_get: &str) -> Option<Vec<String>> {
+        let to_search = to_get.to_lowercase();
+        let mut to_ret : Vec<String> = vec![];
+        for key in self.library.keys() {
+            if key.starts_with(&to_search) {
+                to_ret.push(self.library.get(key).unwrap().Name.clone());
+                if to_ret.len() > 5 {
+                    break;
+                }
+            }
+        }
+        if to_ret.is_empty() {return None;}
+        to_ret.sort_unstable();
+        return Some(to_ret);
+    }
+
+    fn distance(&self, to_get: &str) -> Vec<String> {
+        let mut distances : Vec<(usize,String)> = vec![];
+        for val in self.library.values() {
+            let dist_res = distance::get_damerau_levenshtein_distance(
+                &to_get.to_lowercase(), &val.Name.to_lowercase()
+            );
+            match dist_res {
+                Ok(d) => distances.push((d,val.Name.clone())),
+                Err(_) => continue,
+            }
+        }
+        distances.sort_unstable_by(|a,b| a.0.cmp(&b.0));
+        distances.truncate(5);
+        distances.shrink_to_fit();
+        let mut to_ret : Vec<String> = vec![];
+        for val in distances {
+            to_ret.push(val.1.clone());
+        }
+        return to_ret;
+    }
+}
 
 impl NCPLibrary {
 
@@ -109,47 +161,6 @@ impl NCPLibrary {
         }
         return self.library.len();
     }
-
-    pub fn get(&self, to_get: &str) -> Option<&Box<NCP>> {
-        return self.library.get(&to_get.to_lowercase());
-    }
-
-    pub fn name_contains(&self, to_get: &str) -> Option<Vec<String>> {
-        let to_search = to_get.to_lowercase();
-        let mut to_ret : Vec<String> = vec![];
-        for key in self.library.keys() {
-            if key.contains(&to_search) {
-                to_ret.push(self.library.get(key).unwrap().Name.clone());
-                if to_ret.len() > 5 {
-                    break;
-                }
-            }
-        }
-        if to_ret.is_empty() {return None;}
-        return Some(to_ret);
-    }
-
-    pub fn distance(&self, to_get: &str) -> Vec<String> {
-        let mut distances : Vec<(usize,String)> = vec![];
-        for val in self.library.values() {
-            let dist_res = distance::get_damerau_levenshtein_distance(
-                &to_get.to_lowercase(), &val.Name.to_lowercase()
-            );
-            match dist_res {
-                Ok(d) => distances.push((d,val.Name.clone())),
-                Err(_) => continue,
-            }
-        }
-        distances.sort_unstable_by(|a,b| a.0.cmp(&b.0));
-        distances.truncate(5);
-        distances.shrink_to_fit();
-        let mut to_ret : Vec<String> = vec![];
-        for val in distances {
-            to_ret.push(val.1.clone());
-        }
-        return to_ret;
-    }
-
 }
 
 impl TypeMapKey for NCPLibrary {

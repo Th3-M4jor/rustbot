@@ -18,8 +18,64 @@ use std::borrow::BorrowMut;
 
 const CHIP_URL: &'static str = "https://docs.google.com/feeds/download/documents/export/Export?id=1lvAKkymOplIJj6jS-N5__9aLIDXI6bETIMz01MK9MfY&exportFormat=txt";
 
+pub trait LibraryObject: std::fmt::Display {
+    fn get_name(&self) -> &str;
+}
+
+pub trait Library {
+    type LibObj : LibraryObject;
+    fn get(&self, to_get: &str)  -> Option<&Box<Self::LibObj>>;
+    fn name_contains(&self, to_get: &str) -> Option<Vec<String>>;
+    fn distance(&self, to_get: &str) -> Vec<String>;
+}
+
 pub struct ChipLibrary {
     chips: HashMap<String, Box<BattleChip>>,
+}
+
+impl Library for ChipLibrary {
+    type LibObj = BattleChip;
+    fn get(&self, to_get: &str) -> Option<&Box<BattleChip>> {
+        return self.chips.get(&to_get.to_lowercase());
+    }
+
+    fn name_contains(&self, to_get: &str) -> Option<Vec<String>> {
+        let to_search = to_get.to_lowercase();
+        let mut to_ret : Vec<String> = vec![];
+        for key in self.chips.keys() {
+            if key.starts_with(&to_search) {
+                to_ret.push(self.chips.get(key).unwrap().Name.clone());
+                if to_ret.len() > 5 {
+                    break;
+                }
+            }
+        }
+
+        if to_ret.is_empty() {return None;}
+        to_ret.sort_unstable();
+        return Some(to_ret);
+    }
+
+    fn distance(&self, to_get: &str) -> Vec<String> {
+        let mut distances : Vec<(usize,String)> = vec![];
+        for val in self.chips.values() {
+            let dist_res = distance::get_damerau_levenshtein_distance(
+                &to_get.to_lowercase(), &val.Name.to_lowercase()
+            );
+            match dist_res {
+                Ok(d) => distances.push((d,val.Name.clone())),
+                Err(_) => continue,
+            }
+        }
+        distances.sort_unstable_by(|a,b| a.0.cmp(&b.0));
+        distances.truncate(5);
+        distances.shrink_to_fit();
+        let mut to_ret : Vec<String> = vec![];
+        for val in distances {
+            to_ret.push(val.1.clone());
+        }
+        return to_ret;
+    }
 }
 
 impl ChipLibrary {
@@ -88,46 +144,6 @@ impl ChipLibrary {
         } else {
             return Ok(self.chips.len());
         }
-    }
-
-    pub fn get(&self, to_get: &str) -> Option<&Box<BattleChip>> {
-        return self.chips.get(&to_get.to_lowercase());
-    }
-
-    pub fn name_contains(&self, to_get: &str) -> Option<Vec<String>> {
-        let to_search = to_get.to_lowercase();
-        let mut to_ret : Vec<String> = vec![];
-        for key in self.chips.keys() {
-            if key.contains(&to_search) {
-                to_ret.push(self.chips.get(key).unwrap().Name.clone());
-                if to_ret.len() > 5 {
-                    break;
-                }
-            }
-        }
-        if to_ret.is_empty() {return None;}
-        return Some(to_ret);
-    }
-
-    pub fn distance(&self, to_get: &str) -> Vec<String> {
-        let mut distances : Vec<(usize,String)> = vec![];
-        for val in self.chips.values() {
-            let dist_res = distance::get_damerau_levenshtein_distance(
-                &to_get.to_lowercase(), &val.Name.to_lowercase()
-            );
-            match dist_res {
-                Ok(d) => distances.push((d,val.Name.clone())),
-                Err(_) => continue,
-            }
-        }
-        distances.sort_unstable_by(|a,b| a.0.cmp(&b.0));
-        distances.truncate(5);
-        distances.shrink_to_fit();
-        let mut to_ret : Vec<String> = vec![];
-        for val in distances {
-            to_ret.push(val.1.clone());
-        }
-        return to_ret;
     }
 
     pub fn search_element(&self, to_get: &str) -> Option<Vec<String>> {
@@ -230,7 +246,6 @@ impl ChipLibrary {
         to_ret.sort_unstable();
         return Some(to_ret);
     }
-
 
 }
 
