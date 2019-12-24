@@ -15,6 +15,7 @@ use crate::library::ChipLibrary;
 use crate::ncp_library::NCPLibrary;
 use crate::dice::DieRoll;
 use std::borrow::BorrowMut;
+use std::fs;
 //use regex::Replacer;
 
 mod battlechip;
@@ -42,8 +43,11 @@ lazy_static! {
         cmd_map.insert("roll".to_string(), roll);
         cmd_map.insert("rollstats".to_string(), roll_stats);
         cmd_map.insert("ncp".to_string(), send_ncp);
+        cmd_map.insert("help".to_string(), send_help);
         return cmd_map;
     };
+
+    static ref HELP: String = fs::read_to_string("./help.txt").unwrap_or("help text is missing, bug the owner".to_string());
 }
 
 struct Handler;
@@ -325,6 +329,12 @@ fn send_ncp(ctx: &Context, msg: &Message, args: &[&str]) {
 
 }
 
+fn send_help(ctx: &Context, msg: &Message, _ : &[&str]) {
+    if let Err(why) = msg.channel_id.say(&ctx.http, format!("```{}```", *HELP)) {
+        println!("Could not send message: {:?}", why);
+    }
+}
+
 fn send_string_vec(ctx: &Context, msg: &Message, to_send: &Vec<String>) -> serenity::Result<Message> {
     let mut reply = String::new();
     for val in to_send {
@@ -348,7 +358,6 @@ type BotCommand = fn(&Context, &Message, &[&str]) -> ();
 fn main() {
     let chip_library_mutex = Arc::new(RwLock::new(ChipLibrary::new()));
     let ncp_library_mutex = Arc::new(RwLock::new(NCPLibrary::new()));
-
     //let mut chip_library = ChipLibrary::new();
 
     {

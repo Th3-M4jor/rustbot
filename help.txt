@@ -1,0 +1,44 @@
+%chip
+    get the description of a chip with the specified name
+    or a list of chips that could match that name
+
+%cr
+    get a list of viruses in a given cr
+
+%element
+    get a list of chips that are of the given element
+
+%encounter
+    generates a random encounter
+    the required format is "%encounter 2 5" or "%encounter 2-3 6"
+    the first returns 5 random viruses in CR 2, the second returns
+    6 random viruses in between CR2 and CR3 (inclusive)
+
+%ncp
+    get the description of a given ncp
+
+%roll
+    roll a given number of dice, ex "%roll 2d20"
+
+%rollstats
+    Roll character stats for D&D 5e by rolling 4d6 and dropping the lowest 6 times
+
+%skill
+    get a list of chips that use the specified skill
+    in it's attack roll
+
+%skillCheck
+    get a list of chips where the required check's DC or save modifier uses the given skill
+
+%skillTarget
+    get a list of chips where the required check's save bonus uses the given skill
+
+%skillUser
+    get a list of chips where the required check's DC is modified by the given skill
+
+%virus
+    get the description of the given virus
+    or a list of viruses that could match that name
+
+%virusElement
+    returns a list of viruses with the given element
