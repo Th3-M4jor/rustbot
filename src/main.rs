@@ -16,14 +16,18 @@ use crate::ncp_library::NCPLibrary;
 use crate::dice::DieRoll;
 use std::borrow::BorrowMut;
 use std::fs;
+use std::ops::Deref;
 //use regex::Replacer;
 
 mod battlechip;
 mod chip_library;
 mod ncp_library;
+mod virus_library;
 mod distance;
 mod bot_data;
 mod dice;
+
+type BotCommand = fn(&Context, &Message, &[&str]) -> ();
 
 lazy_static! {
 
@@ -112,6 +116,7 @@ macro_rules! say {
     };
 }
 
+/*
 ///fn search(ctx: Context, msg: Message, search: &str, lib: Library)
 macro_rules! search {
     ($ctx: ident, $msg: ident, $search: expr, $lib: ident) => {
@@ -136,6 +141,27 @@ macro_rules! search {
         }
     };
 }
+*/
+
+fn search_lib_obj<T: Library>(ctx: &Context, msg: &Message, search: &str, lib: &T) {
+    let item = lib.get(search);
+    if item.is_some() {
+        say!(ctx, msg, format!("{}", item.unwrap()));
+        return;
+    }
+    let item_search;
+    match lib.name_contains(search) {
+        Some(t) => item_search = t,
+        None => item_search = lib.distance(search),
+    }
+    if item_search.len() == 1 {
+        let found_item = lib.get(&item_search[0]).unwrap();
+        say!(ctx, msg, format!("{}", found_item));
+        return;
+    }
+    let to_send: String = item_search.join(", ");
+    say!(ctx, msg, format!("Did you mean: {}", to_send));
+}
 
 fn send_chip(ctx: &Context, msg: &Message, args: &[&str]) {
     let to_get;
@@ -148,7 +174,8 @@ fn send_chip(ctx: &Context, msg: &Message, args: &[&str]) {
     let library_lock = data.get::<ChipLibrary>().expect("chip library not found");
     let library = library_lock.read().expect("library was poisoned, panicking");
     //let library = locked_library.read().expect("library was poisoned");
-    search!(ctx, msg, to_get, library);
+    //search!(ctx, msg, to_get, library);
+    search_lib_obj(ctx, msg, to_get, library.deref());
 }
 
 fn check_exit(ctx: &Context, msg: &Message, _: &[&str]) {
@@ -176,7 +203,7 @@ fn send_skill(ctx: &Context, msg: &Message, args: &[&str]) {
         "skilluser" => skill_res = library.search_skill_user(args[1]),
         "skilltarget" => skill_res = library.search_skill_target(args[1]),
         "skillcheck" => skill_res = library.search_skill_check(args[1]),
-        _ => panic!("should not have gotten here"),
+        _ => unreachable!(),
     }
     if skill_res.is_some() {
         if let Err(why) = send_string_vec(&ctx, &msg, &skill_res.unwrap()) {
@@ -203,29 +230,31 @@ fn send_element(ctx: &Context, msg: &Message, args: &[&str]) {
     }
 }
 
-fn reload(ctx: &Context, msg: &Message, _: &[&str]) {
+fn reload(ctx: &Context, msg: &Message, _ : &[&str]) {
     let data = ctx.data.read();
     let config = data.get::<BotData>().expect("could not get config");
     if msg.author.id != config.owner && !config.admins.contains(msg.author.id.as_u64()) {
         return;
     }
+    let mut str_to_send;
     {
         let chip_library_lock = data.get::<ChipLibrary>().expect("chip library not found");
         let mut chip_library = chip_library_lock.write().expect("chip library was poisoned, panicking");
         let chip_reload_res = chip_library.load_chips();
-        let str_to_send;
+        //let str_to_send;
         match chip_reload_res {
-            Ok(s) => str_to_send = format!("{} chips loaded", s),
-            Err(e) => str_to_send = format!("{}", e.to_string()),
+            Ok(s) => str_to_send = format!("{} chips loaded\n", s),
+            Err(e) => str_to_send = format!("{}\n", e.to_string()),
         }
 
-        say!(ctx, msg,str_to_send);
+        //say!(ctx, msg, str_to_send);
     }
     {
         let ncp_library_lock = data.get::<NCPLibrary>().expect("ncp library not found");
         let mut ncp_library = ncp_library_lock.write().expect("chip library was poisoned, panicking");
         let count = ncp_library.load_programs();
-        say!(ctx, msg, format!("{} NCPs loaded", count));
+        //say!(ctx, msg, format!("{} NCPs loaded", count));
+        str_to_send.push_str(&format!("{} NCPs loaded\n", count));
     }
 }
 
@@ -289,7 +318,7 @@ fn send_ncp(ctx: &Context, msg: &Message, args: &[&str]) {
     let data = ctx.data.read();
     let library_lock = data.get::<NCPLibrary>().expect("chip library not found");
     let library = library_lock.read().expect("library was poisoned, panicking");
-    search!(ctx, msg, args[1], library);
+    search_lib_obj(ctx, msg, args[1], library.deref());
 }
 
 fn send_help(ctx: &Context, msg: &Message, _ : &[&str]) {
@@ -314,7 +343,7 @@ fn send_string_vec(ctx: &Context, msg: &Message, to_send: &Vec<String>) -> seren
     return msg.channel_id.say(&ctx.http, &reply);
 }
 
-type BotCommand = fn(&Context, &Message, &[&str]) -> ();
+
 
 fn main() {
     let chip_library_mutex = Arc::new(RwLock::new(ChipLibrary::new()));

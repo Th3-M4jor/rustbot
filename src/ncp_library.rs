@@ -68,6 +68,7 @@ const COLORS : &[&str] = &["white", "pink", "yellow", "green", "blue", "red", "g
 
 impl Library for NCPLibrary {
     type LibObj = NCP;
+    /*
     fn get(&self, to_get: &str) -> Option<&Box<NCP>> {
         return self.library.get(&to_get.to_lowercase());
     }
@@ -108,6 +109,11 @@ impl Library for NCPLibrary {
         }
         return to_ret;
     }
+    */
+    fn get_collection(&self) -> &HashMap<String, Box<NCP>> {
+        return &self.library;
+    }
+
 }
 
 impl NCPLibrary {
