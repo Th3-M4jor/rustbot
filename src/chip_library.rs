@@ -7,13 +7,13 @@ use serenity::prelude::*;
 use serde_json;
 use simple_error::SimpleError;
 
+use strsim::jaro_winkler;
 
 use crate::battlechip::BattleChip;
 use crate::battlechip::elements::Elements;
 use crate::battlechip::skills::Skills;
 use std::fs;
 use std::str::FromStr;
-use crate::distance;
 use std::borrow::BorrowMut;
 use std::ops::Deref;
 
@@ -47,17 +47,13 @@ pub trait Library {
     }
 
     fn distance(&self, to_get: &str) -> Vec<String> {
-        let mut distances : Vec<(usize,String)> = vec![];
+        let mut distances : Vec<(f64, String)> = vec![];
         for val in self.get_collection().values() {
-            let dist_res = distance::get_damerau_levenshtein_distance(
-                &to_get.to_lowercase(), &val.get_name().to_lowercase()
-            );
-            match dist_res {
-                Ok(d) => distances.push((d,val.get_name().to_string())),
-                Err(_) => continue,
-            }
+            let dist = jaro_winkler(&to_get.to_lowercase(), &val.get_name().to_lowercase());
+            distances.push((dist, val.get_name().to_string()));
         }
-        distances.sort_unstable_by(|a,b| a.0.cmp(&b.0));
+        //distances.sort_unstable_by(|a,b| a.0.cmp(&b.0));
+        distances.sort_unstable_by(|a,b| a.0.partial_cmp(&b.0).unwrap().reverse());
         distances.truncate(5);
         distances.shrink_to_fit();
         let mut to_ret : Vec<String> = vec![];
@@ -177,8 +173,13 @@ impl ChipLibrary {
 
         chips.shrink_to_fit();
         chips.sort_unstable();
-        let j = serde_json::to_string_pretty(&chips).expect("could not serialize to json");
-        fs::write("chips.json", j).expect("could nto write to chips.json");
+
+        //only write json file if not debug
+        #[cfg(not(debug_assertions))]
+            {
+                let j = serde_json::to_string_pretty(&chips).expect("could not serialize to json");
+                fs::write("chips.json", j).expect("could nto write to chips.json");
+            }
 
         while !chips.is_empty() {
             let chip = chips.pop().expect("Something went wrong popping a chip");

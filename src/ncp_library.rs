@@ -7,7 +7,6 @@ use serde::{Deserialize, Serialize};
 use serde_json;
 use regex::Regex;
 use std::fs;
-use crate::distance;
 use crate::chip_library::{LibraryObject, Library};
 use unicode_normalization::UnicodeNormalization;
 use std::fmt::Formatter;
@@ -68,48 +67,7 @@ const COLORS : &[&str] = &["white", "pink", "yellow", "green", "blue", "red", "g
 
 impl Library for NCPLibrary {
     type LibObj = NCP;
-    /*
-    fn get(&self, to_get: &str) -> Option<&Box<NCP>> {
-        return self.library.get(&to_get.to_lowercase());
-    }
 
-    fn name_contains(&self, to_get: &str) -> Option<Vec<String>> {
-        let to_search = to_get.to_lowercase();
-        let mut to_ret : Vec<String> = vec![];
-        for key in self.library.keys() {
-            if key.starts_with(&to_search) {
-                to_ret.push(self.library.get(key).unwrap().Name.clone());
-                if to_ret.len() > 5 {
-                    break;
-                }
-            }
-        }
-        if to_ret.is_empty() {return None;}
-        to_ret.sort_unstable();
-        return Some(to_ret);
-    }
-
-    fn distance(&self, to_get: &str) -> Vec<String> {
-        let mut distances : Vec<(usize,String)> = vec![];
-        for val in self.library.values() {
-            let dist_res = distance::get_damerau_levenshtein_distance(
-                &to_get.to_lowercase(), &val.Name.to_lowercase()
-            );
-            match dist_res {
-                Ok(d) => distances.push((d,val.Name.clone())),
-                Err(_) => continue,
-            }
-        }
-        distances.sort_unstable_by(|a,b| a.0.cmp(&b.0));
-        distances.truncate(5);
-        distances.shrink_to_fit();
-        let mut to_ret : Vec<String> = vec![];
-        for val in distances {
-            to_ret.push(val.1.clone());
-        }
-        return to_ret;
-    }
-    */
     fn get_collection(&self) -> &HashMap<String, Box<NCP>> {
         return &self.library;
     }
@@ -159,8 +117,12 @@ impl NCPLibrary {
             ncp_list.push(Box::new(NCP::new(name.unwrap().as_str(), cost_val, &curr_color, ncp, desc.unwrap().as_str())));
         }
 
-        let j = serde_json::to_string_pretty(&ncp_list).expect("could not serialize to json");
-        fs::write("naviCust.json", j).expect("could not write to naviCust.json");
+        //only write json file if not debug
+        #[cfg(not(debug_assertions))]
+            {
+                let j = serde_json::to_string_pretty(&ncp_list).expect("could not serialize to json");
+                fs::write("naviCust.json", j).expect("could not write to naviCust.json");
+            }
         while !ncp_list.is_empty() {
             let ncp = ncp_list.pop().unwrap();
             self.library.insert(ncp.Name.to_lowercase(), ncp);

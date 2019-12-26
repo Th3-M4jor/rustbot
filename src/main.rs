@@ -13,6 +13,7 @@ use serenity::{
 use crate::bot_data::BotData;
 use crate::chip_library::{ChipLibrary, Library};
 use crate::ncp_library::NCPLibrary;
+use crate::virus_library::VirusLibrary;
 use crate::dice::DieRoll;
 use std::borrow::BorrowMut;
 use std::fs;
@@ -23,7 +24,6 @@ mod battlechip;
 mod chip_library;
 mod ncp_library;
 mod virus_library;
-mod distance;
 mod bot_data;
 mod dice;
 
@@ -37,6 +37,7 @@ lazy_static! {
         //need cast to BotCommand here once and rest are implicit to avoid compiler error due to type mismatch
         cmd_map.insert("chip".to_string(), send_chip as BotCommand);
 
+        cmd_map.insert("cr".to_string(), get_cr);
         cmd_map.insert("die".to_string(), check_exit);
         cmd_map.insert("skill".to_string(), send_skill);
         cmd_map.insert("skilluser".to_string(), send_skill);
@@ -47,6 +48,7 @@ lazy_static! {
         cmd_map.insert("roll".to_string(), roll);
         cmd_map.insert("rollstats".to_string(), roll_stats);
         cmd_map.insert("ncp".to_string(), send_ncp);
+        cmd_map.insert("virus".to_string(), send_virus);
         cmd_map.insert("help".to_string(), send_help);
         return cmd_map;
     };
@@ -247,7 +249,6 @@ fn reload(ctx: &Context, msg: &Message, _ : &[&str]) {
             Err(e) => str_to_send = format!("{}\n", e.to_string()),
         }
 
-        //say!(ctx, msg, str_to_send);
     }
     {
         let ncp_library_lock = data.get::<NCPLibrary>().expect("ncp library not found");
@@ -256,6 +257,15 @@ fn reload(ctx: &Context, msg: &Message, _ : &[&str]) {
         //say!(ctx, msg, format!("{} NCPs loaded", count));
         str_to_send.push_str(&format!("{} NCPs loaded\n", count));
     }
+    {
+        let virus_library_lock = data.get::<VirusLibrary>().expect("virus library not found");
+        let mut virus_library = virus_library_lock.write().expect("virus library was poisoned, panicking");
+        match virus_library.load_viruses() {
+            Ok(s) => str_to_send.push_str(&format!("{} viruses were loaded\n", s)),
+            Err(e) => str_to_send.push_str(&format!("{}", e.to_string())),
+        }
+    }
+    say!(ctx, msg, str_to_send);
 }
 
 fn roll(ctx: &Context, msg: &Message, args: &[&str]) {
@@ -316,9 +326,41 @@ fn send_ncp(ctx: &Context, msg: &Message, args: &[&str]) {
         return;
     }
     let data = ctx.data.read();
-    let library_lock = data.get::<NCPLibrary>().expect("chip library not found");
+    let library_lock = data.get::<NCPLibrary>().expect("NCP library not found");
     let library = library_lock.read().expect("library was poisoned, panicking");
     search_lib_obj(ctx, msg, args[1], library.deref());
+}
+
+fn send_virus(ctx: &Context, msg: &Message, args: &[&str]) {
+    if args.len() < 2 {
+        say!(ctx, msg, "you must provide a name");
+        return;
+    }
+    let to_join = &args[1..];
+    let to_search = to_join.join(" ");
+    let data = ctx.data.read();
+    let library_lock = data.get::<VirusLibrary>().expect("NCP library not found");
+    let library = library_lock.read().expect("library was poisoned, panicking");
+    search_lib_obj(ctx, msg, &to_search, library.deref());
+}
+
+fn get_cr(ctx: &Context, msg: &Message, args: &[&str]) {
+    if args.len() < 2 {
+        say!(ctx, msg, "you must provide a CR to search for");
+        return;
+    }
+    let cr_to_get_res = args[1].trim().parse::<u8>();
+
+    if cr_to_get_res.is_err() {
+        say!(ctx, msg, "an invalid number was provided");
+        return;
+    }
+    let cr_to_get = cr_to_get_res.unwrap();
+    let data = ctx.data.read();
+    let library_lock = data.get::<VirusLibrary>().expect("NCP library not found");
+    let library = library_lock.read().expect("library was poisoned, panicking");
+    let response = library.get_cr(cr_to_get);
+    say!(ctx, msg, response);
 }
 
 fn send_help(ctx: &Context, msg: &Message, _ : &[&str]) {
@@ -348,12 +390,12 @@ fn send_string_vec(ctx: &Context, msg: &Message, to_send: &Vec<String>) -> seren
 fn main() {
     let chip_library_mutex = Arc::new(RwLock::new(ChipLibrary::new()));
     let ncp_library_mutex = Arc::new(RwLock::new(NCPLibrary::new()));
+    let virus_library_mutex = Arc::new(RwLock::new(VirusLibrary::new()));
     //let mut chip_library = ChipLibrary::new();
 
     {
         let mut chip_library = chip_library_mutex.write().unwrap();
-        let chip_load_res = chip_library.load_chips();
-        match chip_load_res {
+        match chip_library.load_chips() {
             Ok(s) => {
                 println!("{} chips were loaded", s);
             }
@@ -364,6 +406,11 @@ fn main() {
         let mut ncp_library = ncp_library_mutex.write().unwrap();
         let ncp_count = ncp_library.load_programs();
         println!("{} programs loaded", ncp_count);
+        let mut virus_library = virus_library_mutex.write().unwrap();
+        match virus_library.load_viruses() {
+            Ok(s) => println!("{} viruses were loaded", s),
+            Err(e) => println!("{}", e.to_string()),
+        }
     }
 
     let config = BotData::new();
@@ -374,6 +421,7 @@ fn main() {
         let mut data = client.data.write();
         data.insert::<ChipLibrary>(chip_library_mutex);
         data.insert::<NCPLibrary>(ncp_library_mutex);
+        data.insert::<VirusLibrary>(virus_library_mutex);
         data.insert::<BotData>(config);
     }
     // Finally, start a single shard, and start listening to events.
