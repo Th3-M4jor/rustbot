@@ -17,10 +17,13 @@
 %ncp
     get the description of a given ncp
 
+%ncpColor
+    get a list of all NCP's with that color
+
 %roll
     roll a given number of dice, ex "%roll 2d20"
 
-%rollstats
+%rollStats
     Roll character stats for D&D 5e by rolling 4d6 and dropping the lowest 6 times
 
 %skill

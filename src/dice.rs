@@ -1,5 +1,10 @@
 use rand::rngs::ThreadRng;
 use rand::Rng;
+use serenity::{
+    model::channel::Message,
+    prelude::*,
+};
+use std::borrow::BorrowMut;
 
 pub struct DieRoll;
 
@@ -54,5 +59,47 @@ impl DieRoll {
 
         return to_ret;
     }
+}
+
+pub (crate) fn roll(ctx: &Context, msg: &Message, args: &[&str]) {
+    if args.len() < 2 {
+        say!(ctx, msg, format!("{}, you must supply a number of dice to roll", msg.author.mention()));
+    }
+
+    //grab all but the first argument which is the command name
+    let to_join = &args[1..];
+
+    let to_roll = to_join.join(" ");
+    let mut results: Vec<i64> = vec![];
+    let amt = DieRoll::roll_dice(&to_roll, results.borrow_mut());
+    let repl_str = format!("{:?}", results);
+    let reply;
+    if repl_str.len() > 1850 {
+        reply = format!(
+            "{}, you rolled: {}\n[There were too many die rolls to show the result of each one]",
+            msg.author.mention(),
+            amt
+        );
+    } else {
+        reply = format!("{}, you rolled: {}\n{}", msg.author.mention(), amt, repl_str);
+    }
+    say!(ctx, msg, reply);
+}
+
+pub (crate) fn roll_stats(ctx: &Context, msg: &Message, _: &[&str]) {
+    let mut stats: [i64; 6] = [0; 6];
+    let mut rolls: Vec<i64> = vec![];
+    for i in &mut stats {
+        rolls.clear();
+        DieRoll::roll_dice("4d6", &mut rolls);
+
+        //sort reverse to put lowest at the end
+        rolls.sort_unstable_by(|a, b| b.cmp(a));
+        rolls.pop();
+
+        *i = rolls.iter().fold(0, |acc, val| acc + val);
+    }
+
+    say!(ctx, msg, format!("{}, 4d6 drop the lowest:\n{:?}", msg.author.mention(), stats));
 
 }

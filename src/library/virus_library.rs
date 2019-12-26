@@ -2,17 +2,21 @@ use std::collections::HashMap;
 use std::sync::RwLock;
 use std::sync::Arc;
 
-use serenity::prelude::*;
+use serenity::{
+    model::channel::Message,
+    prelude::*,
+};
+
 use serde::{Deserialize, Serialize};
 use serde_json;
 use regex::Regex;
 use std::fs;
-use crate::chip_library::{LibraryObject, Library};
-use crate::battlechip::elements::Elements;
+use crate::library::{Library, LibraryObject, elements::Elements, search_lib_obj};
 use unicode_normalization::UnicodeNormalization;
 use std::fmt::Formatter;
 use simple_error::SimpleError;
 use std::str::FromStr;
+use std::ops::Deref;
 
 const VIRUS_URL: &'static str = "https://docs.google.com/feeds/download/documents/export/Export?id=1PZKYP0mzzxMTmjJ8CfrUMapgQPHgi24Ev6VB3XLBUrU&exportFormat=txt";
 
@@ -69,8 +73,8 @@ impl VirusLibrary {
     pub fn load_viruses(&mut self) -> Result<usize, SimpleError> {
 
         lazy_static! {
-            static ref VIRUS_REGEX : Regex = Regex::new(r"((.+)\s\((\w+)\))").expect("could not compile virus regex");
-            static ref CR_REGEX : Regex = Regex::new(r"CR\s+(\d+)").expect("could not compile CR regex");
+            static ref VIRUS_REGEX : Regex = Regex::new(r"^((.+)\s\((\w+)\))$").expect("could not compile virus regex");
+            static ref CR_REGEX : Regex = Regex::new(r"^CR\s+(\d+)$").expect("could not compile CR regex");
         }
 
         self.library.clear();
@@ -157,10 +161,10 @@ impl VirusLibrary {
         self.highest_cr = curr_cr;
 
         //only write json file if not debug
-        #[cfg(not(debug_assertions))]
+        //#[cfg(not(debug_assertions))]
         {
             let mut viruses: Vec<&Box<Virus>> = self.library.values().collect();
-            viruses.sort_unstable_by(|a, b| a.Name.cmp(&b.Name));
+            viruses.sort_unstable_by(|a, b| a.CR.cmp(&b.CR).then_with(|| a.Name.cmp(&b.Name)));
 
             let j = serde_json::to_string_pretty(&viruses).expect("could not serialize virus library to JSON");
             fs::write("./virusCompendium.json", j).expect("could not write to virusCompendium.json");
@@ -176,11 +180,16 @@ impl VirusLibrary {
         }
     }
 
-    pub fn get_cr(&self, cr_to_get: u8) -> String {
+    pub fn get_cr(&self, cr_to_get: u8) -> Option<Vec<&str>> {
         if cr_to_get > self.highest_cr {
-            return "There are no viruses in that CR yet".to_string();
+            return None;
         }
-
+        return self.search_any(
+            &cr_to_get,
+                |a,b|
+                a.CR == *b
+        );
+        /*
         let mut to_ret : Vec<&str> = vec![];
         for virus in self.library.values() {
             if virus.CR == cr_to_get {
@@ -190,7 +199,18 @@ impl VirusLibrary {
         to_ret.sort_unstable();
         let viruses_in_cr : String = to_ret.join(", ");
         return viruses_in_cr;
-        //return "not done yet".to_string();
+        */
+    }
+
+    pub fn search_element(&self, elem: &str) -> Option<Vec<&str>> {
+
+        let elem_to_get = Elements::from_str(elem).ok()?;
+
+        return self.search_any(
+            &elem_to_get,
+            |a,b|
+            a.Element == *b
+        );
     }
 
 }
@@ -207,4 +227,52 @@ impl TypeMapKey for VirusLibrary {
     type Value = Arc<RwLock<VirusLibrary>>;
 }
 
+pub (crate) fn send_virus(ctx: &Context, msg: &Message, args: &[&str]) {
+    if args.len() < 2 {
+        say!(ctx, msg, "you must provide a name");
+        return;
+    }
+    let to_join = &args[1..];
+    let to_search = to_join.join(" ");
+    let data = ctx.data.read();
+    let library_lock = data.get::<VirusLibrary>().expect("NCP library not found");
+    let library = library_lock.read().expect("library was poisoned, panicking");
+    search_lib_obj(ctx, msg, &to_search, library.deref());
+}
 
+pub (crate) fn send_virus_element(ctx: &Context, msg: &Message, args: &[&str]) {
+    if args.len() < 2 {
+        say!(ctx, msg, "you must provide an element");
+        return;
+    }
+
+    let data = ctx.data.read();
+    let library_lock = data.get::<VirusLibrary>().expect("chip library not found");
+    let library = library_lock.read().expect("chip library poisoned, panicking");
+    let elem_res = library.search_element(args[1]);
+    match elem_res {
+        Some(elem) => long_say!(ctx, msg, elem),
+        None => say!(ctx, msg, "nothing matched your search, are you sure you gave an element?"),
+    }
+}
+
+pub (crate) fn send_virus_cr(ctx: &Context, msg: &Message, args: &[&str]) {
+    if args.len() < 2 {
+        say!(ctx, msg, "you must provide a CR to search for");
+        return;
+    }
+    let cr_to_get_res = args[1].trim().parse::<u8>();
+
+    if cr_to_get_res.is_err() {
+        say!(ctx, msg, "an invalid number was provided");
+        return;
+    }
+    let cr_to_get = cr_to_get_res.unwrap();
+    let data = ctx.data.read();
+    let library_lock = data.get::<VirusLibrary>().expect("NCP library not found");
+    let library = library_lock.read().expect("library was poisoned, panicking");
+    match library.get_cr(cr_to_get) {
+        Some(val) => long_say!(ctx, msg, val),
+        None => say!(ctx, msg, "There are currently no viruses in that CR"),
+    }
+}

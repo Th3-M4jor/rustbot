@@ -2,14 +2,18 @@ use std::collections::HashMap;
 use std::sync::RwLock;
 use std::sync::Arc;
 
-use serenity::prelude::*;
+use serenity::{
+    model::channel::Message,
+    prelude::*,
+};
 use serde::{Deserialize, Serialize};
 use serde_json;
 use regex::Regex;
 use std::fs;
-use crate::chip_library::{LibraryObject, Library};
+use crate::library::{LibraryObject, Library, search_lib_obj};
 use unicode_normalization::UnicodeNormalization;
 use std::fmt::Formatter;
+use std::ops::Deref;
 
 const NCP_URL: &'static str = "https://docs.google.com/feeds/download/documents/export/Export?id=1cPLJ2tAUebIVZU4k7SVnyABpR9jQd7jarzix7oVys9M&exportFormat=txt";
 
@@ -118,7 +122,7 @@ impl NCPLibrary {
         }
 
         //only write json file if not debug
-        #[cfg(not(debug_assertions))]
+        //#[cfg(not(debug_assertions))]
             {
                 let j = serde_json::to_string_pretty(&ncp_list).expect("could not serialize to json");
                 fs::write("naviCust.json", j).expect("could not write to naviCust.json");
@@ -129,8 +133,45 @@ impl NCPLibrary {
         }
         return self.library.len();
     }
+
+    pub fn search_color(&self, color: &str) -> Option<Vec<&str>> {
+        if !COLORS.contains(&color.to_lowercase().as_str()) {
+            return None;
+        }
+        return self.search_any(
+            &color.to_string(),
+            |a, b|
+                a.Color.to_lowercase() == b.to_lowercase()
+        );
+    }
 }
+
 
 impl TypeMapKey for NCPLibrary {
     type Value = Arc<RwLock<NCPLibrary>>;
+}
+
+pub (crate) fn send_ncp(ctx: &Context, msg: &Message, args: &[&str]) {
+    if args.len() < 2 {
+        say!(ctx, msg, "you must provide a name");
+        return;
+    }
+    let data = ctx.data.read();
+    let library_lock = data.get::<NCPLibrary>().expect("NCP library not found");
+    let library = library_lock.read().expect("library was poisoned, panicking");
+    search_lib_obj(ctx, msg, args[1], library.deref());
+}
+
+pub (crate) fn send_ncp_color(ctx: &Context, msg: &Message, args: &[&str]) {
+    if args.len() < 2 {
+        say!(ctx, msg, "you must provide a name");
+        return;
+    }
+    let data = ctx.data.read();
+    let library_lock = data.get::<NCPLibrary>().expect("NCP library not found");
+    let library = library_lock.read().expect("library was poisoned, panicking");
+    match library.search_color(args[1]) {
+        Some(list) => long_say!(ctx, msg, list),
+        None => say!(ctx, msg, "Nothing matched your search"),
+    }
 }
