@@ -139,7 +139,7 @@ impl NCPLibrary {
             return None;
         }
         return self.search_any(
-            &color.to_string(),
+            color,
             |a, b|
                 a.Color.to_lowercase() == b.to_lowercase()
         );

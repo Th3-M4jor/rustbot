@@ -2,6 +2,10 @@ use std::collections::HashMap;
 use std::sync::RwLock;
 use std::sync::Arc;
 
+use rand::distributions::{Distribution, Uniform};
+
+use rand::rngs::ThreadRng;
+
 use serenity::{
     model::channel::Message,
     prelude::*,
@@ -185,21 +189,10 @@ impl VirusLibrary {
             return None;
         }
         return self.search_any(
-            &cr_to_get,
+            cr_to_get,
                 |a,b|
-                a.CR == *b
+                a.CR == b
         );
-        /*
-        let mut to_ret : Vec<&str> = vec![];
-        for virus in self.library.values() {
-            if virus.CR == cr_to_get {
-                to_ret.push(&virus.Name);
-            }
-        }
-        to_ret.sort_unstable();
-        let viruses_in_cr : String = to_ret.join(", ");
-        return viruses_in_cr;
-        */
     }
 
     pub fn search_element(&self, elem: &str) -> Option<Vec<&str>> {
@@ -207,10 +200,43 @@ impl VirusLibrary {
         let elem_to_get = Elements::from_str(elem).ok()?;
 
         return self.search_any(
-            &elem_to_get,
+            elem_to_get,
             |a,b|
-            a.Element == *b
+            a.Element == b
         );
+    }
+
+    pub fn get_highest_cr(&self) -> u8 {
+        return self.highest_cr;
+    }
+
+    pub fn single_cr_random_encounter(&self, cr_to_get: u8, num_viruses: usize) -> Option<Vec<&str>> {
+
+        let viruses = self.get_cr(cr_to_get)?;
+
+        return Some(self.build_encounter(&viruses, num_viruses));
+    }
+
+    pub fn multi_cr_random_encounter(&self, low_cr: u8, high_cr: u8, num_viruses: usize) -> Option<Vec<&str>> {
+        let mut viruses : Vec<&str> = vec![];
+        for i in low_cr..=high_cr {
+            let mut to_append = self.get_cr(i)?;
+            viruses.append(&mut to_append);
+        }
+        if viruses.len() == 0 {return None;}
+        return Some(self.build_encounter(&viruses,num_viruses));
+    }
+
+    fn build_encounter<'a>(&self, viruses: &Vec<&'a str>, num_viruses: usize) -> Vec<&'a str> {
+        let mut rng = ThreadRng::default();
+        let mut to_ret : Vec<&str>  = vec![];
+        let vir_size = viruses.len();
+        let distribution = Uniform::from(0..vir_size);
+        for _ in 0..num_viruses {
+            let index = distribution.sample(&mut rng);
+            to_ret.push(viruses[index]);
+        }
+        return to_ret;
     }
 
 }
@@ -275,4 +301,76 @@ pub (crate) fn send_virus_cr(ctx: &Context, msg: &Message, args: &[&str]) {
         Some(val) => long_say!(ctx, msg, val),
         None => say!(ctx, msg, "There are currently no viruses in that CR"),
     }
+}
+
+pub (crate) fn send_random_encounter(ctx: &Context, msg: &Message, args: &[&str]) {
+    if args.len() < 3 {
+        say!(ctx, msg, concat!(
+        "You must send a CR and number of viruses; EX:\n",
+        "```%encounter 2-3 5```",
+        "This will return 5 random viruses in CR 2 & 3"
+        ));
+        return;
+    }
+    let virus_count = args[2].parse::<isize>().unwrap_or(-1);
+    if virus_count <= 0 {
+        say!(ctx, msg, "an invalid number of viruses were given");
+        return;
+    }
+    let data = ctx.data.read();
+    let library_lock = data.get::<VirusLibrary>().expect("NCP library not found");
+    let library = library_lock.read().expect("library was poisoned, panicking");
+    let single_cr_res = args[1].parse::<isize>();
+    let to_send: Vec<&str>;
+
+    //was it a single CR or a range?
+    if single_cr_res.is_ok() {
+        //a single CR
+        let single_cr = single_cr_res.unwrap();
+        if single_cr <= 0 || single_cr > library.get_highest_cr() as isize {
+            say!(ctx, msg, "an invalid single CR was given");
+            return;
+        }
+        to_send = library
+            .single_cr_random_encounter(single_cr as u8, virus_count as usize)
+                .expect("failed to get viruses");
+
+    } else {
+        let cr_range : Vec<&str> = args[1].trim().split('-').collect();
+        if cr_range.len() != 2 {
+            say!(ctx, msg, "That is an invalid CR range");
+            return;
+        }
+        let first_cr_res = cr_range[0].parse::<u8>();
+        let second_cr_res = cr_range[1].parse::<u8>();
+        if first_cr_res.is_err() || second_cr_res.is_err() {
+            say!(ctx, msg, "That is an invalid CR range");
+            return;
+        }
+        let first_cr_num = first_cr_res.unwrap();
+        let second_cr_num = second_cr_res.unwrap();
+        if first_cr_num == second_cr_num {
+            to_send = library
+                .single_cr_random_encounter(
+                    first_cr_num,
+                    virus_count as usize
+                ).expect("failed to get viruses");
+        } else if first_cr_num > second_cr_num {
+            to_send = library
+                .multi_cr_random_encounter(
+                    second_cr_num,
+                    first_cr_num,
+                    virus_count as usize
+                ).expect("failed to get viruses");
+        } else /* second_cr_num > first_cr_num */ {
+            to_send = library
+                .multi_cr_random_encounter(
+                    first_cr_num,
+                    second_cr_num,
+                    virus_count as usize
+                ).expect("failed to get viruses");
+        }
+    }
+    long_say!(ctx, msg, to_send);
+
 }

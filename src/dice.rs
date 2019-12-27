@@ -1,5 +1,5 @@
 use rand::rngs::ThreadRng;
-use rand::Rng;
+use rand::distributions::{Distribution, Uniform};
 use serenity::{
     model::channel::Message,
     prelude::*,
@@ -45,9 +45,11 @@ impl DieRoll {
                     Ok(val) => f = val,
                     Err(_) => f = 6,
                 }
+                let die = Uniform::from(1..(f + 1));
                 let mut u :i64 = 0;
                 for _ in 0..amt_to_roll {
-                    let to_add = rng.gen::<i64>().abs() % f + 1;
+                    //let to_add = rng.gen::<i64>().abs() % f + 1;
+                    let to_add = die.sample(&mut rng);
                     rolls.push(to_add);
                     u += to_add;
                 }

@@ -118,9 +118,9 @@ impl ChipLibrary {
         let elem_to_get = Elements::from_str(to_get).ok()?;
 
         return self.search_any(
-            &elem_to_get,
+            elem_to_get,
             |a,b|
-                a.Elements.contains(b)
+                a.Elements.contains(&b)
         );
     }
 
@@ -128,11 +128,19 @@ impl ChipLibrary {
 
         let skill_to_get = Skills::from_str(to_get).ok()?;
 
-        return self.search_any(
-            &skill_to_get,
-            |a,b|
-                a.Skills.contains(b)
-        );
+        //special case for where you want chips with more than one possible skill
+        if skill_to_get == Skills::Varies {
+            return self.search_any(skill_to_get,
+            |a, _ |
+                a.Skills.len() > 1
+            );
+        } else {
+            return self.search_any(
+                skill_to_get,
+                |a, b|
+                    a.Skills.contains(&b)
+            );
+        }
 
     }
 
@@ -141,9 +149,9 @@ impl ChipLibrary {
         let skill_to_get = Skills::from_str(to_get).ok()?;
 
         return self.search_any(
-            &skill_to_get,
+            skill_to_get,
             |a,b|
-                a.SkillTarget == *b
+                a.SkillTarget == b
         );
     }
 
@@ -152,9 +160,9 @@ impl ChipLibrary {
         let skill_to_get = Skills::from_str(to_get).ok()?;
 
         return self.search_any(
-            &skill_to_get,
+            skill_to_get,
             |a,b|
-                a.SkillUser == *b
+                a.SkillUser == b
         );
     }
 
@@ -164,9 +172,9 @@ impl ChipLibrary {
         let skill_to_get = Skills::from_str(to_get).ok()?;
 
         return self.search_any(
-            &skill_to_get,
+            skill_to_get,
             |a,b|
-                a.SkillTarget == *b || a.SkillUser == *b
+                a.SkillTarget == b || a.SkillUser == b
         );
 
     }

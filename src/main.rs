@@ -23,6 +23,7 @@ use crate::dice::{roll, roll_stats};
 use crate::util::send_long_message;
 use std::fs;
 use crate::library::chip_library::send_chip;
+use serenity::model::gateway::Activity;
 
 //use regex::Replacer;
 #[macro_use]
@@ -60,6 +61,7 @@ lazy_static! {
         cmd_map.insert("roll".to_string(), roll);
         cmd_map.insert("rollstats".to_string(), roll_stats);
         cmd_map.insert("virus".to_string(), send_virus);
+        cmd_map.insert("encounter".to_string(), send_random_encounter);
         cmd_map.insert("viruselement".to_string(), send_virus_element);
         cmd_map.insert("help".to_string(), send_help);
         return cmd_map;
@@ -118,6 +120,8 @@ impl EventHandler for Handler {
             m.content("logged in, and ready");
             return m;
         }).expect("could not dm owner");
+        let action = config.cmd_prefix.clone() + "help for a list of commands";
+        ctx.set_activity(Activity::playing(&action));
     }
 }
 

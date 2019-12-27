@@ -1,7 +1,7 @@
 use simple_error::SimpleError;
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Eq, PartialEq)]
+#[derive(Serialize, Deserialize, Eq, PartialEq, Clone, Copy)]
 pub enum Skills {
     Sense,
     Info,

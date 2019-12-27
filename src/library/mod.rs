@@ -68,12 +68,13 @@ pub trait Library : TypeMapKey {
         return self.get_collection().get(&to_get.to_lowercase());
     }
 
-    fn search_any<F, T>(&self, to_search: &T, cond: F,) -> Option<Vec<&str>>
-        where F: Fn(&Box<Self::LibObj>, &T) -> bool
+    fn search_any<F, T>(&self, to_search: T, cond: F,) -> Option<Vec<&str>>
+        where F: Fn(&Box<Self::LibObj>, T) -> bool,
+        T: std::marker::Copy
     {
         let mut to_ret: Vec<&str> = vec![];
         for val in self.get_collection().values() {
-            if cond(val, &to_search) {
+            if cond(val, to_search) {
                 to_ret.push(val.get_name());
             }
         }
