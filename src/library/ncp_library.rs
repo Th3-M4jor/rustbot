@@ -28,6 +28,7 @@ pub struct NCP {
 }
 
 impl LibraryObject for NCP {
+    #[inline]
     fn get_name(&self) -> &str {
         return &self.Name;
     }
@@ -72,6 +73,7 @@ const COLORS : &[&str] = &["white", "pink", "yellow", "green", "blue", "red", "g
 impl Library for NCPLibrary {
     type LibObj = NCP;
 
+    #[inline]
     fn get_collection(&self) -> &HashMap<String, Box<NCP>> {
         return &self.library;
     }
@@ -122,7 +124,7 @@ impl NCPLibrary {
         }
 
         //only write json file if not debug
-        //#[cfg(not(debug_assertions))]
+        #[cfg(not(debug_assertions))]
             {
                 let j = serde_json::to_string_pretty(&ncp_list).expect("could not serialize to json");
                 fs::write("naviCust.json", j).expect("could not write to naviCust.json");

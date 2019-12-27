@@ -33,6 +33,7 @@ pub struct ChipLibrary {
 impl Library for ChipLibrary {
     type LibObj = BattleChip;
 
+    #[inline]
     fn get_collection(&self) -> &HashMap<String, Box<BattleChip>> {
         return &self.chips;
     }
@@ -85,7 +86,7 @@ impl ChipLibrary {
         chips.sort_unstable();
 
         //only write json file if not debug
-        //#[cfg(not(debug_assertions))]
+        #[cfg(not(debug_assertions))]
             {
                 let j = serde_json::to_string_pretty(&chips).expect("could not serialize to json");
                 fs::write("chips.json", j).expect("could nto write to chips.json");

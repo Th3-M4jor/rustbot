@@ -50,6 +50,7 @@ impl Virus {
 }
 
 impl LibraryObject for Virus {
+    #[inline]
     fn get_name(&self) -> &str {
         return &self.Name;
     }
@@ -165,7 +166,7 @@ impl VirusLibrary {
         self.highest_cr = curr_cr;
 
         //only write json file if not debug
-        //#[cfg(not(debug_assertions))]
+        #[cfg(not(debug_assertions))]
         {
             let mut viruses: Vec<&Box<Virus>> = self.library.values().collect();
             viruses.sort_unstable_by(|a, b| a.CR.cmp(&b.CR).then_with(|| a.Name.cmp(&b.Name)));
@@ -214,7 +215,7 @@ impl VirusLibrary {
 
         let viruses = self.get_cr(cr_to_get)?;
 
-        return Some(self.build_encounter(&viruses, num_viruses));
+        return Some(VirusLibrary::build_encounter(&viruses, num_viruses));
     }
 
     pub fn multi_cr_random_encounter(&self, low_cr: u8, high_cr: u8, num_viruses: usize) -> Option<Vec<&str>> {
@@ -224,10 +225,11 @@ impl VirusLibrary {
             viruses.append(&mut to_append);
         }
         if viruses.len() == 0 {return None;}
-        return Some(self.build_encounter(&viruses,num_viruses));
+        return Some(VirusLibrary::build_encounter(&viruses, num_viruses));
     }
 
-    fn build_encounter<'a>(&self, viruses: &Vec<&'a str>, num_viruses: usize) -> Vec<&'a str> {
+    #[inline]
+    fn build_encounter<'a>(viruses: &Vec<&'a str>, num_viruses: usize) -> Vec<&'a str> {
         let mut rng = ThreadRng::default();
         let mut to_ret : Vec<&str>  = vec![];
         let vir_size = viruses.len();
@@ -244,6 +246,7 @@ impl VirusLibrary {
 impl Library for VirusLibrary {
     type LibObj = Virus;
 
+    #[inline]
     fn get_collection(&self) -> &HashMap<String, Box<Virus>> {
         return &self.library;
     }

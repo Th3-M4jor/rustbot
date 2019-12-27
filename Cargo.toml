@@ -17,3 +17,6 @@ unicode-normalization = "*"
 serenity = "*"
 rand = "*"
 strsim = "*"
+
+[profile.release]
+lto = true

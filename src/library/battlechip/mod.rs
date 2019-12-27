@@ -60,6 +60,7 @@ impl std::fmt::Display for BattleChip {
 }
 
 impl LibraryObject for BattleChip {
+    #[inline]
     fn get_name(&self) -> &str {
         return &self.Name
     }
