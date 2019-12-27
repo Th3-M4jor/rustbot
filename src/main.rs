@@ -172,7 +172,14 @@ fn reload(ctx: &Context, msg: &Message, _: &[&str]) {
 }
 
 fn send_help(ctx: &Context, msg: &Message, _: &[&str]) {
-    say!(ctx, msg, format!("```{}```", *HELP));
+
+    let res = msg.author.dm(ctx, |m| {
+        m.content(format!("```{}```", *HELP));
+        return m;
+    });
+    if res.is_err() {
+        println!("Could not send help message: {:?}", res.unwrap_err());
+    }
 }
 
 
