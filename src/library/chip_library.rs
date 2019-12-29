@@ -94,7 +94,7 @@ impl ChipLibrary {
 
         while !chips.is_empty() {
             let chip = chips.pop().expect("Something went wrong popping a chip");
-            self.chips.insert(chip.Name.to_lowercase(), chip);
+            self.chips.insert(chip.name.to_lowercase(), chip);
         }
 
         if bad_chips.len() > 5 {
@@ -121,7 +121,7 @@ impl ChipLibrary {
         return self.search_any(
             elem_to_get,
             |a,b|
-                a.Elements.contains(&b)
+                a.elements.contains(&b)
         );
     }
 
@@ -133,13 +133,13 @@ impl ChipLibrary {
         if skill_to_get == Skills::Varies {
             return self.search_any(skill_to_get,
             |a, _ |
-                a.Skills.len() > 1
+                a.skills.len() > 1
             );
         } else {
             return self.search_any(
                 skill_to_get,
                 |a, b|
-                    a.Skills.contains(&b)
+                    a.skills.contains(&b)
             );
         }
 
@@ -152,7 +152,7 @@ impl ChipLibrary {
         return self.search_any(
             skill_to_get,
             |a,b|
-                a.SkillTarget == b
+                a.skill_target == b
         );
     }
 
@@ -163,7 +163,7 @@ impl ChipLibrary {
         return self.search_any(
             skill_to_get,
             |a,b|
-                a.SkillUser == b
+                a.skill_user == b
         );
     }
 
@@ -175,7 +175,7 @@ impl ChipLibrary {
         return self.search_any(
             skill_to_get,
             |a,b|
-                a.SkillTarget == b || a.SkillUser == b
+                a.skill_target == b || a.skill_user == b
         );
 
     }

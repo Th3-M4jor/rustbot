@@ -24,13 +24,14 @@ use std::ops::Deref;
 
 const VIRUS_URL: &'static str = "https://docs.google.com/feeds/download/documents/export/Export?id=1PZKYP0mzzxMTmjJ8CfrUMapgQPHgi24Ev6VB3XLBUrU&exportFormat=txt";
 
-#[allow(non_snake_case)]
+
 #[derive(Serialize, Deserialize)]
+#[serde(rename_all(serialize = "PascalCase", deserialize = "snake_case"))]
 pub struct Virus {
-    pub Name: String,
-    pub Element: Elements,
-    pub CR: u8,
-    pub Description: String,
+    pub name: String,
+    pub element: Elements,
+    pub c_r: u8,
+    pub description: String,
 }
 
 impl Virus {
@@ -41,10 +42,10 @@ impl Virus {
         desc: T,
     ) -> Virus {
         Virus {
-            Name: name.into().nfc().collect::<String>(),
-            Element: elem,
-            CR: cr.into(),
-            Description: desc.into().nfc().collect::<String>(),
+            name: name.into().nfc().collect::<String>(),
+            element: elem,
+            c_r: cr.into(),
+            description: desc.into().nfc().collect::<String>(),
         }
     }
 }
@@ -52,13 +53,13 @@ impl Virus {
 impl LibraryObject for Virus {
     #[inline]
     fn get_name(&self) -> &str {
-        return &self.Name;
+        return &self.name;
     }
 }
 
 impl std::fmt::Display for Virus {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
-        return write!(f, "```{} - CR {}\n{}```", self.Name, self.CR, self.Description);
+        return write!(f, "```{} - CR {}\n{}```", self.name, self.c_r, self.description);
     }
 }
 
@@ -130,13 +131,13 @@ impl VirusLibrary {
                     }
                     let mut new_virus = new_virus_res.unwrap();
 
-                    if new_virus.Element == old_virus.Element {
+                    if new_virus.element == old_virus.element {
                         return Err(SimpleError::new(format!("found an unrecoverable duplicate, {}, 124", current_virus_full_name)));
                     }
-                    new_virus.Name.push_str(&format!(" ({})", new_virus.Element));
-                    old_virus.Name.push_str(&format!(" ({})", old_virus.Element));
-                    let new_add_res = self.library.insert(new_virus.Name.to_lowercase(), new_virus);
-                    let old_add_res = self.library.insert(old_virus.Name.to_lowercase(), old_virus);
+                    new_virus.name.push_str(&format!(" ({})", new_virus.element));
+                    old_virus.name.push_str(&format!(" ({})", old_virus.element));
+                    let new_add_res = self.library.insert(new_virus.name.to_lowercase(), new_virus);
+                    let old_add_res = self.library.insert(old_virus.name.to_lowercase(), old_virus);
                     if new_add_res.is_some() || old_add_res.is_some() {
                         return Err(SimpleError::new(format!("found an unrecoverable duplicate, {}, 131", current_virus_full_name)));
                     }
@@ -169,7 +170,7 @@ impl VirusLibrary {
         #[cfg(not(debug_assertions))]
         {
             let mut viruses: Vec<&Box<Virus>> = self.library.values().collect();
-            viruses.sort_unstable_by(|a, b| a.CR.cmp(&b.CR).then_with(|| a.Name.cmp(&b.Name)));
+            viruses.sort_unstable_by(|a, b| a.c_r.cmp(&b.c_r).then_with(|| a.name.cmp(&b.name)));
 
             let j = serde_json::to_string_pretty(&viruses).expect("could not serialize virus library to JSON");
             fs::write("./virusCompendium.json", j).expect("could not write to virusCompendium.json");
@@ -192,7 +193,7 @@ impl VirusLibrary {
         return self.search_any(
             cr_to_get,
                 |a,b|
-                a.CR == b
+                a.c_r == b
         );
     }
 
@@ -203,7 +204,7 @@ impl VirusLibrary {
         return self.search_any(
             elem_to_get,
             |a,b|
-            a.Element == b
+            a.element == b
         );
     }
 

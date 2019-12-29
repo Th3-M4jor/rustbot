@@ -1,9 +1,10 @@
 use simple_error::SimpleError;
-use serde::{Deserialize, Serialize, Serializer};
+use serde::{Deserialize, Serialize};
 
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Serialize)]
 pub enum Ranges {
+    #[serde(rename(serialize = "Self"))]
     Itself,
     Close,
     Near,
@@ -33,7 +34,7 @@ impl std::fmt::Display for Ranges {
         }
     }
 }
-
+/*
 impl Serialize for Ranges {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
         where
@@ -42,3 +43,4 @@ impl Serialize for Ranges {
         serializer.serialize_str(format!("{}", self).as_str())
     }
 }
+*/

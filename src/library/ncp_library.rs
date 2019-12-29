@@ -17,22 +17,24 @@ use std::ops::Deref;
 
 const NCP_URL: &'static str = "https://docs.google.com/feeds/download/documents/export/Export?id=1cPLJ2tAUebIVZU4k7SVnyABpR9jQd7jarzix7oVys9M&exportFormat=txt";
 
-#[allow(non_snake_case)]
+
 #[derive(Serialize, Deserialize)]
+#[serde(rename_all(serialize = "PascalCase", deserialize = "snake_case"))]
 pub struct NCP {
-    pub Name: String,
-    pub EBCost: u8,
-    pub Color: String,
-    pub All: String,
-    pub Description: String,
+    pub name: String,
+    pub e_b_cost: u8,
+    pub color: String,
+    pub all: String,
+    pub description: String,
 }
 
 impl LibraryObject for NCP {
     #[inline]
     fn get_name(&self) -> &str {
-        return &self.Name;
+        return &self.name;
     }
 }
+
 
 impl NCP {
     pub fn new<T: Into<String>, S: Into<u8>> (
@@ -43,11 +45,11 @@ impl NCP {
         desc: T,
     ) -> NCP {
         NCP {
-            Name: name.into().nfc().collect::<String>(),
-            EBCost: cost.into(),
-            Color: color.into().nfc().collect::<String>(),
-            All: all.into().nfc().collect::<String>(),
-            Description: desc.into().nfc().collect::<String>(),
+            name: name.into().nfc().collect::<String>(),
+            e_b_cost: cost.into(),
+            color: color.into().nfc().collect::<String>(),
+            all: all.into().nfc().collect::<String>(),
+            description: desc.into().nfc().collect::<String>(),
         }
     }
 }
@@ -57,7 +59,7 @@ impl std::fmt::Display for NCP {
         return write!(
             f,
             "```{} - ({} EB) - {}\n{}```",
-            self.Name, self.EBCost, self.Color, self.Description
+            self.name, self.e_b_cost, self.color, self.description
         );
     }
 }
@@ -131,7 +133,7 @@ impl NCPLibrary {
             }
         while !ncp_list.is_empty() {
             let ncp = ncp_list.pop().unwrap();
-            self.library.insert(ncp.Name.to_lowercase(), ncp);
+            self.library.insert(ncp.name.to_lowercase(), ncp);
         }
         return self.library.len();
     }
@@ -143,7 +145,7 @@ impl NCPLibrary {
         return self.search_any(
             color,
             |a, b|
-                a.Color.to_lowercase() == b.to_lowercase()
+                a.color.to_lowercase() == b.to_lowercase()
         );
     }
 }

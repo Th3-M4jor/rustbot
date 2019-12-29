@@ -17,6 +17,7 @@ unicode-normalization = "*"
 serenity = "*"
 rand = "*"
 strsim = "*"
+chrono = "*"
 
 [profile.release]
 lto = true
