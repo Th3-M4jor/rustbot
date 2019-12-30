@@ -205,7 +205,7 @@ fn main() {
     let chip_library_mutex = Arc::new(RwLock::new(ChipLibrary::new()));
     let ncp_library_mutex = Arc::new(RwLock::new(NCPLibrary::new()));
     let virus_library_mutex = Arc::new(RwLock::new(VirusLibrary::new()));
-    let warframe_data_mutex = Arc::new(RwLock::new(WarframeData::new()));
+    let warframe_data = WarframeData::new();
     //let mut chip_library = ChipLibrary::new();
 
     {
@@ -226,8 +226,6 @@ fn main() {
             Ok(s) => println!("{} viruses were loaded", s),
             Err(e) => println!("{}", e.to_string()),
         }
-        let mut warframe_dat = warframe_data_mutex.write().unwrap();
-        warframe_dat.load().expect("could not load warframe PC data");
     }
 
     let config = BotData::new();
@@ -240,7 +238,7 @@ fn main() {
         data.insert::<NCPLibrary>(ncp_library_mutex);
         data.insert::<VirusLibrary>(virus_library_mutex);
         data.insert::<BotData>(config);
-        data.insert::<WarframeData>(warframe_data_mutex);
+        data.insert::<WarframeData>(warframe_data);
     }
     // Finally, start a single shard, and start listening to events.
     //
