@@ -42,10 +42,16 @@ impl DieRoll {
                 let f : i64;
                 let res = d[i].trim().parse::<i64>();
                 match res {
-                    Ok(val) => f = val,
+                    Ok(val) => {
+                        if val <= 1 {
+                            f = 6;
+                        } else {
+                            f = val;
+                        }
+                    },
                     Err(_) => f = 6,
                 }
-                let die = Uniform::from(1..(f + 1));
+                let die = Uniform::from(1..=f);
                 let mut u :i64 = 0;
                 for _ in 0..amt_to_roll {
                     //let to_add = rng.gen::<i64>().abs() % f + 1;

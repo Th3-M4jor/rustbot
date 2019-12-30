@@ -1,7 +1,8 @@
 use simple_error::SimpleError;
 use serde::{Deserialize, Serialize};
+//use std::slice::Iter;
 
-#[derive(Serialize, Deserialize, Eq, PartialEq, Clone ,Copy)]
+#[derive(Serialize, Deserialize, Eq, PartialEq, Clone, Copy, PartialOrd, Ord)]
 pub enum Elements {
     Fire,
     Aqua,
@@ -16,6 +17,25 @@ pub enum Elements {
     Object,
     Null,
 }
+
+/*
+impl Ord for Elements {
+    fn cmp(&self, other: &Self) -> Ordering {
+        let a = self as u8;
+        let b = other as u8;
+        return a.cmp(&b);
+    }
+}
+*/
+
+/*
+impl Elements {
+    pub fn iterator() -> Iter<'static, &'static str> {
+        static ELEMENT: [&str; 12] = ["Fire", "Aqua", "Elec", "Wood", "Wind", "Sword", "Break", "Cursor", "Recovery", "Invis", "Object", "Null"];
+        return ELEMENT.iter();
+    }
+}
+*/
 
 impl std::str::FromStr for Elements {
     type Err = SimpleError;

@@ -1,6 +1,6 @@
 [package]
 name = "rustbot"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["Michael Lingo <spartan364@gmail.com>"]
 edition = "2018"
 
@@ -17,6 +17,7 @@ unicode-normalization = "*"
 serenity = "*"
 rand = "*"
 strsim = "*"
+chrono = "*"
 
 [profile.release]
 lto = true

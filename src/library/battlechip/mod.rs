@@ -17,25 +17,27 @@ pub(crate) mod skills;
 mod chip_type;
 mod ranges;
 
-#[allow(non_snake_case)]
+
 #[derive(Serialize, Deserialize)]
+#[serde(rename_all(serialize = "PascalCase", deserialize = "snake_case"))]
 pub struct BattleChip {
-    pub Name: String,
-    pub Elements: Vec<Elements>,
-    pub Skills: Vec<Skills>,
-    pub Range: Ranges,
-    pub Damage: String,
-    pub r#Type: ChipType,
-    pub Hits: String,
-    pub Description: String,
-    pub All: String,
-    pub SkillTarget: Skills,
-    pub SkillUser: Skills,
+    pub name: String,
+    pub elements: Vec<Elements>,
+    pub skills: Vec<Skills>,
+    pub range: Ranges,
+    pub damage: String,
+    #[serde(rename(serialize = "Type"))]
+    pub class: ChipType,
+    pub hits: String,
+    pub description: String,
+    pub all: String,
+    pub skill_target: Skills,
+    pub skill_user: Skills,
 }
 
 impl Ord for BattleChip {
     fn cmp(&self, other: &Self) -> Ordering {
-        self.Name.to_lowercase().cmp(&other.Name.to_lowercase())
+        self.name.to_lowercase().cmp(&other.name.to_lowercase())
     }
 }
 
@@ -47,7 +49,7 @@ impl PartialOrd for BattleChip {
 
 impl PartialEq for BattleChip {
     fn eq(&self, other: &Self) -> bool {
-        self.Name == other.Name
+        self.name == other.name
     }
 }
 
@@ -55,14 +57,14 @@ impl Eq for BattleChip {}
 
 impl std::fmt::Display for BattleChip {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
-        return write!(f, "```{}```", self.All);
+        return write!(f, "```{}```", self.all);
     }
 }
 
 impl LibraryObject for BattleChip {
     #[inline]
     fn get_name(&self) -> &str {
-        return &self.Name
+        return &self.name
     }
 }
 
@@ -73,7 +75,7 @@ impl BattleChip {
         skills: Option<Vec<Skills>>,
         range: Ranges,
         damage: T,
-        r#type: Option<ChipType>,
+        class: Option<ChipType>,
         hits: T,
         description: T,
         all: T,
@@ -81,17 +83,17 @@ impl BattleChip {
         skill_user: Option<Skills>,
     ) -> BattleChip {
         BattleChip {
-            Name: name.into().nfc().collect::<String>(),
-            Elements: elements,
-            Skills: skills.unwrap_or(std::vec![Skills::None]),
-            Range: range,
-            Damage: damage.into().nfc().collect::<String>(),
-            r#Type: r#type.unwrap_or(ChipType::Standard),
-            Hits: hits.into().nfc().collect::<String>(),
-            Description: description.into().nfkd().collect::<String>(),
-            All: all.into().nfc().collect::<String>(),
-            SkillTarget: skill_target.unwrap_or(Skills::None),
-            SkillUser: skill_user.unwrap_or(Skills::None),
+            name: name.into().nfc().collect::<String>(),
+            elements,
+            skills: skills.unwrap_or(std::vec![Skills::None]),
+            range,
+            damage: damage.into().nfc().collect::<String>(),
+            class: class.unwrap_or(ChipType::Standard),
+            hits: hits.into().nfc().collect::<String>(),
+            description: description.into().nfc().collect::<String>(),
+            all: all.into().nfc().collect::<String>(),
+            skill_target: skill_target.unwrap_or(Skills::None),
+            skill_user: skill_user.unwrap_or(Skills::None),
         }
     }
 

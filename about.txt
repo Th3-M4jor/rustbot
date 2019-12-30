@@ -1,0 +1,6 @@
+BnBBot version 3.0
+
+Language: Rust
+Framework: Serenity.rs
+
+github: DM major if you want a link

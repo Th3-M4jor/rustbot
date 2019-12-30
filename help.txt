@@ -14,6 +14,12 @@
     the first returns 5 random viruses in CR 2, the second returns
     6 random viruses in between CR2 and CR3 (inclusive)
 
+%family
+    if given the name of the first virus in a family, will return all viruses in that family
+
+%fissures
+    returns a list of all active warframe fissures (PC)
+
 %ncp
     get the description of a given ncp
 
@@ -38,6 +44,9 @@
 
 %skillUser
     get a list of chips where the required check's DC is modified by the given skill
+
+%sortie
+    returns the currently active sortie in Warframe (PC)
 
 %virus
     get the description of the given virus

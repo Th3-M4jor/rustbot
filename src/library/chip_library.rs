@@ -94,7 +94,7 @@ impl ChipLibrary {
 
         while !chips.is_empty() {
             let chip = chips.pop().expect("Something went wrong popping a chip");
-            self.chips.insert(chip.Name.to_lowercase(), chip);
+            self.chips.insert(chip.name.to_lowercase(), chip);
         }
 
         if bad_chips.len() > 5 {
@@ -121,7 +121,7 @@ impl ChipLibrary {
         return self.search_any(
             elem_to_get,
             |a,b|
-                a.Elements.contains(&b)
+                a.elements.contains(&b)
         );
     }
 
@@ -133,13 +133,13 @@ impl ChipLibrary {
         if skill_to_get == Skills::Varies {
             return self.search_any(skill_to_get,
             |a, _ |
-                a.Skills.len() > 1
+                a.skills.len() > 1
             );
         } else {
             return self.search_any(
                 skill_to_get,
                 |a, b|
-                    a.Skills.contains(&b)
+                    a.skills.contains(&b)
             );
         }
 
@@ -152,7 +152,7 @@ impl ChipLibrary {
         return self.search_any(
             skill_to_get,
             |a,b|
-                a.SkillTarget == b
+                a.skill_target == b
         );
     }
 
@@ -163,7 +163,7 @@ impl ChipLibrary {
         return self.search_any(
             skill_to_get,
             |a,b|
-                a.SkillUser == b
+                a.skill_user == b
         );
     }
 
@@ -175,7 +175,7 @@ impl ChipLibrary {
         return self.search_any(
             skill_to_get,
             |a,b|
-                a.SkillTarget == b || a.SkillUser == b
+                a.skill_target == b || a.skill_user == b
         );
 
     }
@@ -219,7 +219,7 @@ pub (crate) fn send_chip_skill(ctx: &Context, msg: &Message, args: &[&str]) {
     }
 
     match skill_res {
-        Some(skills) => long_say!(ctx, msg, skills),
+        Some(skills) => long_say!(ctx, msg, skills, ", "),
         None => say!(ctx, msg, "nothing matched your search"),
     }
 }
@@ -235,7 +235,7 @@ pub (crate) fn send_chip_element(ctx: &Context, msg: &Message, args: &[&str]) {
     let elem_res = library.search_element(args[1]);
 
     match elem_res {
-        Some(elem) => long_say!(ctx, msg, elem),
+        Some(elem) => long_say!(ctx, msg, elem, ", "),
         None => say!(ctx, msg, "nothing matched your search, are you sure you gave an element?"),
     }
 
