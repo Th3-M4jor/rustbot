@@ -61,6 +61,6 @@ pub(crate) fn build_time_rem(now: i64, end: i64) -> String {
     if hours_rem == 0 {
         return format!("{:02}m:{:02}s", min_rem, sec_rem);
     } else {
-        return format!("{:02}h:{:02}m:{:02}s", hours_rem, min_rem, sec_rem);
+        return format!("{}h:{:02}m:{:02}s", hours_rem, min_rem, sec_rem);
     }
 }
