@@ -1,6 +1,6 @@
 use simple_error::SimpleError;
 use serde::{Deserialize, Serialize};
-use std::slice::Iter;
+//use std::slice::Iter;
 
 #[derive(Serialize, Deserialize, Eq, PartialEq, Clone, Copy, PartialOrd, Ord)]
 pub enum Elements {
