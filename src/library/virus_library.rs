@@ -66,6 +66,7 @@ impl std::fmt::Display for Virus {
 pub struct VirusLibrary {
     library: HashMap<String, Box<Virus>>,
     highest_cr: u8,
+    duplicates: Vec<String>,
 }
 
 impl VirusLibrary {
@@ -73,6 +74,7 @@ impl VirusLibrary {
         VirusLibrary{
             library: HashMap::new(),
             highest_cr: 0,
+            duplicates: vec![],
         }
     }
 
@@ -88,7 +90,7 @@ impl VirusLibrary {
         //let cr_regex : Regex = Regex::new(r"CR\s+(\d+)").expect("could not compile CR regex");
 
         //let mut virus_list : Vec<Box<Virus>> = vec![];
-        let mut duplicates : Vec<String> = vec![];
+        self.duplicates.clear();
         let virus_text = reqwest::get(VIRUS_URL)
             .expect("no request result").text().expect("no response text")
             .replace("â€™", "'").replace("\u{FEFF}", "").replace("\r", "");
@@ -105,7 +107,7 @@ impl VirusLibrary {
             let virus_cap = VIRUS_REGEX.captures(virus_line);
             if (cr_cap.is_some() || virus_cap.is_some()) && !current_virus_description.is_empty() {
                 let add_res;
-                if duplicates.contains(&current_virus_name.to_lowercase()) {
+                if self.duplicates.contains(&current_virus_name.to_lowercase()) {
                     add_res = self.library.insert(
                         current_virus_full_name.to_lowercase(),
                         Box::new(Virus::new(
@@ -127,7 +129,7 @@ impl VirusLibrary {
                     let mut old_virus = add_res.unwrap();
                     let new_virus_res = self.library.remove(&current_virus_name.to_lowercase());
                     if new_virus_res.is_none() {
-                        return Err(SimpleError::new(format!("found an unrecoverable duplicate, {} 119 {:?}", current_virus_full_name, duplicates)));
+                        return Err(SimpleError::new(format!("found an unrecoverable duplicate, {} 119 {:?}", current_virus_full_name, self.duplicates)));
                     }
                     let mut new_virus = new_virus_res.unwrap();
 
@@ -141,7 +143,7 @@ impl VirusLibrary {
                     if new_add_res.is_some() || old_add_res.is_some() {
                         return Err(SimpleError::new(format!("found an unrecoverable duplicate, {}, 131", current_virus_full_name)));
                     }
-                    duplicates.push(current_virus_name.to_lowercase());
+                    self.duplicates.push(current_virus_name.to_lowercase());
                     found_duplicates = true;
                 }
                 current_virus_name.clear();
@@ -179,7 +181,7 @@ impl VirusLibrary {
         if found_duplicates {
             let res = format!(
                 "{} viruses loaded, found {} duplicates, recovered from all\nThey were: {:?}",
-                self.library.len(), duplicates.len(), duplicates);
+                self.library.len(), self.duplicates.len(), self.duplicates);
             return Err(SimpleError::new(&res));
         } else {
             return Ok(self.library.len());
@@ -242,6 +244,25 @@ impl VirusLibrary {
         return to_ret;
     }
 
+    fn get_family(&self, name: &str) -> Option<Vec<&str>> {
+        if self.get(&name.to_lowercase()).is_none() && !self.duplicates.contains(&name.to_lowercase()) {
+            return None;
+        }
+        let mut viruses = self.name_contains(name, Some(usize::max_value()))?;
+        if viruses.len() == 1 {
+            return Some(viruses);
+        }
+        viruses.sort_unstable_by(
+            move |a,b| {
+                let a_val = self.get(&a.to_lowercase()).unwrap();
+                let b_val = self.get(&b.to_lowercase()).unwrap();
+                return a_val.c_r.cmp(&b_val.c_r).then(a_val.element.cmp(&b_val.element));
+            }
+        );
+        return Some(viruses);
+
+    }
+
 }
 
 impl Library for VirusLibrary {
@@ -281,7 +302,7 @@ pub (crate) fn send_virus_element(ctx: &Context, msg: &Message, args: &[&str]) {
     let library = library_lock.read().expect("chip library poisoned, panicking");
     let elem_res = library.search_element(args[1]);
     match elem_res {
-        Some(elem) => long_say!(ctx, msg, elem),
+        Some(elem) => long_say!(ctx, msg, elem, ", "),
         None => say!(ctx, msg, "nothing matched your search, are you sure you gave an element?"),
     }
 }
@@ -302,7 +323,7 @@ pub (crate) fn send_virus_cr(ctx: &Context, msg: &Message, args: &[&str]) {
     let library_lock = data.get::<VirusLibrary>().expect("NCP library not found");
     let library = library_lock.read().expect("library was poisoned, panicking");
     match library.get_cr(cr_to_get) {
-        Some(val) => long_say!(ctx, msg, val),
+        Some(val) => long_say!(ctx, msg, val, ", "),
         None => say!(ctx, msg, "There are currently no viruses in that CR"),
     }
 }
@@ -375,6 +396,22 @@ pub (crate) fn send_random_encounter(ctx: &Context, msg: &Message, args: &[&str]
                 ).expect("failed to get viruses");
         }
     }
-    long_say!(ctx, msg, to_send);
+    long_say!(ctx, msg, to_send, ", ");
 
+}
+
+pub (crate) fn send_family(ctx: &Context, msg: &Message, args: &[&str]) {
+    if args.len() < 2 {
+        say!(ctx, msg, "you must provide a name");
+        return;
+    }
+    let to_join = &args[1..];
+    let to_search = to_join.join(" ");
+    let data = ctx.data.read();
+    let library_lock = data.get::<VirusLibrary>().expect("NCP library not found");
+    let library = library_lock.read().expect("library was poisoned, panicking");
+    match library.get_family(&to_search) {
+        Some(res) => long_say!(ctx, msg, res, ", "),
+        None => say!(ctx, msg, "There is no family under that name"),
+    }
 }

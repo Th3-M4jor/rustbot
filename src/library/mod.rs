@@ -29,14 +29,15 @@ pub trait Library : TypeMapKey {
 
     fn get_collection(&self) -> &HashMap<String, Box<Self::LibObj>>;
 
-    fn name_contains(&self, to_get: &str) -> Option<Vec<String>> {
+    fn name_contains<'a>(&'a self, to_get: &str, limit: Option<usize>) -> Option<Vec<&'a str>> {
+        let limit_val = limit.unwrap_or(5);
         let to_search = to_get.to_lowercase();
-        let mut to_ret: Vec<String> = vec![];
+        let mut to_ret: Vec<&'a str> = vec![];
         for key in self.get_collection().keys() {
             if key.starts_with(&to_search) {
                 let to_push = self.get_collection().get(key).unwrap();
-                to_ret.push(to_push.deref().get_name().to_string());
-                if to_ret.len() > 5 {
+                to_ret.push(to_push.deref().get_name());
+                if to_ret.len() > limit_val {
                     break;
                 }
             }
@@ -47,19 +48,20 @@ pub trait Library : TypeMapKey {
         return Some(to_ret);
     }
 
-    fn distance(&self, to_get: &str) -> Vec<String> {
-        let mut distances: Vec<(f64, String)> = vec![];
+    fn distance(&self, to_get: &str, limit: Option<usize>) -> Vec<&str> {
+        let limit_val = limit.unwrap_or(5);
+        let mut distances: Vec<(f64, &str)> = vec![];
         for val in self.get_collection().values() {
             let dist = jaro_winkler(&to_get.to_lowercase(), &val.get_name().to_lowercase());
-            distances.push((dist, val.get_name().to_string()));
+            distances.push((dist, val.get_name()));
         }
         //distances.sort_unstable_by(|a,b| a.0.cmp(&b.0));
         distances.sort_unstable_by(|a, b| a.0.partial_cmp(&b.0).unwrap().reverse());
-        distances.truncate(5);
+        distances.truncate(limit_val);
         distances.shrink_to_fit();
-        let mut to_ret: Vec<String> = vec![];
+        let mut to_ret: Vec<&str> = vec![];
         for val in distances {
-            to_ret.push(val.1.clone());
+            to_ret.push(val.1);
         }
         return to_ret;
     }
@@ -94,9 +96,9 @@ pub(crate) fn search_lib_obj<T: Library>(ctx: &Context, msg: &Message, search: &
         return;
     }
     let item_search;
-    match lib.name_contains(search) {
+    match lib.name_contains(search, None) {
         Some(t) => item_search = t,
-        None => item_search = lib.distance(search),
+        None => item_search = lib.distance(search, None),
     }
     if item_search.len() == 1 {
         let found_item = lib.get(&item_search[0]).unwrap();

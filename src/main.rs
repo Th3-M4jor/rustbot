@@ -18,7 +18,7 @@ use crate::library::{
     ncp_library::*,
     virus_library::*,
 };
-use crate::warframe::{WarframeData, get_sortie};
+use crate::warframe::{WarframeData, get_sortie, get_fissures};
 
 use crate::dice::{roll, roll_stats};
 use crate::util::send_long_message;
@@ -62,13 +62,17 @@ lazy_static! {
 
         cmd_map.insert("roll".to_string(), roll);
         cmd_map.insert("rollstats".to_string(), roll_stats);
+
         cmd_map.insert("virus".to_string(), send_virus);
         cmd_map.insert("encounter".to_string(), send_random_encounter);
         cmd_map.insert("viruselement".to_string(), send_virus_element);
+        cmd_map.insert("family".to_string(), send_family);
+
         cmd_map.insert("help".to_string(), send_help);
         cmd_map.insert("about".to_string(), about_bot);
 
         cmd_map.insert("sortie".to_string(), get_sortie);
+        cmd_map.insert("fissures".to_string(), get_fissures);
         return cmd_map;
     };
 
@@ -201,7 +205,7 @@ fn main() {
     let chip_library_mutex = Arc::new(RwLock::new(ChipLibrary::new()));
     let ncp_library_mutex = Arc::new(RwLock::new(NCPLibrary::new()));
     let virus_library_mutex = Arc::new(RwLock::new(VirusLibrary::new()));
-    let warframe_data_mutext = Arc::new(RwLock::new(WarframeData::new()));
+    let warframe_data_mutex = Arc::new(RwLock::new(WarframeData::new()));
     //let mut chip_library = ChipLibrary::new();
 
     {
@@ -222,7 +226,7 @@ fn main() {
             Ok(s) => println!("{} viruses were loaded", s),
             Err(e) => println!("{}", e.to_string()),
         }
-        let mut warframe_dat = warframe_data_mutext.write().unwrap();
+        let mut warframe_dat = warframe_data_mutex.write().unwrap();
         warframe_dat.load().expect("could not load warframe PC data");
     }
 
@@ -236,7 +240,7 @@ fn main() {
         data.insert::<NCPLibrary>(ncp_library_mutex);
         data.insert::<VirusLibrary>(virus_library_mutex);
         data.insert::<BotData>(config);
-        data.insert::<WarframeData>(warframe_data_mutext);
+        data.insert::<WarframeData>(warframe_data_mutex);
     }
     // Finally, start a single shard, and start listening to events.
     //

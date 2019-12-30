@@ -219,7 +219,7 @@ pub (crate) fn send_chip_skill(ctx: &Context, msg: &Message, args: &[&str]) {
     }
 
     match skill_res {
-        Some(skills) => long_say!(ctx, msg, skills),
+        Some(skills) => long_say!(ctx, msg, skills, ", "),
         None => say!(ctx, msg, "nothing matched your search"),
     }
 }
@@ -235,7 +235,7 @@ pub (crate) fn send_chip_element(ctx: &Context, msg: &Message, args: &[&str]) {
     let elem_res = library.search_element(args[1]);
 
     match elem_res {
-        Some(elem) => long_say!(ctx, msg, elem),
+        Some(elem) => long_say!(ctx, msg, elem, ", "),
         None => say!(ctx, msg, "nothing matched your search, are you sure you gave an element?"),
     }
 

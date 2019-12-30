@@ -175,7 +175,7 @@ pub (crate) fn send_ncp_color(ctx: &Context, msg: &Message, args: &[&str]) {
     let library_lock = data.get::<NCPLibrary>().expect("NCP library not found");
     let library = library_lock.read().expect("library was poisoned, panicking");
     match library.search_color(args[1]) {
-        Some(list) => long_say!(ctx, msg, list),
+        Some(list) => long_say!(ctx, msg, list, ", "),
         None => say!(ctx, msg, "Nothing matched your search"),
     }
 }
