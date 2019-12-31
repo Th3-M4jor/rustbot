@@ -1,3 +1,6 @@
+%about
+    get info on the bot itself
+
 %chip
     get the description of a chip with the specified name
     or a list of chips that could match that name
@@ -19,6 +22,9 @@
 
 %fissures
     returns a list of all active warframe fissures (PC)
+
+%market
+    search the warframe market for people selling an item (PC)
 
 %ncp
     get the description of a given ncp

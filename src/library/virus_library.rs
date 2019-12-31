@@ -278,7 +278,7 @@ impl TypeMapKey for VirusLibrary {
     type Value = Arc<RwLock<VirusLibrary>>;
 }
 
-pub (crate) fn send_virus(ctx: &Context, msg: &Message, args: &[&str]) {
+pub (crate) fn send_virus(ctx: Context, msg: Message, args: &[&str]) {
     if args.len() < 2 {
         say!(ctx, msg, "you must provide a name");
         return;
@@ -288,10 +288,10 @@ pub (crate) fn send_virus(ctx: &Context, msg: &Message, args: &[&str]) {
     let data = ctx.data.read();
     let library_lock = data.get::<VirusLibrary>().expect("NCP library not found");
     let library = library_lock.read().expect("library was poisoned, panicking");
-    search_lib_obj(ctx, msg, &to_search, library.deref());
+    search_lib_obj(&ctx, msg, &to_search, library.deref());
 }
 
-pub (crate) fn send_virus_element(ctx: &Context, msg: &Message, args: &[&str]) {
+pub (crate) fn send_virus_element(ctx: Context, msg: Message, args: &[&str]) {
     if args.len() < 2 {
         say!(ctx, msg, "you must provide an element");
         return;
@@ -307,7 +307,7 @@ pub (crate) fn send_virus_element(ctx: &Context, msg: &Message, args: &[&str]) {
     }
 }
 
-pub (crate) fn send_virus_cr(ctx: &Context, msg: &Message, args: &[&str]) {
+pub (crate) fn send_virus_cr(ctx: Context, msg: Message, args: &[&str]) {
     if args.len() < 2 {
         say!(ctx, msg, "you must provide a CR to search for");
         return;
@@ -328,7 +328,7 @@ pub (crate) fn send_virus_cr(ctx: &Context, msg: &Message, args: &[&str]) {
     }
 }
 
-pub (crate) fn send_random_encounter(ctx: &Context, msg: &Message, args: &[&str]) {
+pub (crate) fn send_random_encounter(ctx: Context, msg: Message, args: &[&str]) {
     if args.len() < 3 {
         say!(ctx, msg, concat!(
         "You must send a CR and number of viruses; EX:\n",
@@ -400,7 +400,7 @@ pub (crate) fn send_random_encounter(ctx: &Context, msg: &Message, args: &[&str]
 
 }
 
-pub (crate) fn send_family(ctx: &Context, msg: &Message, args: &[&str]) {
+pub (crate) fn send_family(ctx: Context, msg: Message, args: &[&str]) {
     if args.len() < 2 {
         say!(ctx, msg, "you must provide a name");
         return;
