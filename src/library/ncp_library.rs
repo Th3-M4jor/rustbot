@@ -155,7 +155,7 @@ impl TypeMapKey for NCPLibrary {
     type Value = Arc<RwLock<NCPLibrary>>;
 }
 
-pub (crate) fn send_ncp(ctx: &Context, msg: &Message, args: &[&str]) {
+pub (crate) fn send_ncp(ctx: Context, msg: Message, args: &[&str]) {
     if args.len() < 2 {
         say!(ctx, msg, "you must provide a name");
         return;
@@ -163,10 +163,10 @@ pub (crate) fn send_ncp(ctx: &Context, msg: &Message, args: &[&str]) {
     let data = ctx.data.read();
     let library_lock = data.get::<NCPLibrary>().expect("NCP library not found");
     let library = library_lock.read().expect("library was poisoned, panicking");
-    search_lib_obj(ctx, msg, args[1], library.deref());
+    search_lib_obj(&ctx, msg, args[1], library.deref());
 }
 
-pub (crate) fn send_ncp_color(ctx: &Context, msg: &Message, args: &[&str]) {
+pub (crate) fn send_ncp_color(ctx: Context, msg: Message, args: &[&str]) {
     if args.len() < 2 {
         say!(ctx, msg, "you must provide a name");
         return;

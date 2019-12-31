@@ -58,9 +58,9 @@ pub(crate) fn build_time_rem(now: i64, end: i64) -> String {
     let hours_rem = time_rem / (60 * 60);
     let min_rem = (time_rem % (60 * 60)) / 60;
     let sec_rem = (time_rem % (60 * 60)) % 60;
-    if hours_rem == 0 {
-        return format!("{:02}m:{:02}s", min_rem, sec_rem);
+    return if hours_rem == 0 {
+        format!("{:02}m:{:02}s", min_rem, sec_rem)
     } else {
-        return format!("{}h:{:02}m:{:02}s", hours_rem, min_rem, sec_rem);
+        format!("{}h:{:02}m:{:02}s", hours_rem, min_rem, sec_rem)
     }
 }

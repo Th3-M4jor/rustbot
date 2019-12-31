@@ -18,6 +18,7 @@ serenity = "*"
 rand = "*"
 strsim = "*"
 chrono = "*"
+tokio = { version = "*", features = ["full"] }
 
 [profile.release]
 lto = true

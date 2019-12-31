@@ -1,6 +1,6 @@
-BnBBot version 3.0
+BnBBot version 3.2
 
 Language: Rust
 Framework: Serenity.rs
 
-github: DM major if you want a link
+github: DM Major if you want a link

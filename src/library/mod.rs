@@ -89,7 +89,7 @@ pub trait Library : TypeMapKey {
 
 }
 
-pub(crate) fn search_lib_obj<T: Library>(ctx: &Context, msg: &Message, search: &str, lib: &T) {
+pub(crate) fn search_lib_obj<T: Library>(ctx: &Context, msg: Message, search: &str, lib: &T) {
     let item = lib.get(search);
     if item.is_some() {
         say!(ctx, msg, format!("{}", item.unwrap()));
