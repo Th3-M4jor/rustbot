@@ -13,7 +13,7 @@ use std::f64::NAN;
 fn make_request(name: &str) -> Result<Vec<String>, Box<dyn std::error::Error>> {
     let url = format!("https://api.warframe.market/v1/items/{}/orders", name);
 
-    let mut res = reqwest::get(&url)?;
+    let res = reqwest::blocking::get(&url)?;
     if res.status() != 200 {
         return Err(Box::new(SimpleError::new("An error occurred")));
     }
