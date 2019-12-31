@@ -35,7 +35,7 @@ pub struct Virus {
 }
 
 impl Virus {
-    pub fn new<T: Into<String>, S: Into<u8>> (
+    pub fn new<T: Into<String>, S: Into<u8>>(
         name: T,
         elem: Elements,
         cr: S,
@@ -71,7 +71,7 @@ pub struct VirusLibrary {
 
 impl VirusLibrary {
     pub fn new() -> VirusLibrary {
-        VirusLibrary{
+        VirusLibrary {
             library: HashMap::new(),
             highest_cr: 0,
             duplicates: vec![],
@@ -79,7 +79,6 @@ impl VirusLibrary {
     }
 
     pub fn load_viruses(&mut self) -> Result<usize, SimpleError> {
-
         lazy_static! {
             static ref VIRUS_REGEX : Regex = Regex::new(r"^((.+)\s\((\w+)\))$").expect("could not compile virus regex");
             static ref CR_REGEX : Regex = Regex::new(r"^CR\s+(\d+)$").expect("could not compile CR regex");
@@ -91,14 +90,14 @@ impl VirusLibrary {
 
         //let mut virus_list : Vec<Box<Virus>> = vec![];
         self.duplicates.clear();
-        let virus_text = reqwest::get(VIRUS_URL)
+        let virus_text = reqwest::blocking::get(VIRUS_URL)
             .expect("no request result").text().expect("no response text")
             .replace("â€™", "'").replace("\u{FEFF}", "").replace("\r", "");
         let virus_text_arr: Vec<&str> =
             virus_text.split("\n").filter(|&i| !i.trim().is_empty()).collect();
-        let mut curr_cr : u8 = 0;
+        let mut curr_cr: u8 = 0;
         let mut current_virus_name = String::new();
-        let mut current_virus_element : Elements = Elements::Null;
+        let mut current_virus_element: Elements = Elements::Null;
         let mut current_virus_full_name = String::new();
         let mut current_virus_description = String::new();
         let mut found_duplicates = false;
@@ -111,16 +110,16 @@ impl VirusLibrary {
                     add_res = self.library.insert(
                         current_virus_full_name.to_lowercase(),
                         Box::new(Virus::new(
-                                &current_virus_full_name, current_virus_element,
-                                curr_cr, &current_virus_description
-                            )));
+                            &current_virus_full_name, current_virus_element,
+                            curr_cr, &current_virus_description,
+                        )));
                 } else {
                     add_res = self.library.insert(
                         current_virus_name.to_lowercase(),
                         Box::new(Virus::new(
-                                &current_virus_name, current_virus_element,
-                                curr_cr, &current_virus_description
-                            )));
+                            &current_virus_name, current_virus_element,
+                            curr_cr, &current_virus_description,
+                        )));
                 }
                 if add_res.is_some() {
                     //println!("{} , {} , {}\n{}", current_virus_name, current_virus_full_name, current_virus_element, current_virus_description);
@@ -153,8 +152,7 @@ impl VirusLibrary {
             if cr_cap.is_some() {
                 let cr_val = cr_cap.unwrap();
                 curr_cr = cr_val.get(1).unwrap().as_str().parse::<u8>().unwrap_or(u8::max_value());
-            }
-            else if virus_cap.is_some() {
+            } else if virus_cap.is_some() {
                 let virus_val = virus_cap.unwrap();
                 current_virus_full_name.push_str(virus_val.get(1).unwrap().as_str());
                 current_virus_name.push_str(virus_val.get(2).unwrap().as_str());
@@ -170,13 +168,13 @@ impl VirusLibrary {
 
         //only write json file if not debug
         #[cfg(not(debug_assertions))]
-        {
-            let mut viruses: Vec<&Box<Virus>> = self.library.values().collect();
-            viruses.sort_unstable_by(|a, b| a.c_r.cmp(&b.c_r).then_with(|| a.name.cmp(&b.name)));
+            {
+                let mut viruses: Vec<&Box<Virus>> = self.library.values().collect();
+                viruses.sort_unstable_by(|a, b| a.c_r.cmp(&b.c_r).then_with(|| a.name.cmp(&b.name)));
 
-            let j = serde_json::to_string_pretty(&viruses).expect("could not serialize virus library to JSON");
-            fs::write("./virusCompendium.json", j).expect("could not write to virusCompendium.json");
-        }
+                let j = serde_json::to_string_pretty(&viruses).expect("could not serialize virus library to JSON");
+                fs::write("./virusCompendium.json", j).expect("could not write to virusCompendium.json");
+            }
 
         if found_duplicates {
             let res = format!(
@@ -194,19 +192,18 @@ impl VirusLibrary {
         }
         return self.search_any(
             cr_to_get,
-                |a,b|
-                a.c_r == b
+            |a, b|
+                a.c_r == b,
         );
     }
 
     pub fn search_element(&self, elem: &str) -> Option<Vec<&str>> {
-
         let elem_to_get = Elements::from_str(elem).ok()?;
 
         return self.search_any(
             elem_to_get,
-            |a,b|
-            a.element == b
+            |a, b|
+                a.element == b,
         );
     }
 
@@ -215,26 +212,25 @@ impl VirusLibrary {
     }
 
     pub fn single_cr_random_encounter(&self, cr_to_get: u8, num_viruses: usize) -> Option<Vec<&str>> {
-
         let viruses = self.get_cr(cr_to_get)?;
 
         return Some(VirusLibrary::build_encounter(&viruses, num_viruses));
     }
 
     pub fn multi_cr_random_encounter(&self, low_cr: u8, high_cr: u8, num_viruses: usize) -> Option<Vec<&str>> {
-        let mut viruses : Vec<&str> = vec![];
+        let mut viruses: Vec<&str> = vec![];
         for i in low_cr..=high_cr {
             let mut to_append = self.get_cr(i)?;
             viruses.append(&mut to_append);
         }
-        if viruses.len() == 0 {return None;}
+        if viruses.len() == 0 { return None; }
         return Some(VirusLibrary::build_encounter(&viruses, num_viruses));
     }
 
     #[inline]
     fn build_encounter<'a>(viruses: &Vec<&'a str>, num_viruses: usize) -> Vec<&'a str> {
         let mut rng = ThreadRng::default();
-        let mut to_ret : Vec<&str>  = vec![];
+        let mut to_ret: Vec<&str> = vec![];
         let vir_size = viruses.len();
         let distribution = Uniform::from(0..vir_size);
         for _ in 0..num_viruses {
@@ -253,16 +249,14 @@ impl VirusLibrary {
             return Some(viruses);
         }
         viruses.sort_unstable_by(
-            move |a,b| {
+            move |a, b| {
                 let a_val = self.get(&a.to_lowercase()).unwrap();
                 let b_val = self.get(&b.to_lowercase()).unwrap();
                 return a_val.c_r.cmp(&b_val.c_r).then(a_val.element.cmp(&b_val.element));
             }
         );
         return Some(viruses);
-
     }
-
 }
 
 impl Library for VirusLibrary {
@@ -278,7 +272,7 @@ impl TypeMapKey for VirusLibrary {
     type Value = Arc<RwLock<VirusLibrary>>;
 }
 
-pub (crate) fn send_virus(ctx: Context, msg: Message, args: &[&str]) {
+pub(crate) fn send_virus(ctx: Context, msg: Message, args: &[&str]) {
     if args.len() < 2 {
         say!(ctx, msg, "you must provide a name");
         return;
@@ -286,19 +280,19 @@ pub (crate) fn send_virus(ctx: Context, msg: Message, args: &[&str]) {
     let to_join = &args[1..];
     let to_search = to_join.join(" ");
     let data = ctx.data.read();
-    let library_lock = data.get::<VirusLibrary>().expect("NCP library not found");
+    let library_lock : &Arc<RwLock<VirusLibrary>> = data.get::<VirusLibrary>().expect("NCP library not found");
     let library = library_lock.read().expect("library was poisoned, panicking");
     search_lib_obj(&ctx, msg, &to_search, library.deref());
 }
 
-pub (crate) fn send_virus_element(ctx: Context, msg: Message, args: &[&str]) {
+pub(crate) fn send_virus_element(ctx: Context, msg: Message, args: &[&str]) {
     if args.len() < 2 {
         say!(ctx, msg, "you must provide an element");
         return;
     }
 
     let data = ctx.data.read();
-    let library_lock = data.get::<VirusLibrary>().expect("chip library not found");
+    let library_lock : &Arc<RwLock<VirusLibrary>> = data.get::<VirusLibrary>().expect("chip library not found");
     let library = library_lock.read().expect("chip library poisoned, panicking");
     let elem_res = library.search_element(args[1]);
     match elem_res {
@@ -307,7 +301,7 @@ pub (crate) fn send_virus_element(ctx: Context, msg: Message, args: &[&str]) {
     }
 }
 
-pub (crate) fn send_virus_cr(ctx: Context, msg: Message, args: &[&str]) {
+pub(crate) fn send_virus_cr(ctx: Context, msg: Message, args: &[&str]) {
     if args.len() < 2 {
         say!(ctx, msg, "you must provide a CR to search for");
         return;
@@ -320,7 +314,7 @@ pub (crate) fn send_virus_cr(ctx: Context, msg: Message, args: &[&str]) {
     }
     let cr_to_get = cr_to_get_res.unwrap();
     let data = ctx.data.read();
-    let library_lock = data.get::<VirusLibrary>().expect("NCP library not found");
+    let library_lock : &Arc<RwLock<VirusLibrary>> = data.get::<VirusLibrary>().expect("NCP library not found");
     let library = library_lock.read().expect("library was poisoned, panicking");
     match library.get_cr(cr_to_get) {
         Some(val) => long_say!(ctx, msg, val, ", "),
@@ -328,7 +322,7 @@ pub (crate) fn send_virus_cr(ctx: Context, msg: Message, args: &[&str]) {
     }
 }
 
-pub (crate) fn send_random_encounter(ctx: Context, msg: Message, args: &[&str]) {
+pub(crate) fn send_random_encounter(ctx: Context, msg: Message, args: &[&str]) {
     if args.len() < 3 {
         say!(ctx, msg, concat!(
         "You must send a CR and number of viruses; EX:\n",
@@ -343,7 +337,7 @@ pub (crate) fn send_random_encounter(ctx: Context, msg: Message, args: &[&str]) 
         return;
     }
     let data = ctx.data.read();
-    let library_lock = data.get::<VirusLibrary>().expect("NCP library not found");
+    let library_lock : &Arc<RwLock<VirusLibrary>> = data.get::<VirusLibrary>().expect("NCP library not found");
     let library = library_lock.read().expect("library was poisoned, panicking");
     let single_cr_res = args[1].parse::<isize>();
     let to_send: Vec<&str>;
@@ -358,10 +352,9 @@ pub (crate) fn send_random_encounter(ctx: Context, msg: Message, args: &[&str]) 
         }
         to_send = library
             .single_cr_random_encounter(single_cr as u8, virus_count as usize)
-                .expect("failed to get viruses");
-
+            .expect("failed to get viruses");
     } else {
-        let cr_range : Vec<&str> = args[1].trim().split('-').collect();
+        let cr_range: Vec<&str> = args[1].trim().split('-').collect();
         if cr_range.len() != 2 {
             say!(ctx, msg, "That is an invalid CR range");
             return;
@@ -378,29 +371,28 @@ pub (crate) fn send_random_encounter(ctx: Context, msg: Message, args: &[&str]) 
             to_send = library
                 .single_cr_random_encounter(
                     first_cr_num,
-                    virus_count as usize
+                    virus_count as usize,
                 ).expect("failed to get viruses");
         } else if first_cr_num > second_cr_num {
             to_send = library
                 .multi_cr_random_encounter(
                     second_cr_num,
                     first_cr_num,
-                    virus_count as usize
+                    virus_count as usize,
                 ).expect("failed to get viruses");
         } else /* second_cr_num > first_cr_num */ {
             to_send = library
                 .multi_cr_random_encounter(
                     first_cr_num,
                     second_cr_num,
-                    virus_count as usize
+                    virus_count as usize,
                 ).expect("failed to get viruses");
         }
     }
     long_say!(ctx, msg, to_send, ", ");
-
 }
 
-pub (crate) fn send_family(ctx: Context, msg: Message, args: &[&str]) {
+pub(crate) fn send_family(ctx: Context, msg: Message, args: &[&str]) {
     if args.len() < 2 {
         say!(ctx, msg, "you must provide a name");
         return;
@@ -408,7 +400,7 @@ pub (crate) fn send_family(ctx: Context, msg: Message, args: &[&str]) {
     let to_join = &args[1..];
     let to_search = to_join.join(" ");
     let data = ctx.data.read();
-    let library_lock = data.get::<VirusLibrary>().expect("NCP library not found");
+    let library_lock : &Arc<RwLock<VirusLibrary>> = data.get::<VirusLibrary>().expect("NCP library not found");
     let library = library_lock.read().expect("library was poisoned, panicking");
     match library.get_family(&to_search) {
         Some(res) => long_say!(ctx, msg, res, ", "),

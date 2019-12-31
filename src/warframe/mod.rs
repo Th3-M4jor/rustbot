@@ -29,8 +29,9 @@ impl WarframeData {
         WarframeData {}
     }
 
+    //noinspection RsBorrowChecker
     fn load_loop() {
-        let mut client = reqwest::Client::new();
+        let mut client = reqwest::blocking::Client::new();
         let mut wait_time : u64 = 120;
         loop {
             let res = WarframeData::load(&client);
@@ -43,7 +44,7 @@ impl WarframeData {
                 Err(e) => {
                     //errored, rebuilding client for safety
                     println!("{:?}", e);
-                    client = reqwest::Client::new();
+                    client = reqwest::blocking::Client::new();
                     //wait for longer than two minutes, back-off when error
                     wait_time *= 2;
                 }
@@ -53,13 +54,14 @@ impl WarframeData {
         }
     }
 
-    fn load(client: &reqwest::Client) -> Result<serde_json::Value, Box<dyn std::error::Error>> {
-        let mut response = client.get(WARFRAME_URL).send()?;
+    fn load(client: &reqwest::blocking::Client) -> Result<serde_json::Value, Box<dyn std::error::Error>> {
+        let response = client.get(WARFRAME_URL).send()?;
         let text = response.text()?.replace("â€™", "'").replace("\u{FEFF}", "");
         let dat: serde_json::Value = serde_json::from_str(&text)?;
         return Ok(dat);
     }
 
+    //noinspection RsBorrowChecker
     pub fn sortie(&self) -> Option<String> {
         let mut to_ret = String::from("faction: ");
         let dat = WARFRAME_DATA.read().expect("data was poisoned, panicking");
@@ -85,6 +87,7 @@ impl WarframeData {
         return Some(to_ret);
     }
 
+    //noinspection RsBorrowChecker
     pub fn fissures(&self) -> Option<Vec<String>> {
         let dat = WARFRAME_DATA.read().expect("data was poisoned, panicking");
         let mut fissures = dat["fissures"].as_array()?.clone();

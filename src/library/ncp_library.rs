@@ -96,7 +96,7 @@ impl NCPLibrary {
         }
         self.library.clear();
         let mut ncp_list : Vec<Box<NCP>> = vec![];
-        let ncp_text = reqwest::get(NCP_URL)
+        let ncp_text = reqwest::blocking::get(NCP_URL)
             .expect("no request result").text().expect("no response text")
             .replace("â€™", "'").replace("\u{FEFF}", "").replace("\r", "");
         let ncp_text_arr: Vec<&str> =

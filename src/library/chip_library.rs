@@ -52,7 +52,7 @@ impl ChipLibrary {
         self.chips.clear();
 
         //get chip text and replace necessary characters for compatibility
-        let chip_text = reqwest::get(CHIP_URL)
+        let chip_text = reqwest::blocking::get(CHIP_URL)
             .expect("no request result").text().expect("no response text")
             .replace("â€™", "'").replace("\u{FEFF}", "");
         let mut chip_text_arr: Vec<&str> =
