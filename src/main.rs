@@ -1,7 +1,5 @@
-
 #[macro_use]
 extern crate lazy_static;
-
 
 use std::collections::HashMap;
 use std::process::exit;
@@ -13,28 +11,22 @@ use serenity::{
 };
 
 use crate::bot_data::BotData;
-use crate::library::{
-    chip_library::*,
-    ncp_library::*,
-    virus_library::*,
-};
-use crate::warframe::{WarframeData, get_sortie, get_fissures, market::get_market_info};
+use crate::library::{chip_library::*, ncp_library::*, virus_library::*};
+use crate::warframe::{get_fissures, get_sortie, market::get_market_info, WarframeData};
 
 use crate::dice::{roll, roll_stats};
-use crate::util::send_long_message;
-use std::fs;
 use crate::library::chip_library::send_chip;
+use crate::util::send_long_message;
 use serenity::model::gateway::Activity;
+use std::fs;
 
 //use regex::Replacer;
 #[macro_use]
 mod util;
-mod library;
 mod bot_data;
 mod dice;
+mod library;
 mod warframe;
-
-
 
 type BotCommand = fn(Context, Message, &[&str]) -> ();
 
@@ -85,7 +77,6 @@ lazy_static! {
 struct Handler;
 
 impl EventHandler for Handler {
-
     // Event handlers are dispatched through a threadpool, and so multiple
     // events can be dispatched simultaneously.
     fn message(&self, ctx: Context, msg: Message) {
@@ -105,7 +96,6 @@ impl EventHandler for Handler {
             args[0] = new_first.as_str();
         }
 
-
         //get the command from a jump table
         let cmd_res = COMMANDS.get(&args[0].to_lowercase());
         match cmd_res {
@@ -118,17 +108,18 @@ impl EventHandler for Handler {
         let data = ctx.data.read();
         let config = data.get::<BotData>().expect("no bot data, panicking");
         println!("{} is connected!", ready.user.name);
-        let guild = serenity::model::guild::Guild::get(
-            &ctx, config.main_server,
-        ).expect("could not find main server");
-        let owner = guild.member(
-            &ctx, config.owner,
-        ).expect("could not grab owner");
+        let guild = serenity::model::guild::Guild::get(&ctx, config.main_server)
+            .expect("could not find main server");
+        let owner = guild
+            .member(&ctx, config.owner)
+            .expect("could not grab owner");
         let owner_user = owner.user.read();
-        owner_user.dm(&ctx, |m| {
-            m.content("logged in, and ready");
-            return m;
-        }).expect("could not dm owner");
+        owner_user
+            .dm(&ctx, |m| {
+                m.content("logged in, and ready");
+                return m;
+            })
+            .expect("could not dm owner");
         let action = config.cmd_prefix.clone() + "help for a list of commands";
         ctx.set_activity(Activity::playing(&action));
     }
@@ -154,7 +145,9 @@ fn reload(ctx: Context, msg: Message, _: &[&str]) {
     let mut str_to_send;
     {
         let chip_library_lock = data.get::<ChipLibrary>().expect("chip library not found");
-        let mut chip_library = chip_library_lock.write().expect("chip library was poisoned, panicking");
+        let mut chip_library = chip_library_lock
+            .write()
+            .expect("chip library was poisoned, panicking");
         let chip_reload_res = chip_library.load_chips();
         //let str_to_send;
         match chip_reload_res {
@@ -164,14 +157,18 @@ fn reload(ctx: Context, msg: Message, _: &[&str]) {
     }
     {
         let ncp_library_lock = data.get::<NCPLibrary>().expect("ncp library not found");
-        let mut ncp_library = ncp_library_lock.write().expect("chip library was poisoned, panicking");
+        let mut ncp_library = ncp_library_lock
+            .write()
+            .expect("chip library was poisoned, panicking");
         let count = ncp_library.load_programs();
         //say!(ctx, msg, format!("{} NCPs loaded", count));
         str_to_send.push_str(&format!("{} NCPs loaded\n", count));
     }
     {
         let virus_library_lock = data.get::<VirusLibrary>().expect("virus library not found");
-        let mut virus_library = virus_library_lock.write().expect("virus library was poisoned, panicking");
+        let mut virus_library = virus_library_lock
+            .write()
+            .expect("virus library was poisoned, panicking");
         match virus_library.load_viruses() {
             Ok(s) => str_to_send.push_str(&format!("{} viruses were loaded\n", s)),
             Err(e) => str_to_send.push_str(&format!("{}", e.to_string())),
@@ -181,7 +178,6 @@ fn reload(ctx: Context, msg: Message, _: &[&str]) {
 }
 
 fn send_help(ctx: Context, msg: Message, _: &[&str]) {
-
     let res = msg.author.dm(ctx, |m| {
         m.content(format!("```{}```", *HELP));
         return m;
@@ -201,9 +197,7 @@ fn about_bot(ctx: Context, msg: Message, _: &[&str]) {
     }
 }
 
-
 fn main() {
-
     let chip_library_mutex = Arc::new(RwLock::new(ChipLibrary::new()));
     let ncp_library_mutex = Arc::new(RwLock::new(NCPLibrary::new()));
     let virus_library_mutex = Arc::new(RwLock::new(VirusLibrary::new()));
@@ -250,4 +244,3 @@ fn main() {
         println!("Client error: {:?}", why);
     }
 }
-

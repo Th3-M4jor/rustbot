@@ -1,19 +1,12 @@
-
-
-
+pub(crate) mod battlechip;
 pub(crate) mod chip_library;
+pub(crate) mod elements;
 pub(crate) mod ncp_library;
 pub(crate) mod virus_library;
-pub(crate) mod elements;
-pub(crate) mod battlechip;
 
 use std::collections::HashMap;
 
-use serenity::{
-    model::channel::Message,
-    prelude::*,
-};
-
+use serenity::{model::channel::Message, prelude::*};
 
 use strsim::jaro_winkler;
 
@@ -23,8 +16,7 @@ pub trait LibraryObject: std::fmt::Display {
     fn get_name(&self) -> &str;
 }
 
-
-pub trait Library : TypeMapKey {
+pub trait Library: TypeMapKey {
     type LibObj: LibraryObject;
 
     fn get_collection(&self) -> &HashMap<String, Box<Self::LibObj>>;
@@ -43,7 +35,9 @@ pub trait Library : TypeMapKey {
             }
         }
 
-        if to_ret.is_empty() { return None; }
+        if to_ret.is_empty() {
+            return None;
+        }
         to_ret.sort_unstable();
         return Some(to_ret);
     }
@@ -70,9 +64,10 @@ pub trait Library : TypeMapKey {
         return self.get_collection().get(&to_get.to_lowercase());
     }
 
-    fn search_any<F, T>(&self, to_search: T, cond: F,) -> Option<Vec<&str>>
-        where F: Fn(&Box<Self::LibObj>, T) -> bool,
-        T: std::marker::Copy
+    fn search_any<F, T>(&self, to_search: T, cond: F) -> Option<Vec<&str>>
+    where
+        F: Fn(&Box<Self::LibObj>, T) -> bool,
+        T: std::marker::Copy,
     {
         let mut to_ret: Vec<&str> = vec![];
         for val in self.get_collection().values() {
@@ -86,7 +81,6 @@ pub trait Library : TypeMapKey {
         to_ret.sort_unstable();
         return Some(to_ret);
     }
-
 }
 
 pub(crate) fn search_lib_obj<T: Library>(ctx: &Context, msg: Message, search: &str, lib: &T) {

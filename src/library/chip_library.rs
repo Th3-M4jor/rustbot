@@ -1,30 +1,24 @@
-
-
 use std::collections::HashMap;
-use std::sync::RwLock;
 use std::sync::Arc;
+use std::sync::RwLock;
 
-use serenity::{
-    model::channel::Message,
-    prelude::*,
-};
+use serenity::{model::channel::Message, prelude::*};
 
+#[cfg(not(debug_assertions))]
 use serde_json;
+
 use simple_error::SimpleError;
 
-
+use crate::library::battlechip::skills::Skills;
 use crate::library::battlechip::BattleChip;
 use crate::library::elements::Elements;
-use crate::library::battlechip::skills::Skills;
-use crate::library::{Library, search_lib_obj};
-use std::fs;
-use std::str::FromStr;
+use crate::library::{search_lib_obj, Library};
 use std::borrow::BorrowMut;
+use std::fs;
 use std::ops::Deref;
+use std::str::FromStr;
 
 const CHIP_URL: &'static str = "https://docs.google.com/feeds/download/documents/export/Export?id=1lvAKkymOplIJj6jS-N5__9aLIDXI6bETIMz01MK9MfY&exportFormat=txt";
-
-
 
 pub struct ChipLibrary {
     chips: HashMap<String, Box<BattleChip>>,
@@ -39,7 +33,6 @@ impl Library for ChipLibrary {
     }
 }
 
-
 impl ChipLibrary {
     pub fn new() -> ChipLibrary {
         ChipLibrary {
@@ -53,18 +46,25 @@ impl ChipLibrary {
 
         //get chip text and replace necessary characters for compatibility
         let chip_text = reqwest::blocking::get(CHIP_URL)
-            .expect("no request result").text().expect("no response text")
-            .replace("â€™", "'").replace("\u{FEFF}", "");
-        let mut chip_text_arr: Vec<&str> =
-            chip_text.split("\n").filter(|&i| !i.trim().is_empty()).collect();
+            .expect("no request result")
+            .text()
+            .expect("no response text")
+            .replace("â€™", "'")
+            .replace("\u{FEFF}", "");
+        let mut chip_text_arr: Vec<&str> = chip_text
+            .split("\n")
+            .filter(|&i| !i.trim().is_empty())
+            .collect();
 
         //load in custom chips if any
         let special_chips_res = fs::read_to_string("./custom_chips.txt");
         let special_chip_text;
         if special_chips_res.is_ok() {
             special_chip_text = special_chips_res.unwrap();
-            let mut special_chip_arr: Vec<&str> =
-                special_chip_text.split("\n").filter(|&i| !i.trim().is_empty()).collect();
+            let mut special_chip_arr: Vec<&str> = special_chip_text
+                .split("\n")
+                .filter(|&i| !i.trim().is_empty())
+                .collect();
             chip_text_arr.append(special_chip_arr.borrow_mut());
         }
 
@@ -87,10 +87,10 @@ impl ChipLibrary {
 
         //only write json file if not debug
         #[cfg(not(debug_assertions))]
-            {
-                let j = serde_json::to_string_pretty(&chips).expect("could not serialize to json");
-                fs::write("chips.json", j).expect("could nto write to chips.json");
-            }
+        {
+            let j = serde_json::to_string_pretty(&chips).expect("could not serialize to json");
+            fs::write("chips.json", j).expect("could nto write to chips.json");
+        }
 
         while !chips.is_empty() {
             let chip = chips.pop().expect("Something went wrong popping a chip");
@@ -112,81 +112,52 @@ impl ChipLibrary {
         }
     }
 
-
     pub fn search_element(&self, to_get: &str) -> Option<Vec<&str>> {
         //let elem_res = Elements::from_str(to_get);
 
         let elem_to_get = Elements::from_str(to_get).ok()?;
 
-        return self.search_any(
-            elem_to_get,
-            |a,b|
-                a.elements.contains(&b)
-        );
+        return self.search_any(elem_to_get, |a, b| a.elements.contains(&b));
     }
 
     pub fn search_skill(&self, to_get: &str) -> Option<Vec<&str>> {
-
         let skill_to_get = Skills::from_str(to_get).ok()?;
 
         //special case for where you want chips with more than one possible skill
         if skill_to_get == Skills::Varies {
-            return self.search_any(skill_to_get,
-            |a, _ |
-                a.skills.len() > 1
-            );
+            return self.search_any(skill_to_get, |a, _| a.skills.len() > 1);
         } else {
-            return self.search_any(
-                skill_to_get,
-                |a, b|
-                    a.skills.contains(&b)
-            );
+            return self.search_any(skill_to_get, |a, b| a.skills.contains(&b));
         }
-
     }
 
     pub fn search_skill_target(&self, to_get: &str) -> Option<Vec<&str>> {
-
         let skill_to_get = Skills::from_str(to_get).ok()?;
 
-        return self.search_any(
-            skill_to_get,
-            |a,b|
-                a.skill_target == b
-        );
+        return self.search_any(skill_to_get, |a, b| a.skill_target == b);
     }
 
     pub fn search_skill_user(&self, to_get: &str) -> Option<Vec<&str>> {
-
         let skill_to_get = Skills::from_str(to_get).ok()?;
 
-        return self.search_any(
-            skill_to_get,
-            |a,b|
-                a.skill_user == b
-        );
+        return self.search_any(skill_to_get, |a, b| a.skill_user == b);
     }
 
     pub fn search_skill_check(&self, to_get: &str) -> Option<Vec<&str>> {
-
         //return search_skill_spec!(val.SkillTarget == skill_to_get || val.SkillUser == skill_to_get);
         let skill_to_get = Skills::from_str(to_get).ok()?;
 
-        return self.search_any(
-            skill_to_get,
-            |a,b|
-                a.skill_target == b || a.skill_user == b
-        );
-
+        return self.search_any(skill_to_get, |a, b| {
+            a.skill_target == b || a.skill_user == b
+        });
     }
-
 }
 
 impl TypeMapKey for ChipLibrary {
     type Value = Arc<RwLock<ChipLibrary>>;
 }
 
-pub (crate) fn send_chip(ctx: Context, msg: Message, args: &[&str]) {
+pub(crate) fn send_chip(ctx: Context, msg: Message, args: &[&str]) {
     let to_get;
     if args.len() < 2 {
         to_get = args[0];
@@ -195,21 +166,25 @@ pub (crate) fn send_chip(ctx: Context, msg: Message, args: &[&str]) {
     }
     let data = ctx.data.read();
     let library_lock = data.get::<ChipLibrary>().expect("chip library not found");
-    let library = library_lock.read().expect("library was poisoned, panicking");
+    let library = library_lock
+        .read()
+        .expect("library was poisoned, panicking");
     //let library = locked_library.read().expect("library was poisoned");
     //search!(ctx, msg, to_get, library);
     search_lib_obj(&ctx, msg, to_get, library.deref());
 }
 
-pub (crate) fn send_chip_skill(ctx: Context, msg: Message, args: &[&str]) {
+pub(crate) fn send_chip_skill(ctx: Context, msg: Message, args: &[&str]) {
     if args.len() < 2 {
         say!(ctx, msg, "you must provide a skill");
         return;
     }
     let data = ctx.data.read();
     let library_lock = data.get::<ChipLibrary>().expect("chip library not found");
-    let library = library_lock.read().expect("chip library poisoned, panicking");
-    let skill_res;// = library.search_skill(args[1]);
+    let library = library_lock
+        .read()
+        .expect("chip library poisoned, panicking");
+    let skill_res; // = library.search_skill(args[1]);
     match args[0].to_lowercase().as_str() {
         "skill" => skill_res = library.search_skill(args[1]),
         "skilluser" => skill_res = library.search_skill_user(args[1]),
@@ -224,19 +199,25 @@ pub (crate) fn send_chip_skill(ctx: Context, msg: Message, args: &[&str]) {
     }
 }
 
-pub (crate) fn send_chip_element(ctx: Context, msg: Message, args: &[&str]) {
+pub(crate) fn send_chip_element(ctx: Context, msg: Message, args: &[&str]) {
     if args.len() < 2 {
         say!(ctx, msg, "you must provide an element");
         return;
     }
     let data = ctx.data.read();
     let library_lock = data.get::<ChipLibrary>().expect("chip library not found");
-    let library = library_lock.read().expect("chip library poisoned, panicking");
+    let library = library_lock
+        .read()
+        .expect("chip library poisoned, panicking");
     let elem_res = library.search_element(args[1]);
 
     match elem_res {
         Some(elem) => long_say!(ctx, msg, elem, ", "),
-        None => say!(ctx, msg, "nothing matched your search, are you sure you gave an element?"),
+        None => say!(
+            ctx,
+            msg,
+            "nothing matched your search, are you sure you gave an element?"
+        ),
     }
 
     /*

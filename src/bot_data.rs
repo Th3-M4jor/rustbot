@@ -1,6 +1,6 @@
 use serde::Deserialize;
-use std::fs;
 use serenity::prelude::TypeMapKey;
+use std::fs;
 
 #[derive(Deserialize)]
 pub struct BotData {
@@ -12,7 +12,6 @@ pub struct BotData {
 }
 
 impl BotData {
-
     /**
     constructs a new BotData object, panics if the config is not setup correctly
     */
@@ -23,5 +22,5 @@ impl BotData {
 }
 
 impl TypeMapKey for BotData {
-   type Value = BotData;
+    type Value = BotData;
 }

@@ -1,22 +1,20 @@
-
-use serde::{Deserialize, Serialize};
-use regex::{Regex, Captures};
-use crate::library::elements::Elements;
-use crate::library::battlechip::skills::Skills;
-use crate::library::battlechip::ranges::Ranges;
 use crate::library::battlechip::chip_type::ChipType;
+use crate::library::battlechip::ranges::Ranges;
+use crate::library::battlechip::skills::Skills;
+use crate::library::elements::Elements;
+use regex::{Captures, Regex};
+use serde::{Deserialize, Serialize};
+use std::cmp::{Ord, Ordering};
 use std::str::FromStr;
-use std::cmp::{Ordering, Ord};
 use unicode_normalization::UnicodeNormalization;
 
-use simple_error::SimpleError;
-use serde::export::Formatter;
 use crate::library::LibraryObject;
+use serde::export::Formatter;
+use simple_error::SimpleError;
 
-pub(crate) mod skills;
 mod chip_type;
 mod ranges;
-
+pub(crate) mod skills;
 
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all(serialize = "PascalCase", deserialize = "snake_case"))]
@@ -64,7 +62,7 @@ impl std::fmt::Display for BattleChip {
 impl LibraryObject for BattleChip {
     #[inline]
     fn get_name(&self) -> &str {
-        return &self.name
+        return &self.name;
     }
 }
 
@@ -115,8 +113,10 @@ impl BattleChip {
         return Ok(to_ret);
     }
 
-    pub fn from_chip_string(first_line: &str, second_line: &str) -> Result<Box<BattleChip>, SimpleError> {
-
+    pub fn from_chip_string(
+        first_line: &str,
+        second_line: &str,
+    ) -> Result<Box<BattleChip>, SimpleError> {
         lazy_static! {
             static ref RE: Regex = Regex::new(r"(.+?)\s-\s(.+?)\s\|\s(.+?)\s\|\s(.+?)\s\|\s(\d+d\d+|--)\s?(?:damage)?\s?\|?\s?(Mega|Giga)?\s\|\s(\d+|\d+-\d+|--)\s?(?:hits?)\.?").expect("could not compile chip regex");
             static ref R_SAVE : Regex = Regex::new(r"an?\s(\w+)\scheck\sof\s\[DC\s\d+\s\+\s(\w+)]").expect("could not compile save regex");
@@ -124,40 +124,74 @@ impl BattleChip {
 
         //let RE : Regex = Regex::new(r"(.+?)\s-\s(.+?)\s\|\s(.+?)\s\|\s(.+?)\s\|\s(\d+d\d+|--)\s?(?:damage)?\s?\|?\s?(Mega|Giga)?\s\|\s(\d+|\d+-\d+|--)\s?(?:hits?)\.?").unwrap();
         //let R_SAVE : Regex = Regex::new(r"an?\s(\w+)\scheck\sof\s\[DC\s\d+\s\+\s(\w+)]").unwrap();
-        let chip_val: Captures = RE.captures(first_line).ok_or(SimpleError::new("Failed at capture stage"))?;
+        let chip_val: Captures = RE
+            .captures(first_line)
+            .ok_or(SimpleError::new("Failed at capture stage"))?;
 
-        let chip_name = chip_val.get(1).ok_or(SimpleError::new("Could not get name"))?.as_str().trim();
-        let chip_range = Ranges::from_str(chip_val.get(4).ok_or(SimpleError::new("Failed to convert range"))?.as_str())?;
-        let chip_damage = chip_val.get(5).ok_or(SimpleError::new("failed to get damage"))?.as_str();
-        let chip_hits = chip_val.get(7).ok_or(SimpleError::new("failed to get hits"))?.as_str();
+        let chip_name = chip_val
+            .get(1)
+            .ok_or(SimpleError::new("Could not get name"))?
+            .as_str()
+            .trim();
+        let chip_range = Ranges::from_str(
+            chip_val
+                .get(4)
+                .ok_or(SimpleError::new("Failed to convert range"))?
+                .as_str(),
+        )?;
+        let chip_damage = chip_val
+            .get(5)
+            .ok_or(SimpleError::new("failed to get damage"))?
+            .as_str();
+        let chip_hits = chip_val
+            .get(7)
+            .ok_or(SimpleError::new("failed to get hits"))?
+            .as_str();
         let chip_type: ChipType;
         if chip_val.get(6).is_some() {
-            chip_type = ChipType::from_str(chip_val.get(6).ok_or(SimpleError::new("failed to get type"))?.as_str())?;
+            chip_type = ChipType::from_str(
+                chip_val
+                    .get(6)
+                    .ok_or(SimpleError::new("failed to get type"))?
+                    .as_str(),
+            )?;
         } else {
             chip_type = ChipType::Standard;
         }
 
-        let parsed_elements = BattleChip::parse_elements(chip_val.get(2)
-                            .ok_or(SimpleError::new("failed to parse element"))?.as_str())?;
+        let parsed_elements = BattleChip::parse_elements(
+            chip_val
+                .get(2)
+                .ok_or(SimpleError::new("failed to parse element"))?
+                .as_str(),
+        )?;
         //let skills : Vec<&str> = chip_val.get(3).unwrap().as_str().split(", ").collect();
-        let parsed_skills = BattleChip::parse_skills(chip_val.get(3)
-            .ok_or(SimpleError::new("failed to parse skills"))?.as_str())?;
+        let parsed_skills = BattleChip::parse_skills(
+            chip_val
+                .get(3)
+                .ok_or(SimpleError::new("failed to parse skills"))?
+                .as_str(),
+        )?;
 
-        let skill_user : Skills;
-        let skill_target : Skills;
+        let skill_user: Skills;
+        let skill_target: Skills;
         let skill_res = R_SAVE.captures(second_line);
-        
         if skill_res.is_none() {
             skill_user = Skills::None;
             skill_target = Skills::None;
         } else {
             let skill_res_unwrapped = skill_res.expect("Something went wrong");
-            let skill_user_res = skill_res_unwrapped.get(2).ok_or(SimpleError::new("failed to get skill user"))?.as_str();
-            let skill_target_res = skill_res_unwrapped.get(1).ok_or(SimpleError::new("failed to get skill target"))?.as_str();
+            let skill_user_res = skill_res_unwrapped
+                .get(2)
+                .ok_or(SimpleError::new("failed to get skill user"))?
+                .as_str();
+            let skill_target_res = skill_res_unwrapped
+                .get(1)
+                .ok_or(SimpleError::new("failed to get skill target"))?
+                .as_str();
             skill_user = Skills::from_str(skill_user_res).unwrap_or(Skills::None);
             skill_target = Skills::from_str(skill_target_res).unwrap_or(Skills::None);
         }
-
 
         let chip_all = format!("{}\n{}", first_line, second_line);
 
@@ -177,5 +211,4 @@ impl BattleChip {
 
         return Ok(to_ret);
     }
-
 }

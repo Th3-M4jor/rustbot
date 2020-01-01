@@ -1,5 +1,5 @@
-use simple_error::SimpleError;
 use serde::{Deserialize, Serialize};
+use simple_error::SimpleError;
 
 #[derive(Serialize, Deserialize)]
 pub enum ChipType {
@@ -25,9 +25,9 @@ impl std::str::FromStr for ChipType {
 impl std::fmt::Display for ChipType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            ChipType::Standard => write!(f,"{}", ""),
-            ChipType::Mega => write!(f,"{}", "Mega"),
-            ChipType::Giga => write!(f,"{}", "Giga"),
+            ChipType::Standard => write!(f, "{}", ""),
+            ChipType::Mega => write!(f, "{}", "Mega"),
+            ChipType::Giga => write!(f, "{}", "Giga"),
             ChipType::Dark => write!(f, "{}", "Dark"),
         }
     }

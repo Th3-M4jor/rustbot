@@ -1,23 +1,20 @@
-use rand::rngs::ThreadRng;
 use rand::distributions::{Distribution, Uniform};
-use serenity::{
-    model::channel::Message,
-    prelude::*,
-};
+use rand::rngs::ThreadRng;
+use serenity::{model::channel::Message, prelude::*};
 use std::borrow::BorrowMut;
 
 pub struct DieRoll;
 
 impl DieRoll {
     pub fn roll_dice(to_roll: &str, rolls: &mut Vec<i64>) -> i64 {
-        let mut to_ret : i64 = 0;
-        let a : Vec<&str> = to_roll.split('+').collect();
+        let mut to_ret: i64 = 0;
+        let a: Vec<&str> = to_roll.split('+').collect();
         if a.len() > 1 {
             for b in a {
                 to_ret += DieRoll::roll_dice(b, rolls);
             }
         } else {
-            let d : Vec<&str> = a[0].split('d').collect();
+            let d: Vec<&str> = a[0].split('d').collect();
             if d.len() == 1 {
                 let res = d[0].trim().parse::<i64>();
 
@@ -31,7 +28,7 @@ impl DieRoll {
                     }
                 }
             }
-            let amt_to_roll : i64;
+            let amt_to_roll: i64;
             let res = d[0].trim().parse::<i64>();
             match res {
                 Ok(val) => amt_to_roll = val,
@@ -39,7 +36,7 @@ impl DieRoll {
             }
             let mut rng = ThreadRng::default();
             for i in 1..d.len() {
-                let f : i64;
+                let f: i64;
                 let res = d[i].trim().parse::<i64>();
                 match res {
                     Ok(val) => {
@@ -48,11 +45,11 @@ impl DieRoll {
                         } else {
                             f = val;
                         }
-                    },
+                    }
                     Err(_) => f = 6,
                 }
                 let die = Uniform::from(1..=f);
-                let mut u :i64 = 0;
+                let mut u: i64 = 0;
                 for _ in 0..amt_to_roll {
                     //let to_add = rng.gen::<i64>().abs() % f + 1;
                     let to_add = die.sample(&mut rng);
@@ -61,17 +58,22 @@ impl DieRoll {
                 }
                 to_ret += u;
             }
-
-
         }
 
         return to_ret;
     }
 }
 
-pub (crate) fn roll(ctx: Context, msg: Message, args: &[&str]) {
+pub(crate) fn roll(ctx: Context, msg: Message, args: &[&str]) {
     if args.len() < 2 {
-        say!(ctx, msg, format!("{}, you must supply a number of dice to roll", msg.author.mention()));
+        say!(
+            ctx,
+            msg,
+            format!(
+                "{}, you must supply a number of dice to roll",
+                msg.author.mention()
+            )
+        );
     }
 
     //grab all but the first argument which is the command name
@@ -89,12 +91,17 @@ pub (crate) fn roll(ctx: Context, msg: Message, args: &[&str]) {
             amt
         );
     } else {
-        reply = format!("{}, you rolled: {}\n{}", msg.author.mention(), amt, repl_str);
+        reply = format!(
+            "{}, you rolled: {}\n{}",
+            msg.author.mention(),
+            amt,
+            repl_str
+        );
     }
     say!(ctx, msg, reply);
 }
 
-pub (crate) fn roll_stats(ctx: Context, msg: Message, _: &[&str]) {
+pub(crate) fn roll_stats(ctx: Context, msg: Message, _: &[&str]) {
     let mut stats: [i64; 6] = [0; 6];
     let mut rolls: Vec<i64> = vec![];
     for i in &mut stats {
@@ -108,6 +115,13 @@ pub (crate) fn roll_stats(ctx: Context, msg: Message, _: &[&str]) {
         *i = rolls.iter().fold(0, |acc, val| acc + val);
     }
 
-    say!(ctx, msg, format!("{}, 4d6 drop the lowest:\n{:?}", msg.author.mention(), stats));
-
+    say!(
+        ctx,
+        msg,
+        format!(
+            "{}, 4d6 drop the lowest:\n{:?}",
+            msg.author.mention(),
+            stats
+        )
+    );
 }

@@ -1,5 +1,5 @@
-use simple_error::SimpleError;
 use serde::{Deserialize, Serialize};
+use simple_error::SimpleError;
 
 #[derive(Serialize, Deserialize, Eq, PartialEq, Clone, Copy)]
 pub enum Skills {
@@ -37,21 +37,20 @@ impl std::str::FromStr for Skills {
     }
 }
 
-
 impl std::fmt::Display for Skills {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Skills::Sense => write!(f,"{}", "Sense"),
-            Skills::Info => write!(f,"{}", "Info"),
-            Skills::Coding => write!(f,"{}", "Coding"),
-            Skills::Strength => write!(f,"{}", "Strength"),
-            Skills::Speed => write!(f,"{}", "Speed"),
-            Skills::Stamina => write!(f,"{}", "Stamina"),
-            Skills::Charm => write!(f,"{}", "Charm"),
-            Skills::Bravery => write!(f,"{}", "Bravery"),
-            Skills::Affinity => write!(f,"{}", "Affinity"),
-            Skills::None => write!(f,"{}", "--"),
-            Skills::Varies => write!(f,"{}", "Varies"),
+            Skills::Sense => write!(f, "{}", "Sense"),
+            Skills::Info => write!(f, "{}", "Info"),
+            Skills::Coding => write!(f, "{}", "Coding"),
+            Skills::Strength => write!(f, "{}", "Strength"),
+            Skills::Speed => write!(f, "{}", "Speed"),
+            Skills::Stamina => write!(f, "{}", "Stamina"),
+            Skills::Charm => write!(f, "{}", "Charm"),
+            Skills::Bravery => write!(f, "{}", "Bravery"),
+            Skills::Affinity => write!(f, "{}", "Affinity"),
+            Skills::None => write!(f, "{}", "--"),
+            Skills::Varies => write!(f, "{}", "Varies"),
         }
     }
 }
