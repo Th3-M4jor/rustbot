@@ -1,5 +1,4 @@
 use std::sync::RwLock;
-use std::sync::Arc;
 use chrono::prelude::*;
 use crate::util::*;
 use serenity::{
@@ -14,8 +13,11 @@ pub (crate) mod market;
 
 const WARFRAME_URL: &'static str = "https://api.warframestat.us/pc";
 
+
+//static WARFRAME_PC_DATA: RwLock<serde_json::Value> = RwLock::new(serde_json::Value::Null);
+
 lazy_static! {
-    static ref WARFRAME_DATA: Arc<RwLock<serde_json::Value>> = Arc::new(RwLock::new(serde_json::Value::Null));
+    static ref WARFRAME_PC_DATA: RwLock<serde_json::Value> = RwLock::new(serde_json::Value::Null);
 }
 
 //https://docs.google.com/document/d/1121cjBNN4BeZdMBGil6Qbuqse-sWpEXPpitQH5fb_Fo/edit#heading=h.yi84u2lickud
@@ -29,7 +31,6 @@ impl WarframeData {
         WarframeData {}
     }
 
-    //noinspection RsBorrowChecker
     fn load_loop() {
         let mut client = reqwest::blocking::Client::new();
         let mut wait_time : u64 = 120;
@@ -38,7 +39,7 @@ impl WarframeData {
             match res {
                 Ok(info) => {
                     wait_time = 120;
-                    let mut dat = WARFRAME_DATA.write().expect("warframe data poisoned, panicking");
+                    let mut dat = WARFRAME_PC_DATA.write().expect("warframe data poisoned, panicking");
                     *dat = info;
                 }
                 Err(e) => {
@@ -61,15 +62,15 @@ impl WarframeData {
         return Ok(dat);
     }
 
-    //noinspection RsBorrowChecker
     pub fn sortie(&self) -> Option<String> {
+
+        let dat = WARFRAME_PC_DATA.read().ok()?;
         let mut to_ret = String::from("faction: ");
-        let dat = WARFRAME_DATA.read().expect("data was poisoned, panicking");
-        let sortie = dat.get("sortie")?;
-        let faction = sortie.get("faction")?.as_str()?;
+        let sortie = &dat["sortie"];
+        let faction = sortie["faction"].as_str()?;
         to_ret.push_str(faction);
         to_ret.push('\n');
-        let expires = sortie.get("expiry")?.as_str()?;
+        let expires = sortie["expiry"].as_str()?;
         let expire_time = DateTime::parse_from_rfc3339(expires).ok()?.timestamp();
         let now = Utc::now().timestamp();
         to_ret.push_str("expires in: ");
@@ -77,7 +78,7 @@ impl WarframeData {
         to_ret.push('\n');
         to_ret.push_str("mission types: ");
         for i in 0..=2 {
-            let mission = sortie.get("variants")?.get(i)?.get("missionType")?.as_str()?;
+            let mission = sortie["variants"][i]["missionType"].as_str()?;
             to_ret.push_str(mission);
             to_ret.push_str(", ");
         }
@@ -87,9 +88,8 @@ impl WarframeData {
         return Some(to_ret);
     }
 
-    //noinspection RsBorrowChecker
     pub fn fissures(&self) -> Option<Vec<String>> {
-        let dat = WARFRAME_DATA.read().expect("data was poisoned, panicking");
+        let dat = WARFRAME_PC_DATA.read().ok()?;
         let mut fissures = dat["fissures"].as_array()?.clone();
         fissures.sort_unstable_by(|a, b|
             a["tierNum"].as_i64()
