@@ -8,7 +8,7 @@ use rand::rngs::ThreadRng;
 
 use serenity::{model::channel::Message, prelude::*};
 
-use serde::{Deserialize, Serialize};
+use serde::{Serialize};
 
 #[cfg(not(debug_assertions))]
 use serde_json;
@@ -26,8 +26,8 @@ use unicode_normalization::UnicodeNormalization;
 
 const VIRUS_URL: &'static str = "https://docs.google.com/feeds/download/documents/export/Export?id=1PZKYP0mzzxMTmjJ8CfrUMapgQPHgi24Ev6VB3XLBUrU&exportFormat=txt";
 
-#[derive(Serialize, Deserialize)]
-#[serde(rename_all(serialize = "PascalCase", deserialize = "snake_case"))]
+#[derive(Serialize)]
+#[serde(rename_all(serialize = "PascalCase"))]
 pub struct Virus {
     pub name: String,
     pub element: Elements,
@@ -226,7 +226,7 @@ impl VirusLibrary {
         //only write json file if not debug
         #[cfg(not(debug_assertions))]
             {
-                let mut viruses: Vec<&Box<Virus>> = self.library.values().collect();
+                let mut viruses : Vec<&Arc<Box<Virus>>> = self.library.values().collect();
                 viruses.sort_unstable_by(|a, b| a.c_r.cmp(&b.c_r).then_with(|| a.name.cmp(&b.name)));
 
                 let j = serde_json::to_string_pretty(&viruses)

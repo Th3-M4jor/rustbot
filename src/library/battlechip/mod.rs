@@ -3,7 +3,7 @@ use crate::library::battlechip::ranges::Ranges;
 use crate::library::battlechip::skills::Skills;
 use crate::library::elements::Elements;
 use regex::{Captures, Regex};
-use serde::{Deserialize, Serialize};
+use serde::{Serialize};
 use std::cmp::{Ord, Ordering};
 use std::str::FromStr;
 use unicode_normalization::UnicodeNormalization;
@@ -16,8 +16,8 @@ mod chip_type;
 mod ranges;
 pub(crate) mod skills;
 
-#[derive(Serialize, Deserialize)]
-#[serde(rename_all(serialize = "PascalCase", deserialize = "snake_case"))]
+#[derive(Serialize)]
+#[serde(rename_all(serialize = "PascalCase"))]
 pub struct BattleChip {
     pub name: String,
     pub elements: Vec<Elements>,

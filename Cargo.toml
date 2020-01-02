@@ -9,7 +9,7 @@ edition = "2018"
 [dependencies]
 reqwest = { version = "*", features = ["blocking"] }
 serde_json = "*"
-serde = "*"
+serde = { version = "*", features = ["rc"] }
 regex = "*"
 lazy_static = "*"
 simple-error = "*"

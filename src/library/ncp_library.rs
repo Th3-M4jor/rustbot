@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::sync::RwLock;
 use std::sync::Arc;
 
-use serde::{Deserialize, Serialize};
+use serde::{Serialize};
 use serenity::{model::channel::Message, prelude::*};
 
 #[cfg(not(debug_assertions))]
@@ -19,8 +19,8 @@ use unicode_normalization::UnicodeNormalization;
 
 const NCP_URL: &'static str = "https://docs.google.com/feeds/download/documents/export/Export?id=1cPLJ2tAUebIVZU4k7SVnyABpR9jQd7jarzix7oVys9M&exportFormat=txt";
 
-#[derive(Serialize, Deserialize)]
-#[serde(rename_all(serialize = "PascalCase", deserialize = "snake_case"))]
+#[derive(Serialize)]
+#[serde(rename_all(serialize = "PascalCase"))]
 pub struct NCP {
     pub name: String,
     pub e_b_cost: u8,
@@ -86,7 +86,7 @@ impl NCPLibrary {
                 Regex::new(r"(.+)\s\((\d+)\sEB\)\s-\s(.+)").expect("Bad NCP regex");
         }
         self.library.clear();
-        let mut ncp_list: Vec<Arc<Box<NCP>>> = vec![];
+        let mut ncp_list: Vec<Box<NCP>> = vec![];
         let ncp_text = reqwest::blocking::get(NCP_URL)
             .expect("no request result")
             .text()
@@ -123,13 +123,13 @@ impl NCPLibrary {
                 .as_str()
                 .parse::<u8>()
                 .unwrap_or(u8::max_value());
-            ncp_list.push(Arc::new(Box::new(NCP::new(
+            ncp_list.push(Box::new(NCP::new(
                 name.unwrap().as_str(),
                 cost_val,
                 &curr_color,
                 ncp,
                 desc.unwrap().as_str(),
-            ))));
+            )));
         }
 
         //only write json file if not debug
@@ -140,7 +140,7 @@ impl NCPLibrary {
         }
         while !ncp_list.is_empty() {
             let ncp = ncp_list.pop().unwrap();
-            self.library.insert(ncp.name.to_lowercase(), ncp);
+            self.library.insert(ncp.name.to_lowercase(), Arc::new(ncp));
         }
         return self.library.len();
     }
