@@ -18,25 +18,6 @@ pub enum Elements {
     Null,
 }
 
-/*
-impl Ord for Elements {
-    fn cmp(&self, other: &Self) -> Ordering {
-        let a = self as u8;
-        let b = other as u8;
-        return a.cmp(&b);
-    }
-}
-*/
-
-/*
-impl Elements {
-    pub fn iterator() -> Iter<'static, &'static str> {
-        static ELEMENT: [&str; 12] = ["Fire", "Aqua", "Elec", "Wood", "Wind", "Sword", "Break", "Cursor", "Recovery", "Invis", "Object", "Null"];
-        return ELEMENT.iter();
-    }
-}
-*/
-
 impl std::str::FromStr for Elements {
     type Err = SimpleError;
     fn from_str(to_parse: &str) -> Result<Elements, SimpleError> {

@@ -1,6 +1,5 @@
-use simple_error::SimpleError;
 use serde::{Deserialize, Serialize};
-
+use simple_error::SimpleError;
 
 #[derive(Deserialize, Serialize)]
 pub enum Ranges {

@@ -1,19 +1,14 @@
-
-
-
+pub(crate) mod battlechip;
 pub(crate) mod chip_library;
+pub(crate) mod elements;
 pub(crate) mod ncp_library;
 pub(crate) mod virus_library;
-pub(crate) mod elements;
-pub(crate) mod battlechip;
+pub(crate) mod full_library;
 
 use std::collections::HashMap;
+use std::sync::Arc;
 
-use serenity::{
-    model::channel::Message,
-    prelude::*,
-};
-
+use serenity::{model::channel::Message, prelude::*};
 
 use strsim::jaro_winkler;
 
@@ -23,11 +18,16 @@ pub trait LibraryObject: std::fmt::Display {
     fn get_name(&self) -> &str;
 }
 
+impl<T: LibraryObject> LibraryObject for Arc<Box<T>> {
+    fn get_name(&self) -> &str {
+        return self.deref().get_name();
+    }
+}
 
-pub trait Library : TypeMapKey {
+pub trait Library: TypeMapKey {
     type LibObj: LibraryObject;
 
-    fn get_collection(&self) -> &HashMap<String, Box<Self::LibObj>>;
+    fn get_collection(&self) -> &HashMap<String, Self::LibObj>;
 
     fn name_contains<'a>(&'a self, to_get: &str, limit: Option<usize>) -> Option<Vec<&'a str>> {
         let limit_val = limit.unwrap_or(5);
@@ -36,14 +36,16 @@ pub trait Library : TypeMapKey {
         for key in self.get_collection().keys() {
             if key.starts_with(&to_search) {
                 let to_push = self.get_collection().get(key).unwrap();
-                to_ret.push(to_push.deref().get_name());
+                to_ret.push(to_push.get_name());
                 if to_ret.len() > limit_val {
                     break;
                 }
             }
         }
 
-        if to_ret.is_empty() { return None; }
+        if to_ret.is_empty() {
+            return None;
+        }
         to_ret.sort_unstable();
         return Some(to_ret);
     }
@@ -66,13 +68,14 @@ pub trait Library : TypeMapKey {
         return to_ret;
     }
 
-    fn get(&self, to_get: &str) -> Option<&Box<Self::LibObj>> {
+    fn get(&self, to_get: &str) -> Option<&Self::LibObj> {
         return self.get_collection().get(&to_get.to_lowercase());
     }
 
-    fn search_any<F, T>(&self, to_search: T, cond: F,) -> Option<Vec<&str>>
-        where F: Fn(&Box<Self::LibObj>, T) -> bool,
-        T: std::marker::Copy
+    fn search_any<F, T>(&self, to_search: T, cond: F) -> Option<Vec<&str>>
+    where
+        F: Fn(&Self::LibObj, T) -> bool,
+        T: std::marker::Copy,
     {
         let mut to_ret: Vec<&str> = vec![];
         for val in self.get_collection().values() {
@@ -86,16 +89,19 @@ pub trait Library : TypeMapKey {
         to_ret.sort_unstable();
         return Some(to_ret);
     }
-
 }
 
-pub(crate) fn search_lib_obj<T: Library>(ctx: &Context, msg: Message, search: &str, lib: &T) {
+pub(crate) fn search_lib_obj<U, T>(ctx: &Context, msg: Message, search: &str, lib: T)
+    where
+    U: Library,
+    T: Deref<Target=U>
+    {
     let item = lib.get(search);
     if item.is_some() {
         say!(ctx, msg, format!("{}", item.unwrap()));
         return;
     }
-    let item_search;
+    let mut item_search;
     match lib.name_contains(search, None) {
         Some(t) => item_search = t,
         None => item_search = lib.distance(search, None),
@@ -105,6 +111,7 @@ pub(crate) fn search_lib_obj<T: Library>(ctx: &Context, msg: Message, search: &s
         say!(ctx, msg, format!("{}", found_item));
         return;
     }
+    item_search.dedup();
     let to_send: String = item_search.join(", ");
     say!(ctx, msg, format!("Did you mean: {}", to_send));
 }

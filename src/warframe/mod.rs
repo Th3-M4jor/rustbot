@@ -1,44 +1,54 @@
+use crate::util::*;
+use chrono::prelude::*;
+use serenity::{model::channel::Message, prelude::*};
 use std::sync::RwLock;
 use std::sync::Arc;
-use chrono::prelude::*;
-use crate::util::*;
-use serenity::{
-    model::channel::Message,
-    prelude::*,
-};
 
 use serde_json;
 use std::time::Duration;
 
-pub (crate) mod market;
+pub(crate) mod market;
 
 const WARFRAME_URL: &'static str = "https://api.warframestat.us/pc";
 
+//static WARFRAME_PC_DATA: RwLock<serde_json::Value> = RwLock::new(serde_json::Value::Null);
+
+/*
 lazy_static! {
-    static ref WARFRAME_DATA: Arc<RwLock<serde_json::Value>> = Arc::new(RwLock::new(serde_json::Value::Null));
+    static ref WARFRAME_PC_DATA: RwLock<serde_json::Value> = RwLock::new(serde_json::Value::Null);
 }
+*/
 
 //https://docs.google.com/document/d/1121cjBNN4BeZdMBGil6Qbuqse-sWpEXPpitQH5fb_Fo/edit#heading=h.yi84u2lickud
 //URL for warframe market API
 
-pub struct WarframeData {}
+pub struct WarframeData {
+    data: Arc<RwLock<serde_json::Value>>,
+}
 
 impl WarframeData {
     pub fn new() -> WarframeData {
-        std::thread::spawn(WarframeData::load_loop);
-        WarframeData {}
+        let data = Arc::new(RwLock::new(serde_json::Value::Null));
+        let thread_dat = Arc::clone(&data);
+        std::thread::spawn(move || {
+            WarframeData::load_loop(thread_dat);
+        });
+        WarframeData {
+            data,
+        }
     }
 
-    //noinspection RsBorrowChecker
-    fn load_loop() {
+    fn load_loop(warframe_json: Arc<RwLock<serde_json::Value>>) {
         let mut client = reqwest::blocking::Client::new();
-        let mut wait_time : u64 = 120;
+        let mut wait_time: u64 = 120;
         loop {
             let res = WarframeData::load(&client);
             match res {
                 Ok(info) => {
                     wait_time = 120;
-                    let mut dat = WARFRAME_DATA.write().expect("warframe data poisoned, panicking");
+                    let mut dat = warframe_json
+                        .write()
+                        .expect("warframe data poisoned, panicking");
                     *dat = info;
                 }
                 Err(e) => {
@@ -46,7 +56,9 @@ impl WarframeData {
                     println!("{:?}", e);
                     client = reqwest::blocking::Client::new();
                     //wait for longer than two minutes, back-off when error
-                    wait_time *= 2;
+                    if wait_time < 960 {
+                        wait_time *= 2;
+                    }
                 }
             }
 
@@ -54,22 +66,23 @@ impl WarframeData {
         }
     }
 
-    fn load(client: &reqwest::blocking::Client) -> Result<serde_json::Value, Box<dyn std::error::Error>> {
+    fn load(
+        client: &reqwest::blocking::Client,
+    ) -> Result<serde_json::Value, Box<dyn std::error::Error>> {
         let response = client.get(WARFRAME_URL).send()?;
         let text = response.text()?.replace("â€™", "'").replace("\u{FEFF}", "");
         let dat: serde_json::Value = serde_json::from_str(&text)?;
         return Ok(dat);
     }
 
-    //noinspection RsBorrowChecker
     pub fn sortie(&self) -> Option<String> {
+        let dat = self.data.read().ok()?;
         let mut to_ret = String::from("faction: ");
-        let dat = WARFRAME_DATA.read().expect("data was poisoned, panicking");
-        let sortie = dat.get("sortie")?;
-        let faction = sortie.get("faction")?.as_str()?;
+        let sortie = &dat["sortie"];
+        let faction = sortie["faction"].as_str()?;
         to_ret.push_str(faction);
         to_ret.push('\n');
-        let expires = sortie.get("expiry")?.as_str()?;
+        let expires = sortie["expiry"].as_str()?;
         let expire_time = DateTime::parse_from_rfc3339(expires).ok()?.timestamp();
         let now = Utc::now().timestamp();
         to_ret.push_str("expires in: ");
@@ -77,7 +90,7 @@ impl WarframeData {
         to_ret.push('\n');
         to_ret.push_str("mission types: ");
         for i in 0..=2 {
-            let mission = sortie.get("variants")?.get(i)?.get("missionType")?.as_str()?;
+            let mission = sortie["variants"][i]["missionType"].as_str()?;
             to_ret.push_str(mission);
             to_ret.push_str(", ");
         }
@@ -87,17 +100,15 @@ impl WarframeData {
         return Some(to_ret);
     }
 
-    //noinspection RsBorrowChecker
     pub fn fissures(&self) -> Option<Vec<String>> {
-        let dat = WARFRAME_DATA.read().expect("data was poisoned, panicking");
+        let dat = self.data.read().ok()?;
         let mut fissures = dat["fissures"].as_array()?.clone();
-        fissures.sort_unstable_by(|a, b|
-            a["tierNum"].as_i64()
+        fissures.sort_unstable_by(|a, b| {
+            a["tierNum"]
+                .as_i64()
                 .unwrap_or(-1)
-                .cmp(
-                    &b["tierNum"].as_i64().unwrap_or(-1)
-                )
-        );
+                .cmp(&b["tierNum"].as_i64().unwrap_or(-1))
+        });
         let mut to_ret: Vec<String> = vec![];
         let now = Utc::now().timestamp();
         for val in fissures {
@@ -109,7 +120,10 @@ impl WarframeData {
 
             let to_add = format!(
                 "{}, {}, {}; expires in: {}",
-                mission, enemy, tier, build_time_rem(now, expire_time)
+                mission,
+                enemy,
+                tier,
+                build_time_rem(now, expire_time)
             );
             to_ret.push(to_add);
         }
@@ -127,7 +141,11 @@ pub(crate) fn get_fissures(ctx: Context, msg: Message, _: &[&str]) {
 
     match warframe_dat.fissures() {
         Some(val) => long_say!(ctx, msg, &val, "\n"),
-        None => say!(ctx, msg, "could not build fissures message, inform the owner"),
+        None => say!(
+            ctx,
+            msg,
+            "could not build fissures message, inform the owner"
+        ),
     }
 }
 
@@ -144,4 +162,3 @@ pub(crate) fn get_sortie(ctx: Context, msg: Message, _: &[&str]) {
 impl TypeMapKey for WarframeData {
     type Value = WarframeData;
 }
-
