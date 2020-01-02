@@ -2,6 +2,7 @@ use crate::util::*;
 use chrono::prelude::*;
 use serenity::{model::channel::Message, prelude::*};
 use std::sync::RwLock;
+use std::sync::Arc;
 
 use serde_json;
 use std::time::Duration;
@@ -12,22 +13,32 @@ const WARFRAME_URL: &'static str = "https://api.warframestat.us/pc";
 
 //static WARFRAME_PC_DATA: RwLock<serde_json::Value> = RwLock::new(serde_json::Value::Null);
 
+/*
 lazy_static! {
     static ref WARFRAME_PC_DATA: RwLock<serde_json::Value> = RwLock::new(serde_json::Value::Null);
 }
+*/
 
 //https://docs.google.com/document/d/1121cjBNN4BeZdMBGil6Qbuqse-sWpEXPpitQH5fb_Fo/edit#heading=h.yi84u2lickud
 //URL for warframe market API
 
-pub struct WarframeData {}
+pub struct WarframeData {
+    data: Arc<RwLock<serde_json::Value>>,
+}
 
 impl WarframeData {
     pub fn new() -> WarframeData {
-        std::thread::spawn(WarframeData::load_loop);
-        WarframeData {}
+        let data = Arc::new(RwLock::new(serde_json::Value::Null));
+        let thread_dat = Arc::clone(&data);
+        std::thread::spawn(move || {
+            WarframeData::load_loop(thread_dat);
+        });
+        WarframeData {
+            data,
+        }
     }
 
-    fn load_loop() {
+    fn load_loop(warframe_json: Arc<RwLock<serde_json::Value>>) {
         let mut client = reqwest::blocking::Client::new();
         let mut wait_time: u64 = 120;
         loop {
@@ -35,7 +46,7 @@ impl WarframeData {
             match res {
                 Ok(info) => {
                     wait_time = 120;
-                    let mut dat = WARFRAME_PC_DATA
+                    let mut dat = warframe_json
                         .write()
                         .expect("warframe data poisoned, panicking");
                     *dat = info;
@@ -65,7 +76,7 @@ impl WarframeData {
     }
 
     pub fn sortie(&self) -> Option<String> {
-        let dat = WARFRAME_PC_DATA.read().ok()?;
+        let dat = self.data.read().ok()?;
         let mut to_ret = String::from("faction: ");
         let sortie = &dat["sortie"];
         let faction = sortie["faction"].as_str()?;
@@ -90,7 +101,7 @@ impl WarframeData {
     }
 
     pub fn fissures(&self) -> Option<Vec<String>> {
-        let dat = WARFRAME_PC_DATA.read().ok()?;
+        let dat = self.data.read().ok()?;
         let mut fissures = dat["fissures"].as_array()?.clone();
         fissures.sort_unstable_by(|a, b| {
             a["tierNum"]

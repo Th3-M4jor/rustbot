@@ -3,7 +3,8 @@ extern crate lazy_static;
 
 use std::collections::HashMap;
 use std::process::exit;
-use std::sync::{Arc, RwLock};
+use std::sync::RwLock;
+use std::sync::Arc;
 
 use serenity::{
     model::{channel::Message, gateway::Ready},
@@ -11,7 +12,13 @@ use serenity::{
 };
 
 use crate::bot_data::BotData;
-use crate::library::{chip_library::*, ncp_library::*, virus_library::*};
+use crate::library::{
+    Library,
+    chip_library::*,
+    ncp_library::*,
+    virus_library::*,
+    full_library::*,
+};
 use crate::warframe::{get_fissures, get_sortie, market::get_market_info, WarframeData};
 
 use crate::dice::{roll, roll_stats};
@@ -100,7 +107,7 @@ impl EventHandler for Handler {
         let cmd_res = COMMANDS.get(&args[0].to_lowercase());
         match cmd_res {
             Some(cmd) => cmd(ctx, msg, &args),
-            None => send_chip(ctx, msg, &args),
+            None => search_full_library(ctx, msg, &args),
         }
     }
 
@@ -142,36 +149,70 @@ fn reload(ctx: Context, msg: Message, _: &[&str]) {
     if msg.author.id != config.owner && !config.admins.contains(msg.author.id.as_u64()) {
         return;
     }
+
+    if let Err(_) = msg.channel_id.broadcast_typing(&ctx.http) {
+        println!("could not broadcast typing, not reloading");
+        return;
+    }
+
     let mut str_to_send;
     {
-        let chip_library_lock = data.get::<ChipLibrary>().expect("chip library not found");
-        let mut chip_library = chip_library_lock
-            .write()
-            .expect("chip library was poisoned, panicking");
-        let chip_reload_res = chip_library.load_chips();
-        //let str_to_send;
-        match chip_reload_res {
-            Ok(s) => str_to_send = format!("{} chips loaded\n", s),
-            Err(e) => str_to_send = format!("{}\n", e.to_string()),
+        let full_library_lock = data.get::<FullLibrary>().expect("full library not found");
+        let mut full_library = full_library_lock.write().expect("full library poisoned, panicking");
+        full_library.clear();
+        let mut full_duplicates : Vec<String> = vec![];
+        {
+            let chip_library_lock = data.get::<ChipLibrary>().expect("chip library not found");
+            let mut chip_library = chip_library_lock
+                .write()
+                .expect("chip library was poisoned, panicking");
+            let chip_reload_res = chip_library.load_chips();
+            //let str_to_send;
+            match chip_reload_res {
+                Ok(s) => str_to_send = format!("{} chips loaded\n", s),
+                Err(e) => str_to_send = format!("{}\n", e.to_string()),
+            }
+            for val in chip_library.get_collection().values() {
+                let obj = FullLibraryType::BattleChip(Arc::clone(val));
+                if let Err(e) = full_library.insert(obj) {
+                   full_duplicates.push(e.to_string());
+                }
+            }
         }
-    }
-    {
-        let ncp_library_lock = data.get::<NCPLibrary>().expect("ncp library not found");
-        let mut ncp_library = ncp_library_lock
-            .write()
-            .expect("chip library was poisoned, panicking");
-        let count = ncp_library.load_programs();
-        //say!(ctx, msg, format!("{} NCPs loaded", count));
-        str_to_send.push_str(&format!("{} NCPs loaded\n", count));
-    }
-    {
-        let virus_library_lock = data.get::<VirusLibrary>().expect("virus library not found");
-        let mut virus_library = virus_library_lock
-            .write()
-            .expect("virus library was poisoned, panicking");
-        match virus_library.load_viruses() {
-            Ok(s) => str_to_send.push_str(&format!("{} viruses were loaded\n", s)),
-            Err(e) => str_to_send.push_str(&format!("{}", e.to_string())),
+        {
+            let ncp_library_lock = data.get::<NCPLibrary>().expect("ncp library not found");
+            let mut ncp_library = ncp_library_lock
+                .write()
+                .expect("chip library was poisoned, panicking");
+            let count = ncp_library.load_programs();
+            //say!(ctx, msg, format!("{} NCPs loaded", count));
+            str_to_send.push_str(&format!("{} NCPs loaded\n", count));
+            for val in ncp_library.get_collection().values() {
+                let obj = FullLibraryType::NCP(Arc::clone(val));
+                if let Err(e) = full_library.insert(obj) {
+                    full_duplicates.push(e.to_string());
+                }
+            }
+        }
+        {
+            let virus_library_lock = data.get::<VirusLibrary>().expect("virus library not found");
+            let mut virus_library = virus_library_lock
+                .write()
+                .expect("virus library was poisoned, panicking");
+            match virus_library.load_viruses() {
+                Ok(s) => str_to_send.push_str(&format!("{} viruses were loaded\n", s)),
+                Err(e) => str_to_send.push_str(&format!("{}", e.to_string())),
+            }
+            for val in virus_library.get_collection().values() {
+                let obj = FullLibraryType::Virus(Arc::clone(val));
+                if let Err(e) = full_library.insert(obj) {
+                    full_duplicates.push(e.to_string());
+                }
+            }
+        }
+        if full_duplicates.len() > 0 {
+            str_to_send.push('\n');
+            str_to_send.push_str(&format!("full duplicates: {:?}", full_duplicates));
         }
     }
     say!(ctx, msg, str_to_send);
@@ -198,10 +239,11 @@ fn about_bot(ctx: Context, msg: Message, _: &[&str]) {
 }
 
 fn main() {
-    let chip_library_mutex = Arc::new(RwLock::new(ChipLibrary::new()));
-    let ncp_library_mutex = Arc::new(RwLock::new(NCPLibrary::new()));
-    let virus_library_mutex = Arc::new(RwLock::new(VirusLibrary::new()));
+    let chip_library_mutex = RwLock::new(ChipLibrary::new());
+    let ncp_library_mutex = RwLock::new(NCPLibrary::new());
+    let virus_library_mutex = RwLock::new(VirusLibrary::new());
     let warframe_data = WarframeData::new();
+    let full_library_mutex = RwLock::new(FullLibrary::new());
     //let mut chip_library = ChipLibrary::new();
 
     {
@@ -222,6 +264,27 @@ fn main() {
             Ok(s) => println!("{} viruses were loaded", s),
             Err(e) => println!("{}", e.to_string()),
         }
+
+        let mut full_library = full_library_mutex.write().unwrap();
+        for val in chip_library.get_collection().values() {
+            let obj = FullLibraryType::BattleChip(Arc::clone(val));
+            if let Err(e) = full_library.insert(obj) {
+                println!("Found duplicate name in full library: {}", e.as_str());
+            }
+        }
+        for val in virus_library.get_collection().values() {
+            let obj = FullLibraryType::Virus(Arc::clone(val));
+            if let Err(e) = full_library.insert(obj) {
+                println!("Found duplicate name in full library: {}", e.as_str());
+            }
+        }
+        for val in ncp_library.get_collection().values() {
+            let obj = FullLibraryType::NCP(Arc::clone(val));
+            if let Err(e) = full_library.insert(obj) {
+                println!("Found duplicate name in full library: {}", e.as_str());
+            }
+        }
+        println!("Full library loaded, size is {}", full_library.len());
     }
 
     let config = BotData::new();
@@ -235,6 +298,7 @@ fn main() {
         data.insert::<VirusLibrary>(virus_library_mutex);
         data.insert::<BotData>(config);
         data.insert::<WarframeData>(warframe_data);
+        data.insert::<FullLibrary>(full_library_mutex);
     }
     // Finally, start a single shard, and start listening to events.
     //

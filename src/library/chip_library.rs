@@ -1,7 +1,6 @@
 use std::collections::HashMap;
-use std::sync::Arc;
 use std::sync::RwLock;
-
+use std::sync::Arc;
 use serenity::{model::channel::Message, prelude::*};
 
 #[cfg(not(debug_assertions))]
@@ -15,20 +14,20 @@ use crate::library::elements::Elements;
 use crate::library::{search_lib_obj, Library};
 use std::borrow::BorrowMut;
 use std::fs;
-use std::ops::Deref;
+
 use std::str::FromStr;
 
 const CHIP_URL: &'static str = "https://docs.google.com/feeds/download/documents/export/Export?id=1lvAKkymOplIJj6jS-N5__9aLIDXI6bETIMz01MK9MfY&exportFormat=txt";
 
 pub struct ChipLibrary {
-    chips: HashMap<String, Box<BattleChip>>,
+    chips: HashMap<String, Arc<Box<BattleChip>>>,
 }
 
 impl Library for ChipLibrary {
-    type LibObj = BattleChip;
+    type LibObj = Arc<Box<BattleChip>>;
 
     #[inline]
-    fn get_collection(&self) -> &HashMap<String, Box<BattleChip>> {
+    fn get_collection(&self) -> &HashMap<String, Arc<Box<BattleChip>>> {
         return &self.chips;
     }
 }
@@ -94,7 +93,7 @@ impl ChipLibrary {
 
         while !chips.is_empty() {
             let chip = chips.pop().expect("Something went wrong popping a chip");
-            self.chips.insert(chip.name.to_lowercase(), chip);
+            self.chips.insert(chip.name.to_lowercase(), Arc::new(chip));
         }
 
         if bad_chips.len() > 5 {
@@ -154,7 +153,7 @@ impl ChipLibrary {
 }
 
 impl TypeMapKey for ChipLibrary {
-    type Value = Arc<RwLock<ChipLibrary>>;
+    type Value = RwLock<ChipLibrary>;
 }
 
 pub(crate) fn send_chip(ctx: Context, msg: Message, args: &[&str]) {
@@ -171,7 +170,7 @@ pub(crate) fn send_chip(ctx: Context, msg: Message, args: &[&str]) {
         .expect("library was poisoned, panicking");
     //let library = locked_library.read().expect("library was poisoned");
     //search!(ctx, msg, to_get, library);
-    search_lib_obj(&ctx, msg, to_get, library.deref());
+    search_lib_obj(&ctx, msg, to_get, library);
 }
 
 pub(crate) fn send_chip_skill(ctx: Context, msg: Message, args: &[&str]) {

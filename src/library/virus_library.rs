@@ -1,6 +1,6 @@
 use std::collections::HashMap;
-use std::sync::Arc;
 use std::sync::RwLock;
+use std::sync::Arc;
 
 use rand::distributions::{Distribution, Uniform};
 
@@ -20,7 +20,7 @@ use regex::Regex;
 use crate::library::{elements::Elements, search_lib_obj, Library, LibraryObject};
 use simple_error::SimpleError;
 use std::fmt::Formatter;
-use std::ops::Deref;
+
 use std::str::FromStr;
 use unicode_normalization::UnicodeNormalization;
 
@@ -64,10 +64,24 @@ impl std::fmt::Display for Virus {
 }
 
 pub struct VirusLibrary {
-    library: HashMap<String, Box<Virus>>,
+    library: HashMap<String, Arc<Box<Virus>>>,
     highest_cr: u8,
     duplicates: Vec<String>,
 }
+
+impl TypeMapKey for VirusLibrary {
+    type Value = RwLock<VirusLibrary>;
+}
+
+impl Library for VirusLibrary {
+    type LibObj = Arc<Box<Virus>>;
+
+    #[inline]
+    fn get_collection(&self) -> &HashMap<String, Arc<Box<Virus>>> {
+        return &self.library;
+    }
+}
+
 
 impl VirusLibrary {
     pub fn new() -> VirusLibrary {
@@ -117,29 +131,29 @@ impl VirusLibrary {
                 if self.duplicates.contains(&current_virus_name.to_lowercase()) {
                     add_res = self.library.insert(
                         current_virus_full_name.to_lowercase(),
-                        Box::new(Virus::new(
+                        Arc::new(Box::new(Virus::new(
                             &current_virus_full_name,
                             current_virus_element,
                             curr_cr,
                             &current_virus_description,
                         )),
-                    );
+                        ));
                 } else {
                     add_res = self.library.insert(
                         current_virus_name.to_lowercase(),
-                        Box::new(Virus::new(
+                        Arc::new(Box::new(Virus::new(
                             &current_virus_name,
                             current_virus_element,
                             curr_cr,
                             &current_virus_description,
                         )),
-                    );
+                        ));
                 }
                 if add_res.is_some() {
                     //println!("{} , {} , {}\n{}", current_virus_name, current_virus_full_name, current_virus_element, current_virus_description);
                     //found a duplicate, fixing
                     //let add_res_val = add_res.unwrap();
-                    let mut old_virus = add_res.unwrap();
+                    let old_virus = add_res.unwrap();
                     let new_virus_res = self.library.remove(&current_virus_name.to_lowercase());
                     if new_virus_res.is_none() {
                         return Err(SimpleError::new(format!(
@@ -147,7 +161,7 @@ impl VirusLibrary {
                             current_virus_full_name, self.duplicates
                         )));
                     }
-                    let mut new_virus = new_virus_res.unwrap();
+                    let new_virus = new_virus_res.unwrap();
 
                     if new_virus.element == old_virus.element {
                         return Err(SimpleError::new(format!(
@@ -155,18 +169,24 @@ impl VirusLibrary {
                             current_virus_full_name
                         )));
                     }
-                    new_virus
-                        .name
-                        .push_str(&format!(" ({})", new_virus.element));
-                    old_virus
-                        .name
-                        .push_str(&format!(" ({})", old_virus.element));
+                    let repl_new_virus = Arc::new(Box::new(Virus::new(
+                        format!("{} ({})", new_virus.name, new_virus.element),
+                        new_virus.element,
+                        new_virus.c_r,
+                        new_virus.description.clone(),
+                    )));
+                    let repl_old_virus = Arc::new(Box::new(Virus::new(
+                        format!("{} ({})", old_virus.name, old_virus.element),
+                        old_virus.element,
+                        old_virus.c_r,
+                        old_virus.description.clone(),
+                    )));
                     let new_add_res = self
                         .library
-                        .insert(new_virus.name.to_lowercase(), new_virus);
+                        .insert(repl_new_virus.name.to_lowercase(), repl_new_virus);
                     let old_add_res = self
                         .library
-                        .insert(old_virus.name.to_lowercase(), old_virus);
+                        .insert(repl_old_virus.name.to_lowercase(), repl_old_virus);
                     if new_add_res.is_some() || old_add_res.is_some() {
                         return Err(SimpleError::new(format!(
                             "found an unrecoverable duplicate, {}, 131",
@@ -195,7 +215,7 @@ impl VirusLibrary {
                 current_virus_element =
                     Elements::from_str(virus_val.get(3).expect("Virus had no element").as_str())
                         .expect("could not parse element");
-            //current_virus_full_name.push_str(virus_val.get(3).unwrap().as_str());
+                //current_virus_full_name.push_str(virus_val.get(3).unwrap().as_str());
             } else {
                 current_virus_description.push_str(virus_line);
                 current_virus_description.push('\n');
@@ -205,15 +225,15 @@ impl VirusLibrary {
 
         //only write json file if not debug
         #[cfg(not(debug_assertions))]
-        {
-            let mut viruses: Vec<&Box<Virus>> = self.library.values().collect();
-            viruses.sort_unstable_by(|a, b| a.c_r.cmp(&b.c_r).then_with(|| a.name.cmp(&b.name)));
+            {
+                let mut viruses: Vec<&Box<Virus>> = self.library.values().collect();
+                viruses.sort_unstable_by(|a, b| a.c_r.cmp(&b.c_r).then_with(|| a.name.cmp(&b.name)));
 
-            let j = serde_json::to_string_pretty(&viruses)
-                .expect("could not serialize virus library to JSON");
-            fs::write("./virusCompendium.json", j)
-                .expect("could not write to virusCompendium.json");
-        }
+                let j = serde_json::to_string_pretty(&viruses)
+                    .expect("could not serialize virus library to JSON");
+                fs::write("./virusCompendium.json", j)
+                    .expect("could not write to virusCompendium.json");
+            }
 
         if found_duplicates {
             let res = format!(
@@ -307,18 +327,6 @@ impl VirusLibrary {
     }
 }
 
-impl Library for VirusLibrary {
-    type LibObj = Virus;
-
-    #[inline]
-    fn get_collection(&self) -> &HashMap<String, Box<Virus>> {
-        return &self.library;
-    }
-}
-
-impl TypeMapKey for VirusLibrary {
-    type Value = Arc<RwLock<VirusLibrary>>;
-}
 
 pub(crate) fn send_virus(ctx: Context, msg: Message, args: &[&str]) {
     if args.len() < 2 {
@@ -328,12 +336,12 @@ pub(crate) fn send_virus(ctx: Context, msg: Message, args: &[&str]) {
     let to_join = &args[1..];
     let to_search = to_join.join(" ");
     let data = ctx.data.read();
-    let library_lock: &Arc<RwLock<VirusLibrary>> =
-        data.get::<VirusLibrary>().expect("NCP library not found");
+    let library_lock =
+        data.get::<VirusLibrary>().expect("Virus library not found");
     let library = library_lock
         .read()
         .expect("library was poisoned, panicking");
-    search_lib_obj(&ctx, msg, &to_search, library.deref());
+    search_lib_obj(&ctx, msg, &to_search, library);
 }
 
 pub(crate) fn send_virus_element(ctx: Context, msg: Message, args: &[&str]) {
@@ -343,11 +351,11 @@ pub(crate) fn send_virus_element(ctx: Context, msg: Message, args: &[&str]) {
     }
 
     let data = ctx.data.read();
-    let library_lock: &Arc<RwLock<VirusLibrary>> =
-        data.get::<VirusLibrary>().expect("chip library not found");
+    let library_lock: &RwLock<VirusLibrary> =
+        data.get::<VirusLibrary>().expect("Virus library not found");
     let library = library_lock
         .read()
-        .expect("chip library poisoned, panicking");
+        .expect("Virus library poisoned, panicking");
     let elem_res = library.search_element(args[1]);
     match elem_res {
         Some(elem) => long_say!(ctx, msg, elem, ", "),
@@ -372,8 +380,8 @@ pub(crate) fn send_virus_cr(ctx: Context, msg: Message, args: &[&str]) {
     }
     let cr_to_get = cr_to_get_res.unwrap();
     let data = ctx.data.read();
-    let library_lock: &Arc<RwLock<VirusLibrary>> =
-        data.get::<VirusLibrary>().expect("NCP library not found");
+    let library_lock: &RwLock<VirusLibrary> =
+        data.get::<VirusLibrary>().expect("Virus library not found");
     let library = library_lock
         .read()
         .expect("library was poisoned, panicking");
@@ -402,8 +410,8 @@ pub(crate) fn send_random_encounter(ctx: Context, msg: Message, args: &[&str]) {
         return;
     }
     let data = ctx.data.read();
-    let library_lock: &Arc<RwLock<VirusLibrary>> =
-        data.get::<VirusLibrary>().expect("NCP library not found");
+    let library_lock: &RwLock<VirusLibrary> =
+        data.get::<VirusLibrary>().expect("Virus library not found");
     let library = library_lock
         .read()
         .expect("library was poisoned, panicking");
@@ -462,8 +470,8 @@ pub(crate) fn send_family(ctx: Context, msg: Message, args: &[&str]) {
     let to_join = &args[1..];
     let to_search = to_join.join(" ");
     let data = ctx.data.read();
-    let library_lock: &Arc<RwLock<VirusLibrary>> =
-        data.get::<VirusLibrary>().expect("NCP library not found");
+    let library_lock: &RwLock<VirusLibrary> =
+        data.get::<VirusLibrary>().expect("Virus library not found");
     let library = library_lock
         .read()
         .expect("library was poisoned, panicking");
@@ -472,3 +480,4 @@ pub(crate) fn send_family(ctx: Context, msg: Message, args: &[&str]) {
         None => say!(ctx, msg, "There is no family under that name"),
     }
 }
+
