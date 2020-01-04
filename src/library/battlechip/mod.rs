@@ -20,7 +20,7 @@ pub(crate) mod skills;
 #[serde(rename_all(serialize = "PascalCase"))]
 pub struct BattleChip {
     pub name: String,
-    pub elements: Vec<Elements>,
+    pub element: Vec<Elements>,
     pub skills: Vec<Skills>,
     pub range: Ranges,
     pub damage: String,
@@ -82,7 +82,7 @@ impl BattleChip {
     ) -> BattleChip {
         BattleChip {
             name: name.into().nfc().collect::<String>(),
-            elements,
+            element: elements,
             skills: skills.unwrap_or(std::vec![Skills::None]),
             range,
             damage: damage.into().nfc().collect::<String>(),
