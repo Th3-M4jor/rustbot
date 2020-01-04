@@ -116,7 +116,7 @@ impl ChipLibrary {
 
         let elem_to_get = Elements::from_str(to_get).ok()?;
 
-        return self.search_any(elem_to_get, |a, b| a.elements.contains(&b));
+        return self.search_any(elem_to_get, |a, b| a.element.contains(&b));
     }
 
     pub fn search_skill(&self, to_get: &str) -> Option<Vec<&str>> {
