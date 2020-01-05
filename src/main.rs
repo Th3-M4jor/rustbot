@@ -5,6 +5,7 @@ use std::collections::HashMap;
 use std::process::exit;
 use std::sync::RwLock;
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use serenity::{
     model::{channel::Message, gateway::Ready},
@@ -112,18 +113,30 @@ impl EventHandler for Handler {
     }
 
     fn ready(&self, ctx: Context, ready: Ready) {
+        lazy_static! {
+            static ref FIRST_LOGIN: AtomicBool = AtomicBool::new(true);
+        }
         let data = ctx.data.read();
         let config = data.get::<BotData>().expect("no bot data, panicking");
-        println!("{} is connected!", ready.user.name);
+
         let guild = serenity::model::guild::Guild::get(&ctx, config.main_server)
             .expect("could not find main server");
         let owner = guild
             .member(&ctx, config.owner)
             .expect("could not grab owner");
+        let message_to_owner;
+        if FIRST_LOGIN.load(Ordering::Relaxed) {
+            message_to_owner = "logged in, and ready";
+            println!("{} is connected!", ready.user.name);
+            FIRST_LOGIN.store(false, Ordering::Relaxed);
+        } else {
+            message_to_owner = "an error occurred, reconnected and ready";
+            println!("{:?}", ready.trace);
+        }
         let owner_user = owner.user.read();
         owner_user
             .dm(&ctx, |m| {
-                m.content("logged in, and ready");
+                m.content(message_to_owner);
                 return m;
             })
             .expect("could not dm owner");
