@@ -19,6 +19,7 @@ use crate::library::{
     ncp_library::*,
     virus_library::*,
     full_library::*,
+    blights::*,
 };
 use crate::warframe::{get_fissures, get_sortie, market::get_market_info, WarframeData};
 
@@ -51,6 +52,7 @@ lazy_static! {
 
         cmd_map.insert("ncp".to_string(), send_ncp);
         cmd_map.insert("ncpcolor".to_string(), send_ncp_color);
+        cmd_map.insert("blight".to_string(), get_blight);
 
         cmd_map.insert("reload".to_string(), reload);
         cmd_map.insert("die".to_string(), check_exit);
@@ -194,6 +196,15 @@ fn reload(ctx: Context, msg: Message, _: &[&str]) {
             }
         }
         {
+            let blight_lock = data.get::<Blights>().expect("Blights not found");
+            let mut blights = blight_lock.write().expect("blights poisoned, panicking");
+            match blights.load() {
+                Ok(()) => str_to_send.push_str("blights reloaded successfully\n"),
+                Err(e) => str_to_send.push_str(&format!("{}\n", e.to_string())),
+            }
+
+        }
+        {
             let ncp_library_lock = data.get::<NCPLibrary>().expect("ncp library not found");
             let mut ncp_library = ncp_library_lock
                 .write()
@@ -258,9 +269,19 @@ fn main() {
     let virus_library_mutex = RwLock::new(VirusLibrary::new());
     let warframe_data = WarframeData::new();
     let full_library_mutex = RwLock::new(FullLibrary::new());
+    let blight_mutex = RwLock::new(Blights::new());
     //let mut chip_library = ChipLibrary::new();
 
     {
+        let mut blights = blight_mutex.write().unwrap();
+        match blights.load() {
+            Ok(()) => {
+                println!("blights loaded");
+            }
+            Err(e) => {
+                println!("{}", e.to_string());
+            }
+        }
         let mut chip_library = chip_library_mutex.write().unwrap();
         match chip_library.load_chips() {
             Ok(s) => {
@@ -313,6 +334,7 @@ fn main() {
         data.insert::<BotData>(config);
         data.insert::<WarframeData>(warframe_data);
         data.insert::<FullLibrary>(full_library_mutex);
+        data.insert::<Blights>(blight_mutex);
     }
     // Finally, start a single shard, and start listening to events.
     //
