@@ -24,7 +24,7 @@ use crate::warframe::{get_fissures, get_sortie, market::get_market_info, Warfram
 
 use crate::dice::{roll, roll_stats};
 use crate::library::chip_library::send_chip;
-use crate::util::send_long_message;
+use crate::util::{send_long_message, log as audit_log};
 use serenity::model::gateway::Activity;
 use std::fs;
 
@@ -70,6 +70,7 @@ lazy_static! {
 
         cmd_map.insert("help".to_string(), send_help);
         cmd_map.insert("about".to_string(), about_bot);
+        cmd_map.insert("audit".to_string(), audit_log);
 
         cmd_map.insert("sortie".to_string(), get_sortie);
         cmd_map.insert("fissures".to_string(), get_fissures);

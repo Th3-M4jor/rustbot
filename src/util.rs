@@ -1,4 +1,6 @@
 use serenity::{model::channel::Message, prelude::*};
+use crate::bot_data::BotData;
+use std::fs;
 
 ///fn say(ctx: Context, msg: Message, say: an expression returning a string)
 
@@ -61,4 +63,28 @@ pub(crate) fn build_time_rem(now: i64, end: i64) -> String {
     } else {
         format!("{}h:{:02}m:{:02}s", hours_rem, min_rem, sec_rem)
     };
+}
+
+pub(crate) fn log(ctx: Context, msg: Message, _ : &[&str]) {
+    let data = ctx.data.read();
+    let config = data.get::<BotData>().expect("config not found");
+
+    if msg.author.id != config.owner {
+        return;
+    }
+
+    let res = fs::read_to_string("./nohup.out");
+    match res {
+        Ok(val) => {
+            let lines : Vec<&str> = val.split("\n")
+                .filter(|&i| !i.trim().is_empty())
+                .collect();
+            let len = lines.len() - 11;
+            long_say!(ctx, msg, &lines[len..], "\n");
+        },
+        Err(err) => {
+            say!(ctx, msg, format!("unable to get log, {}", err.to_string()));
+        },
+    }
+
 }
