@@ -1,6 +1,9 @@
 %about
     get info on the bot itself
 
+%blight
+   get info on what a blight from an element does
+
 %chip
     get the description of a chip with the specified name
     or a list of chips that could match that name
