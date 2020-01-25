@@ -4,7 +4,7 @@ pub(crate) mod elements;
 pub(crate) mod ncp_library;
 pub(crate) mod virus_library;
 pub(crate) mod full_library;
-
+pub(crate) mod blights;
 use std::collections::HashMap;
 use std::sync::Arc;
 

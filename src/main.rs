@@ -5,6 +5,7 @@ use std::collections::HashMap;
 use std::process::exit;
 use std::sync::RwLock;
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use serenity::{
     model::{channel::Message, gateway::Ready},
@@ -18,12 +19,13 @@ use crate::library::{
     ncp_library::*,
     virus_library::*,
     full_library::*,
+    blights::*,
 };
 use crate::warframe::{get_fissures, get_sortie, market::get_market_info, WarframeData};
 
 use crate::dice::{roll, roll_stats};
 use crate::library::chip_library::send_chip;
-use crate::util::send_long_message;
+use crate::util::{send_long_message, log as audit_log};
 use serenity::model::gateway::Activity;
 use std::fs;
 
@@ -50,6 +52,7 @@ lazy_static! {
 
         cmd_map.insert("ncp".to_string(), send_ncp);
         cmd_map.insert("ncpcolor".to_string(), send_ncp_color);
+        cmd_map.insert("blight".to_string(), get_blight);
 
         cmd_map.insert("reload".to_string(), reload);
         cmd_map.insert("die".to_string(), check_exit);
@@ -69,6 +72,7 @@ lazy_static! {
 
         cmd_map.insert("help".to_string(), send_help);
         cmd_map.insert("about".to_string(), about_bot);
+        cmd_map.insert("audit".to_string(), audit_log);
 
         cmd_map.insert("sortie".to_string(), get_sortie);
         cmd_map.insert("fissures".to_string(), get_fissures);
@@ -112,18 +116,30 @@ impl EventHandler for Handler {
     }
 
     fn ready(&self, ctx: Context, ready: Ready) {
+        lazy_static! {
+            static ref FIRST_LOGIN: AtomicBool = AtomicBool::new(true);
+        }
         let data = ctx.data.read();
         let config = data.get::<BotData>().expect("no bot data, panicking");
-        println!("{} is connected!", ready.user.name);
+
         let guild = serenity::model::guild::Guild::get(&ctx, config.main_server)
             .expect("could not find main server");
         let owner = guild
             .member(&ctx, config.owner)
             .expect("could not grab owner");
+        let message_to_owner;
+        if FIRST_LOGIN.load(Ordering::Relaxed) {
+            message_to_owner = "logged in, and ready";
+            println!("{} is connected!", ready.user.name);
+            FIRST_LOGIN.store(false, Ordering::Relaxed);
+        } else {
+            message_to_owner = "an error occurred, reconnected and ready";
+            println!("{:?}", ready.trace);
+        }
         let owner_user = owner.user.read();
         owner_user
             .dm(&ctx, |m| {
-                m.content("logged in, and ready");
+                m.content(message_to_owner);
                 return m;
             })
             .expect("could not dm owner");
@@ -178,6 +194,15 @@ fn reload(ctx: Context, msg: Message, _: &[&str]) {
                    full_duplicates.push(e.to_string());
                 }
             }
+        }
+        {
+            let blight_lock = data.get::<Blights>().expect("Blights not found");
+            let mut blights = blight_lock.write().expect("blights poisoned, panicking");
+            match blights.load() {
+                Ok(()) => str_to_send.push_str("blights reloaded successfully\n"),
+                Err(e) => str_to_send.push_str(&format!("{}\n", e.to_string())),
+            }
+
         }
         {
             let ncp_library_lock = data.get::<NCPLibrary>().expect("ncp library not found");
@@ -244,9 +269,19 @@ fn main() {
     let virus_library_mutex = RwLock::new(VirusLibrary::new());
     let warframe_data = WarframeData::new();
     let full_library_mutex = RwLock::new(FullLibrary::new());
+    let blight_mutex = RwLock::new(Blights::new());
     //let mut chip_library = ChipLibrary::new();
 
     {
+        let mut blights = blight_mutex.write().unwrap();
+        match blights.load() {
+            Ok(()) => {
+                println!("blights loaded");
+            }
+            Err(e) => {
+                println!("{}", e.to_string());
+            }
+        }
         let mut chip_library = chip_library_mutex.write().unwrap();
         match chip_library.load_chips() {
             Ok(s) => {
@@ -299,6 +334,7 @@ fn main() {
         data.insert::<BotData>(config);
         data.insert::<WarframeData>(warframe_data);
         data.insert::<FullLibrary>(full_library_mutex);
+        data.insert::<Blights>(blight_mutex);
     }
     // Finally, start a single shard, and start listening to events.
     //
