@@ -57,8 +57,8 @@ impl std::fmt::Display for Virus {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
         return write!(
             f,
-            "```{} - CR {}\n{}```",
-            self.name, self.c_r, self.description
+            "```{} ({}) - CR {}\n{}```",
+            self.name, self.element ,self.c_r, self.description
         );
     }
 }
@@ -95,7 +95,7 @@ impl VirusLibrary {
     pub fn load_viruses(&mut self) -> Result<usize, SimpleError> {
         lazy_static! {
             static ref VIRUS_REGEX: Regex =
-                Regex::new(r"^((.+)\s\((\w+)\))$").expect("could not compile virus regex");
+                Regex::new(r"^\s*((.+)\s+\((\w+)\))\s*$").expect("could not compile virus regex");
             static ref CR_REGEX: Regex =
                 Regex::new(r"^CR\s+(\d+)$").expect("could not compile CR regex");
         }
