@@ -127,6 +127,12 @@ impl VirusLibrary {
             let cr_cap = CR_REGEX.captures(virus_text_arr[i]);
             let virus_cap = VIRUS_REGEX.captures(virus_text_arr[i]);
             if (cr_cap.is_some() || virus_cap.is_some() || (i + 1) == virus_text_arr.len()) && !current_virus_description.is_empty() {
+
+                if (i + 1) == virus_text_arr.len() && !(cr_cap.is_some() || virus_cap.is_some()) {
+                    //push last line
+                    current_virus_description.push_str(virus_text_arr[i]);
+                }
+
                 let add_res;
                 if self.duplicates.contains(&current_virus_name.to_lowercase()) {
                     add_res = self.library.insert(
