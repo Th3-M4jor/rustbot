@@ -6,12 +6,12 @@ use std::borrow::BorrowMut;
 pub struct DieRoll;
 
 impl DieRoll {
-    pub fn roll_dice(to_roll: &str, rolls: &mut Vec<i64>) -> i64 {
+    pub fn roll_dice(to_roll: &str, rolls: &mut Vec<i64>, reroll: bool) -> i64 {
         let mut to_ret: i64 = 0;
         let a: Vec<&str> = to_roll.split('+').collect();
         if a.len() > 1 {
             for b in a {
-                to_ret += DieRoll::roll_dice(b, rolls);
+                to_ret += DieRoll::roll_dice(b, rolls, reroll);
             }
         } else {
             let d: Vec<&str> = a[0].split('d').collect();
@@ -52,7 +52,11 @@ impl DieRoll {
                 let mut u: i64 = 0;
                 for _ in 0..amt_to_roll {
                     //let to_add = rng.gen::<i64>().abs() % f + 1;
-                    let to_add = die.sample(&mut rng);
+                    let mut to_add = die.sample(&mut rng);
+                    if reroll && to_add < 2 {
+                        let new_to_add = die.sample(&mut rng);
+                        if new_to_add > to_add {to_add = new_to_add;}
+                    }
                     rolls.push(to_add);
                     u += to_add;
                 }
@@ -81,7 +85,12 @@ pub(crate) fn roll(ctx: Context, msg: Message, args: &[&str]) {
 
     let to_roll = to_join.join(" ");
     let mut results: Vec<i64> = vec![];
-    let amt = DieRoll::roll_dice(&to_roll, results.borrow_mut());
+    let amt;
+    if args[0] == "reroll" {
+        amt = DieRoll::roll_dice(&to_roll, results.borrow_mut(), true);
+    } else {
+        amt = DieRoll::roll_dice(&to_roll, results.borrow_mut(), false);
+    }
     let repl_str = format!("{:?}", results);
     let reply;
     if repl_str.len() > 1850 {
@@ -106,7 +115,7 @@ pub(crate) fn roll_stats(ctx: Context, msg: Message, _: &[&str]) {
     let mut rolls: Vec<i64> = vec![];
     for i in &mut stats {
         rolls.clear();
-        DieRoll::roll_dice("4d6", &mut rolls);
+        DieRoll::roll_dice("4d6", &mut rolls, false);
 
         //sort reverse to put lowest at the end
         rolls.sort_unstable_by(|a, b| b.cmp(a));

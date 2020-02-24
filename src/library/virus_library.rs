@@ -123,10 +123,10 @@ impl VirusLibrary {
         let mut current_virus_full_name = String::new();
         let mut current_virus_description = String::new();
         let mut found_duplicates = false;
-        for virus_line in virus_text_arr {
-            let cr_cap = CR_REGEX.captures(virus_line);
-            let virus_cap = VIRUS_REGEX.captures(virus_line);
-            if (cr_cap.is_some() || virus_cap.is_some()) && !current_virus_description.is_empty() {
+        for i in 0..virus_text_arr.len() {
+            let cr_cap = CR_REGEX.captures(virus_text_arr[i]);
+            let virus_cap = VIRUS_REGEX.captures(virus_text_arr[i]);
+            if (cr_cap.is_some() || virus_cap.is_some() || (i + 1) == virus_text_arr.len()) && !current_virus_description.is_empty() {
                 let add_res;
                 if self.duplicates.contains(&current_virus_name.to_lowercase()) {
                     add_res = self.library.insert(
@@ -217,7 +217,7 @@ impl VirusLibrary {
                         .expect("could not parse element");
                 //current_virus_full_name.push_str(virus_val.get(3).unwrap().as_str());
             } else {
-                current_virus_description.push_str(virus_line);
+                current_virus_description.push_str(virus_text_arr[i]);
                 current_virus_description.push('\n');
             }
         }

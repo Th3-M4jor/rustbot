@@ -63,6 +63,7 @@ lazy_static! {
         cmd_map.insert("skillcheck".to_string(), send_chip_skill);
 
         cmd_map.insert("roll".to_string(), roll);
+        cmd_map.insert("reroll".to_string(), roll);
         cmd_map.insert("rollstats".to_string(), roll_stats);
 
         cmd_map.insert("virus".to_string(), send_virus);

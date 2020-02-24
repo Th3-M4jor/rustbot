@@ -38,6 +38,9 @@
 %roll
     roll a given number of dice, ex "%roll 2d20"
 
+%reroll
+    roll a given number of dice, and rerolls 1's and 2's, keeping the higher of the two
+
 %rollStats
     Roll character stats for D&D 5e by rolling 4d6 and dropping the lowest 6 times
 
