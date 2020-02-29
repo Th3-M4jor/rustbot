@@ -9,6 +9,8 @@ pub struct BotData {
     pub admins: Vec<u64>,
     pub main_server: u64,
     pub cmd_prefix: String,
+    pub phb: String,
+    pub manager: String,
 }
 
 impl BotData {

@@ -74,6 +74,8 @@ lazy_static! {
         cmd_map.insert("help".to_string(), send_help);
         cmd_map.insert("about".to_string(), about_bot);
         cmd_map.insert("audit".to_string(), audit_log);
+        cmd_map.insert("manager".to_string(), manager);
+        cmd_map.insert("phb".to_string(), send_handbook);
 
         cmd_map.insert("sortie".to_string(), get_sortie);
         cmd_map.insert("fissures".to_string(), get_fissures);
@@ -147,6 +149,18 @@ impl EventHandler for Handler {
         let action = config.cmd_prefix.clone() + "help for a list of commands";
         ctx.set_activity(Activity::playing(&action));
     }
+}
+
+fn manager(ctx: Context, msg: Message, _: &[&str]) {
+    let data = ctx.data.read();
+    let config = data.get::<BotData>().expect("could not get config");
+    say!(ctx, msg, &config.manager);
+}
+
+fn send_handbook(ctx: Context, msg: Message, _: &[&str]) {
+    let data = ctx.data.read();
+    let config = data.get::<BotData>().expect("could not get config");
+    say!(ctx, msg, &config.phb);
 }
 
 fn check_exit(ctx: Context, msg: Message, _: &[&str]) {

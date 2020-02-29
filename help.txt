@@ -26,6 +26,9 @@
 %fissures
     returns a list of all active warframe fissures (PC)
 
+%manager
+    sends a link to the chip manager
+
 %market
     search the warframe market for people selling an item (PC)
 
@@ -34,6 +37,9 @@
 
 %ncpColor
     get a list of all NCP's with that color
+
+%phb
+    sends a link to the phb
 
 %roll
     roll a given number of dice, ex "%roll 2d20"
