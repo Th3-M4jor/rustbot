@@ -99,7 +99,7 @@ impl Library for FullLibrary {
     }
 }
 
-pub (crate) fn search_full_library(ctx: Context, msg: Message, args: &[&str]) {
+pub (crate) fn search_full_library(ctx: Context, msg: &Message, args: &[&str]) {
     let to_search = args.join(" ");
     let data = ctx.data.read();
     let library_lock =

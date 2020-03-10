@@ -39,7 +39,7 @@ fn make_request(name: &str) -> Result<Vec<String>, Box<dyn std::error::Error>> {
     return Ok(to_ret);
 }
 
-pub(crate) fn get_market_info(ctx: Context, msg: Message, args: &[&str]) {
+pub(crate) fn get_market_info(ctx: Context, msg: &Message, args: &[&str]) {
     if args.len() < 2 {
         say!(
             ctx,

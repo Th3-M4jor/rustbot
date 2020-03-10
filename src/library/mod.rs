@@ -91,7 +91,7 @@ pub trait Library: TypeMapKey {
     }
 }
 
-pub(crate) fn search_lib_obj<U, T>(ctx: &Context, msg: Message, search: &str, lib: T)
+pub(crate) fn search_lib_obj<U, T>(ctx: &Context, msg: &Message, search: &str, lib: T)
     where
     U: Library,
     T: Deref<Target=U>

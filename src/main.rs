@@ -37,7 +37,7 @@ mod dice;
 mod library;
 mod warframe;
 
-type BotCommand = fn(Context, Message, &[&str]) -> ();
+type BotCommand = fn(Context, &Message, &[&str]) -> ();
 
 lazy_static! {
 
@@ -94,7 +94,7 @@ impl EventHandler for Handler {
     // Event handlers are dispatched through a threadpool, and so multiple
     // events can be dispatched simultaneously.
     fn message(&self, ctx: Context, msg: Message) {
-        let msg_content_clone;
+        //let msg_content_clone;
         let mut args: Vec<&str>;
         let new_first;
 
@@ -104,8 +104,8 @@ impl EventHandler for Handler {
             if !msg.content.starts_with(&config.cmd_prefix) {
                 return;
             }
-            msg_content_clone = msg.content.clone();
-            args = msg_content_clone.split(" ").collect();
+            //msg_content_clone = msg.content.clone();
+            args = msg.content.split(" ").collect();
             new_first = args[0].replacen(&config.cmd_prefix, "", 1);
             args[0] = new_first.as_str();
         }
@@ -113,8 +113,8 @@ impl EventHandler for Handler {
         //get the command from a jump table
         let cmd_res = COMMANDS.get(&args[0].to_lowercase());
         match cmd_res {
-            Some(cmd) => cmd(ctx, msg, &args),
-            None => search_full_library(ctx, msg, &args),
+            Some(cmd) => cmd(ctx, &msg, &args),
+            None => search_full_library(ctx, &msg, &args),
         }
     }
 
@@ -151,19 +151,19 @@ impl EventHandler for Handler {
     }
 }
 
-fn manager(ctx: Context, msg: Message, _: &[&str]) {
+fn manager(ctx: Context, msg: &Message, _: &[&str]) {
     let data = ctx.data.read();
     let config = data.get::<BotData>().expect("could not get config");
     say!(ctx, msg, &config.manager);
 }
 
-fn send_handbook(ctx: Context, msg: Message, _: &[&str]) {
+fn send_handbook(ctx: Context, msg: &Message, _: &[&str]) {
     let data = ctx.data.read();
     let config = data.get::<BotData>().expect("could not get config");
     say!(ctx, msg, &config.phb);
 }
 
-fn check_exit(ctx: Context, msg: Message, _: &[&str]) {
+fn check_exit(ctx: Context, msg: &Message, _: &[&str]) {
     let data = ctx.data.read();
     let config = data.get::<BotData>().expect("config not found");
 
@@ -174,7 +174,7 @@ fn check_exit(ctx: Context, msg: Message, _: &[&str]) {
     }
 }
 
-fn reload(ctx: Context, msg: Message, _: &[&str]) {
+fn reload(ctx: Context, msg: &Message, _: &[&str]) {
     let data = ctx.data.read();
     let config = data.get::<BotData>().expect("could not get config");
     if msg.author.id != config.owner && !config.admins.contains(msg.author.id.as_u64()) {
@@ -258,7 +258,7 @@ fn reload(ctx: Context, msg: Message, _: &[&str]) {
     say!(ctx, msg, str_to_send);
 }
 
-fn send_help(ctx: Context, msg: Message, _: &[&str]) {
+fn send_help(ctx: Context, msg: &Message, _: &[&str]) {
     let res = msg.author.dm(ctx, |m| {
         m.content(format!("```{}```", *HELP));
         return m;
@@ -268,7 +268,7 @@ fn send_help(ctx: Context, msg: Message, _: &[&str]) {
     }
 }
 
-fn about_bot(ctx: Context, msg: Message, _: &[&str]) {
+fn about_bot(ctx: Context, msg: &Message, _: &[&str]) {
     let res = msg.author.dm(ctx, |m| {
         m.content(format!("```{}```", *ABOUT));
         return m;

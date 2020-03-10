@@ -156,7 +156,7 @@ impl TypeMapKey for ChipLibrary {
     type Value = RwLock<ChipLibrary>;
 }
 
-pub(crate) fn send_chip(ctx: Context, msg: Message, args: &[&str]) {
+pub(crate) fn send_chip(ctx: Context, msg: &Message, args: &[&str]) {
     let to_get;
     if args.len() < 2 {
         to_get = args[0];
@@ -173,7 +173,7 @@ pub(crate) fn send_chip(ctx: Context, msg: Message, args: &[&str]) {
     search_lib_obj(&ctx, msg, to_get, library);
 }
 
-pub(crate) fn send_chip_skill(ctx: Context, msg: Message, args: &[&str]) {
+pub(crate) fn send_chip_skill(ctx: Context, msg: &Message, args: &[&str]) {
     if args.len() < 2 {
         say!(ctx, msg, "you must provide a skill");
         return;
@@ -198,7 +198,7 @@ pub(crate) fn send_chip_skill(ctx: Context, msg: Message, args: &[&str]) {
     }
 }
 
-pub(crate) fn send_chip_element(ctx: Context, msg: Message, args: &[&str]) {
+pub(crate) fn send_chip_element(ctx: Context, msg: &Message, args: &[&str]) {
     if args.len() < 2 {
         say!(ctx, msg, "you must provide an element");
         return;

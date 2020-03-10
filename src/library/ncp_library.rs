@@ -157,7 +157,7 @@ impl TypeMapKey for NCPLibrary {
     type Value = RwLock<NCPLibrary>;
 }
 
-pub(crate) fn send_ncp(ctx: Context, msg: Message, args: &[&str]) {
+pub(crate) fn send_ncp(ctx: Context, msg: &Message, args: &[&str]) {
     if args.len() < 2 {
         say!(ctx, msg, "you must provide a name");
         return;
@@ -170,7 +170,7 @@ pub(crate) fn send_ncp(ctx: Context, msg: Message, args: &[&str]) {
     search_lib_obj(&ctx, msg, args[1], library);
 }
 
-pub(crate) fn send_ncp_color(ctx: Context, msg: Message, args: &[&str]) {
+pub(crate) fn send_ncp_color(ctx: Context, msg: &Message, args: &[&str]) {
     if args.len() < 2 {
         say!(ctx, msg, "you must provide a name");
         return;

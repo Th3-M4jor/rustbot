@@ -68,7 +68,7 @@ impl DieRoll {
     }
 }
 
-pub(crate) fn roll(ctx: Context, msg: Message, args: &[&str]) {
+pub(crate) fn roll(ctx: Context, msg: &Message, args: &[&str]) {
     if args.len() < 2 {
         say!(
             ctx,
@@ -110,7 +110,7 @@ pub(crate) fn roll(ctx: Context, msg: Message, args: &[&str]) {
     say!(ctx, msg, reply);
 }
 
-pub(crate) fn roll_stats(ctx: Context, msg: Message, _: &[&str]) {
+pub(crate) fn roll_stats(ctx: Context, msg: &Message, _: &[&str]) {
     let mut stats: [i64; 6] = [0; 6];
     let mut rolls: Vec<i64> = vec![];
     for i in &mut stats {

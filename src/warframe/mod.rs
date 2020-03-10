@@ -135,7 +135,7 @@ impl WarframeData {
     }
 }
 
-pub(crate) fn get_fissures(ctx: Context, msg: Message, _: &[&str]) {
+pub(crate) fn get_fissures(ctx: Context, msg: &Message, _: &[&str]) {
     let data = ctx.data.read();
     let warframe_dat = data.get::<WarframeData>().expect("no warframe data found");
 
@@ -149,7 +149,7 @@ pub(crate) fn get_fissures(ctx: Context, msg: Message, _: &[&str]) {
     }
 }
 
-pub(crate) fn get_sortie(ctx: Context, msg: Message, _: &[&str]) {
+pub(crate) fn get_sortie(ctx: Context, msg: &Message, _: &[&str]) {
     let data = ctx.data.read();
     let warframe_dat = data.get::<WarframeData>().expect("no warframe data found");
 

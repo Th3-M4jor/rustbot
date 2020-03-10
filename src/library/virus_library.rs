@@ -334,7 +334,7 @@ impl VirusLibrary {
 }
 
 
-pub(crate) fn send_virus(ctx: Context, msg: Message, args: &[&str]) {
+pub(crate) fn send_virus(ctx: Context, msg: &Message, args: &[&str]) {
     if args.len() < 2 {
         say!(ctx, msg, "you must provide a name");
         return;
@@ -350,7 +350,7 @@ pub(crate) fn send_virus(ctx: Context, msg: Message, args: &[&str]) {
     search_lib_obj(&ctx, msg, &to_search, library);
 }
 
-pub(crate) fn send_virus_element(ctx: Context, msg: Message, args: &[&str]) {
+pub(crate) fn send_virus_element(ctx: Context, msg: &Message, args: &[&str]) {
     if args.len() < 2 {
         say!(ctx, msg, "you must provide an element");
         return;
@@ -373,7 +373,7 @@ pub(crate) fn send_virus_element(ctx: Context, msg: Message, args: &[&str]) {
     }
 }
 
-pub(crate) fn send_virus_cr(ctx: Context, msg: Message, args: &[&str]) {
+pub(crate) fn send_virus_cr(ctx: Context, msg: &Message, args: &[&str]) {
     if args.len() < 2 {
         say!(ctx, msg, "you must provide a CR to search for");
         return;
@@ -397,7 +397,7 @@ pub(crate) fn send_virus_cr(ctx: Context, msg: Message, args: &[&str]) {
     }
 }
 
-pub(crate) fn send_random_encounter(ctx: Context, msg: Message, args: &[&str]) {
+pub(crate) fn send_random_encounter(ctx: Context, msg: &Message, args: &[&str]) {
     if args.len() < 3 {
         say!(
             ctx,
@@ -468,7 +468,7 @@ pub(crate) fn send_random_encounter(ctx: Context, msg: Message, args: &[&str]) {
     long_say!(ctx, msg, to_send, ", ");
 }
 
-pub(crate) fn send_family(ctx: Context, msg: Message, args: &[&str]) {
+pub(crate) fn send_family(ctx: Context, msg: &Message, args: &[&str]) {
     if args.len() < 2 {
         say!(ctx, msg, "you must provide a name");
         return;

@@ -65,7 +65,7 @@ pub(crate) fn build_time_rem(now: i64, end: i64) -> String {
     };
 }
 
-pub(crate) fn log(ctx: Context, msg: Message, _ : &[&str]) {
+pub(crate) fn log(ctx: Context, msg: &Message, _ : &[&str]) {
     let data = ctx.data.read();
     let config = data.get::<BotData>().expect("config not found");
 

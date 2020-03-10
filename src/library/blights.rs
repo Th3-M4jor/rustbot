@@ -30,7 +30,7 @@ impl TypeMapKey for Blights {
     type Value = RwLock<Blights>;
 }
 
-pub(crate) fn get_blight(ctx: Context, msg: Message, args: &[&str]) {
+pub(crate) fn get_blight(ctx: Context, msg: &Message, args: &[&str]) {
     if args.len() < 2 {
         say!(ctx, msg, "you must provide an element");
         return;
