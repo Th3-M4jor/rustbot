@@ -1,4 +1,8 @@
 use serenity::{model::channel::Message, prelude::*};
+use serenity::framework::standard::{
+    Args, CommandResult,
+    macros::command,
+};
 use crate::bot_data::BotData;
 use std::fs;
 
@@ -65,12 +69,14 @@ pub(crate) fn build_time_rem(now: i64, end: i64) -> String {
     };
 }
 
-pub(crate) fn log(ctx: Context, msg: &Message, _ : &[&str]) {
+
+#[command]
+pub(crate) fn audit(ctx: &mut Context, msg: &Message, _ : Args) -> CommandResult {
     let data = ctx.data.read();
     let config = data.get::<BotData>().expect("config not found");
 
     if msg.author.id != config.owner {
-        return;
+        return Ok(());
     }
 
     let res = fs::read_to_string("./nohup.out");
@@ -86,5 +92,6 @@ pub(crate) fn log(ctx: Context, msg: &Message, _ : &[&str]) {
             say!(ctx, msg, format!("unable to get log, {}", err.to_string()));
         },
     }
+    return Ok(());
 
 }

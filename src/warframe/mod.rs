@@ -1,6 +1,10 @@
 use crate::util::*;
 use chrono::prelude::*;
 use serenity::{model::channel::Message, prelude::*};
+use serenity::framework::standard::{
+    Args, CommandResult,
+    macros::command,
+};
 use std::sync::RwLock;
 use std::sync::Arc;
 
@@ -135,7 +139,9 @@ impl WarframeData {
     }
 }
 
-pub(crate) fn get_fissures(ctx: Context, msg: &Message, _: &[&str]) {
+#[command]
+#[aliases("fissures")]
+pub(crate) fn get_fissures(ctx: &mut Context, msg: &Message, _: Args) -> CommandResult {
     let data = ctx.data.read();
     let warframe_dat = data.get::<WarframeData>().expect("no warframe data found");
 
@@ -147,9 +153,12 @@ pub(crate) fn get_fissures(ctx: Context, msg: &Message, _: &[&str]) {
             "could not build fissures message, inform the owner"
         ),
     }
+    return Ok(());
 }
 
-pub(crate) fn get_sortie(ctx: Context, msg: &Message, _: &[&str]) {
+#[command]
+#[aliases("sortie")]
+pub(crate) fn get_sortie(ctx: &mut Context, msg: &Message, _: Args) -> CommandResult {
     let data = ctx.data.read();
     let warframe_dat = data.get::<WarframeData>().expect("no warframe data found");
 
@@ -157,6 +166,7 @@ pub(crate) fn get_sortie(ctx: Context, msg: &Message, _: &[&str]) {
         Some(val) => say!(ctx, msg, &val),
         None => say!(ctx, msg, "could not build sortie message, inform the owner"),
     }
+    return Ok(());
 }
 
 impl TypeMapKey for WarframeData {

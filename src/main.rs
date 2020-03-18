@@ -1,31 +1,29 @@
 #[macro_use]
 extern crate lazy_static;
 
-use std::collections::HashMap;
 use std::process::exit;
-use std::sync::RwLock;
-use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
+use std::sync::RwLock;
 
 use serenity::{
+    framework::standard::{
+        Args, CommandResult,
+        macros::{command, group},
+        StandardFramework,
+    },
     model::{channel::Message, gateway::Ready},
     prelude::*,
 };
 
 use crate::bot_data::BotData;
 use crate::library::{
-    Library,
-    chip_library::*,
-    ncp_library::*,
-    virus_library::*,
-    full_library::*,
-    blights::*,
+    blights::*, chip_library::*, full_library::*, ncp_library::*, virus_library::*, Library,
 };
-use crate::warframe::{get_fissures, get_sortie, market::get_market_info, WarframeData};
+use crate::warframe::{*, market::*};
 
 use crate::dice::{roll, roll_stats};
-use crate::library::chip_library::send_chip;
-use crate::util::{send_long_message, log as audit_log};
+use crate::util::*;
 use serenity::model::gateway::Activity;
 use std::fs;
 
@@ -37,10 +35,11 @@ mod dice;
 mod library;
 mod warframe;
 
-type BotCommand = fn(Context, &Message, &[&str]) -> ();
+//type BotCommand = fn(Context, &Message, &[&str]) -> ();
 
 lazy_static! {
 
+    /*
     static ref COMMANDS: HashMap<String, BotCommand> = {
         let mut cmd_map = HashMap::new();
 
@@ -82,10 +81,11 @@ lazy_static! {
         cmd_map.insert("market".to_string(), get_market_info);
         return cmd_map;
     };
+    */
 
-    static ref HELP: String = fs::read_to_string("./help.txt").unwrap_or("help text is missing, bug the owner".to_string());
+    static ref HELP_STRING: String = fs::read_to_string("./help.txt").unwrap_or("help text is missing, bug the owner".to_string());
 
-    static ref ABOUT: String = fs::read_to_string("./about.txt").unwrap_or("about text is missing, bug the owner".to_string());
+    static ref ABOUT_BOT: String = fs::read_to_string("./about.txt").unwrap_or("about text is missing, bug the owner".to_string());
 }
 
 struct Handler;
@@ -93,6 +93,7 @@ struct Handler;
 impl EventHandler for Handler {
     // Event handlers are dispatched through a threadpool, and so multiple
     // events can be dispatched simultaneously.
+    /*
     fn message(&self, ctx: Context, msg: Message) {
         //let msg_content_clone;
         let mut args: Vec<&str>;
@@ -117,6 +118,7 @@ impl EventHandler for Handler {
             None => search_full_library(ctx, &msg, &args),
         }
     }
+    */
 
     fn ready(&self, ctx: Context, ready: Ready) {
         lazy_static! {
@@ -151,19 +153,45 @@ impl EventHandler for Handler {
     }
 }
 
-fn manager(ctx: Context, msg: &Message, _: &[&str]) {
+#[group]
+#[commands(manager, phb, die, reload, audit, send_help)]
+struct General;
+
+#[group]
+#[commands(get_sortie, get_fissures, market)]
+struct Warframe;
+
+
+#[group]
+#[commands(send_chip, send_chip_skill, send_chip_element)]
+struct BnbChips;
+/*
+#[group]
+#[commands()]
+struct Bnb_viruses;
+
+#[group]
+#[commands()]
+struct Bnb_ncps;
+*/
+#[command]
+fn manager(ctx: &mut Context, msg: &Message, _: Args) -> CommandResult {
     let data = ctx.data.read();
     let config = data.get::<BotData>().expect("could not get config");
     say!(ctx, msg, &config.manager);
+    Ok(())
 }
 
-fn send_handbook(ctx: Context, msg: &Message, _: &[&str]) {
+#[command]
+fn phb(ctx: &mut Context, msg: &Message, _: Args) -> CommandResult {
     let data = ctx.data.read();
     let config = data.get::<BotData>().expect("could not get config");
     say!(ctx, msg, &config.phb);
+    Ok(())
 }
 
-fn check_exit(ctx: Context, msg: &Message, _: &[&str]) {
+#[command]
+fn die(ctx: &mut Context, msg: &Message, _: Args) -> CommandResult {
     let data = ctx.data.read();
     let config = data.get::<BotData>().expect("config not found");
 
@@ -172,26 +200,30 @@ fn check_exit(ctx: Context, msg: &Message, _: &[&str]) {
         ctx.shard.shutdown_clean();
         exit(0);
     }
+    Ok(())
 }
 
-fn reload(ctx: Context, msg: &Message, _: &[&str]) {
+#[command]
+fn reload(ctx: &mut Context, msg: &Message, _: Args) -> CommandResult {
     let data = ctx.data.read();
     let config = data.get::<BotData>().expect("could not get config");
     if msg.author.id != config.owner && !config.admins.contains(msg.author.id.as_u64()) {
-        return;
+        return Ok(());
     }
 
     if let Err(_) = msg.channel_id.broadcast_typing(&ctx.http) {
         println!("could not broadcast typing, not reloading");
-        return;
+        return Ok(());
     }
 
     let mut str_to_send;
     {
         let full_library_lock = data.get::<FullLibrary>().expect("full library not found");
-        let mut full_library = full_library_lock.write().expect("full library poisoned, panicking");
+        let mut full_library = full_library_lock
+            .write()
+            .expect("full library poisoned, panicking");
         full_library.clear();
-        let mut full_duplicates : Vec<String> = vec![];
+        let mut full_duplicates: Vec<String> = vec![];
         {
             let chip_library_lock = data.get::<ChipLibrary>().expect("chip library not found");
             let mut chip_library = chip_library_lock
@@ -206,7 +238,7 @@ fn reload(ctx: Context, msg: &Message, _: &[&str]) {
             for val in chip_library.get_collection().values() {
                 let obj = FullLibraryType::BattleChip(Arc::clone(val));
                 if let Err(e) = full_library.insert(obj) {
-                   full_duplicates.push(e.to_string());
+                    full_duplicates.push(e.to_string());
                 }
             }
         }
@@ -217,7 +249,6 @@ fn reload(ctx: Context, msg: &Message, _: &[&str]) {
                 Ok(()) => str_to_send.push_str("blights reloaded successfully\n"),
                 Err(e) => str_to_send.push_str(&format!("{}\n", e.to_string())),
             }
-
         }
         {
             let ncp_library_lock = data.get::<NCPLibrary>().expect("ncp library not found");
@@ -256,26 +287,34 @@ fn reload(ctx: Context, msg: &Message, _: &[&str]) {
         }
     }
     say!(ctx, msg, str_to_send);
+    return Ok(());
 }
 
-fn send_help(ctx: Context, msg: &Message, _: &[&str]) {
+
+#[command]
+#[aliases("help")]
+fn send_help(ctx: &mut Context, msg: &Message, _: Args) -> CommandResult {
     let res = msg.author.dm(ctx, |m| {
-        m.content(format!("```{}```", *HELP));
+        m.content(format!("```{}```", *HELP_STRING));
         return m;
     });
     if res.is_err() {
         println!("Could not send help message: {:?}", res.unwrap_err());
     }
+    return Ok(());
 }
 
-fn about_bot(ctx: Context, msg: &Message, _: &[&str]) {
+#[command]
+#[aliases("about")]
+fn about_bot(ctx: &mut Context, msg: &Message, _: Args) -> CommandResult {
     let res = msg.author.dm(ctx, |m| {
-        m.content(format!("```{}```", *ABOUT));
+        m.content(format!("```{}```", *ABOUT_BOT));
         return m;
     });
     if res.is_err() {
         println!("Could not send help message: {:?}", res.unwrap_err());
     }
+    return Ok(());
 }
 
 fn main() {
@@ -338,7 +377,7 @@ fn main() {
     }
 
     let config = BotData::new();
-
+    let prefix = config.cmd_prefix.clone();
     let mut client = Client::new(&config.token, Handler).expect("Err creating client");
     // set scope to ensure that lock is released immediately
     {
@@ -355,6 +394,28 @@ fn main() {
     //
     // Shards will automatically attempt to reconnect, and will perform
     // exponential backoff until it reconnects.
+    client.with_framework(
+        StandardFramework::new()
+            .configure(move |c| c.with_whitespace(true).prefix(&prefix).case_insensitivity(true))
+            .unrecognised_command(|ctx, msg, _| {
+                let mut args: Vec<&str>;
+                let new_first;
+
+                {
+                    let data = ctx.data.read();
+                    let config = data.get::<BotData>().expect("no config found");
+                    if !msg.content.starts_with(&config.cmd_prefix) {
+                        return;
+                    }
+                    //msg_content_clone = msg.content.clone();
+                    args = msg.content.split(" ").collect();
+                    new_first = args[0].replacen(&config.cmd_prefix, "", 1);
+                    args[0] = new_first.as_str();
+                }
+
+                search_full_library(ctx, &msg, &args);
+            }).group(&GENERAL_GROUP).group(&WARFRAME_GROUP).group(&BNBCHIPS_GROUP),
+    );
     if let Err(why) = client.start() {
         println!("Client error: {:?}", why);
     }

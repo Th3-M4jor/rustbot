@@ -7,8 +7,9 @@ use rand::distributions::{Distribution, Uniform};
 use rand::rngs::ThreadRng;
 
 use serenity::{model::channel::Message, prelude::*};
+use serenity::framework::standard::{macros::command, Args, CommandResult};
 
-use serde::{Serialize};
+use serde::Serialize;
 
 #[cfg(not(debug_assertions))]
 use serde_json;
@@ -334,13 +335,15 @@ impl VirusLibrary {
 }
 
 
-pub(crate) fn send_virus(ctx: Context, msg: &Message, args: &[&str]) {
-    if args.len() < 2 {
+
+#[command]
+#[aliases("virus")]
+pub(crate) fn send_virus(ctx: &mut Context, msg: &Message, args: Args) -> CommandResult {
+    if args.len() < 1 {
         say!(ctx, msg, "you must provide a name");
-        return;
+        return Ok(());
     }
-    let to_join = &args[1..];
-    let to_search = to_join.join(" ");
+    let to_search = args.rest();
     let data = ctx.data.read();
     let library_lock =
         data.get::<VirusLibrary>().expect("Virus library not found");
@@ -348,12 +351,15 @@ pub(crate) fn send_virus(ctx: Context, msg: &Message, args: &[&str]) {
         .read()
         .expect("library was poisoned, panicking");
     search_lib_obj(&ctx, msg, &to_search, library);
+    return Ok(());
 }
 
-pub(crate) fn send_virus_element(ctx: Context, msg: &Message, args: &[&str]) {
-    if args.len() < 2 {
+#[command]
+#[aliases("viruselement")]
+pub(crate) fn send_virus_element(ctx: &mut Context, msg: &Message, args: Args) -> CommandResult {
+    if args.len() < 1 {
         say!(ctx, msg, "you must provide an element");
-        return;
+        return Ok(());
     }
 
     let data = ctx.data.read();
@@ -362,7 +368,7 @@ pub(crate) fn send_virus_element(ctx: Context, msg: &Message, args: &[&str]) {
     let library = library_lock
         .read()
         .expect("Virus library poisoned, panicking");
-    let elem_res = library.search_element(args[1]);
+    let elem_res = library.search_element(args.current().unwrap());
     match elem_res {
         Some(elem) => long_say!(ctx, msg, elem, ", "),
         None => say!(
@@ -371,7 +377,9 @@ pub(crate) fn send_virus_element(ctx: Context, msg: &Message, args: &[&str]) {
             "nothing matched your search, are you sure you gave an element?"
         ),
     }
+    return Ok(());
 }
+
 
 pub(crate) fn send_virus_cr(ctx: Context, msg: &Message, args: &[&str]) {
     if args.len() < 2 {

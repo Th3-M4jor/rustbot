@@ -1,10 +1,11 @@
-use std::collections::HashMap;
-use std::sync::RwLock;
-use std::sync::Arc;
-use serenity::{model::channel::Message, prelude::*};
-
 #[cfg(not(debug_assertions))]
 use serde_json;
+use serenity::framework::standard::{macros::command, Args, CommandResult};
+use serenity::{model::channel::Message, prelude::*};
+use std::collections::HashMap;
+use std::sync::Arc;
+use std::sync::RwLock;
+use super::super::bot_data::BotData;
 
 use simple_error::SimpleError;
 
@@ -49,7 +50,8 @@ impl ChipLibrary {
             .text()
             .expect("no response text")
             .replace("â€™", "'")
-            .replace("\u{FEFF}", "");
+            .replace("\u{FEFF}", "")
+            .replace("\r", "");
         let mut chip_text_arr: Vec<&str> = chip_text
             .split("\n")
             .filter(|&i| !i.trim().is_empty())
@@ -156,13 +158,14 @@ impl TypeMapKey for ChipLibrary {
     type Value = RwLock<ChipLibrary>;
 }
 
-pub(crate) fn send_chip(ctx: Context, msg: &Message, args: &[&str]) {
-    let to_get;
-    if args.len() < 2 {
-        to_get = args[0];
-    } else {
-        to_get = args[1];
-    }
+#[command]
+#[aliases("chip")]
+pub(crate) fn send_chip(ctx: &mut Context, msg: &Message, args: Args) -> CommandResult {
+    if args.len() == 0 {
+        return Ok(());
+    };
+
+    let to_get = args.current().unwrap();
     let data = ctx.data.read();
     let library_lock = data.get::<ChipLibrary>().expect("chip library not found");
     let library = library_lock
@@ -170,13 +173,28 @@ pub(crate) fn send_chip(ctx: Context, msg: &Message, args: &[&str]) {
         .expect("library was poisoned, panicking");
     //let library = locked_library.read().expect("library was poisoned");
     //search!(ctx, msg, to_get, library);
-    search_lib_obj(&ctx, msg, to_get, library);
+    search_lib_obj(ctx, msg, to_get, library);
+    return Ok(());
 }
 
-pub(crate) fn send_chip_skill(ctx: Context, msg: &Message, args: &[&str]) {
-    if args.len() < 2 {
+#[command]
+#[aliases("skill","skilluser","skillcheck","skilltarget")]
+pub(crate) fn send_chip_skill(ctx: &mut Context, msg: &Message, _: Args) -> CommandResult {
+    let mut args: Vec<&str>;
+    let new_first;
+
+    {
+        let data = ctx.data.read();
+        let config = data.get::<BotData>().expect("no config found");
+        //msg_content_clone = msg.content.clone();
+        args = msg.content.split(" ").collect();
+        new_first = args[0].replacen(&config.cmd_prefix, "", 1);
+        args[0] = new_first.as_str();
+    }
+
+    if args.len() < 1 {
         say!(ctx, msg, "you must provide a skill");
-        return;
+        return Ok(());
     }
     let data = ctx.data.read();
     let library_lock = data.get::<ChipLibrary>().expect("chip library not found");
@@ -189,6 +207,7 @@ pub(crate) fn send_chip_skill(ctx: Context, msg: &Message, args: &[&str]) {
         "skilluser" => skill_res = library.search_skill_user(args[1]),
         "skilltarget" => skill_res = library.search_skill_target(args[1]),
         "skillcheck" => skill_res = library.search_skill_check(args[1]),
+        "send_chip_skill" => skill_res = library.search_skill(args[1]),
         _ => unreachable!(),
     }
 
@@ -196,19 +215,22 @@ pub(crate) fn send_chip_skill(ctx: Context, msg: &Message, args: &[&str]) {
         Some(skills) => long_say!(ctx, msg, skills, ", "),
         None => say!(ctx, msg, "nothing matched your search"),
     }
+    return Ok(());
 }
 
-pub(crate) fn send_chip_element(ctx: Context, msg: &Message, args: &[&str]) {
-    if args.len() < 2 {
+#[command]
+#[aliases("element")]
+pub(crate) fn send_chip_element(ctx: &mut Context, msg: &Message, args: Args) -> CommandResult {
+    if args.len() < 1 {
         say!(ctx, msg, "you must provide an element");
-        return;
+        return Ok(());
     }
     let data = ctx.data.read();
     let library_lock = data.get::<ChipLibrary>().expect("chip library not found");
     let library = library_lock
         .read()
         .expect("chip library poisoned, panicking");
-    let elem_res = library.search_element(args[1]);
+    let elem_res = library.search_element(args.rest());
 
     match elem_res {
         Some(elem) => long_say!(ctx, msg, elem, ", "),
@@ -217,13 +239,7 @@ pub(crate) fn send_chip_element(ctx: Context, msg: &Message, args: &[&str]) {
             msg,
             "nothing matched your search, are you sure you gave an element?"
         ),
+        
     }
-
-    /*
-    if elem_res.is_some() {
-        if let Err(why) = send_long_message(&ctx, &msg, &elem_res.unwrap()) {
-            println!("Could not send message: {:?}", why);
-        }
-    }
-    */
+    return Ok(());
 }

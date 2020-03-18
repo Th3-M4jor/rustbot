@@ -1,4 +1,8 @@
 use serenity::{model::channel::Message, prelude::*};
+use serenity::framework::standard::{
+    Args, CommandResult,
+    macros::command,
+};
 
 use serde_json::Value;
 use simple_error::SimpleError;
@@ -39,20 +43,26 @@ fn make_request(name: &str) -> Result<Vec<String>, Box<dyn std::error::Error>> {
     return Ok(to_ret);
 }
 
-pub(crate) fn get_market_info(ctx: Context, msg: &Message, args: &[&str]) {
-    if args.len() < 2 {
-        say!(
-            ctx,
-            msg,
-            "you must provide an item to search the market for"
-        );
-        return;
+#[command]
+pub(crate) fn market(ctx: &mut Context, msg: &Message, args: Args) -> CommandResult {
+
+    let new_args_res = args.remains();
+    let new_args: Vec<&str>;
+    match new_args_res {
+        Some(val) => new_args = val.split(' ').collect(),
+        None => {
+            say!(
+                ctx,
+                msg,
+                "you must provide an item to search the market for"
+            );
+            return Ok(());
+        }
     }
 
-    let last_word = args[args.len() - 1].to_lowercase();
+    let last_word = new_args[new_args.len() - 1].to_lowercase();
 
-    let to_join = &args[1..];
-    let mut to_search: String = to_join.join("_").to_lowercase();
+    let mut to_search: String = new_args.join("_").to_lowercase();
 
     if last_word == "prime" {
         to_search.push_str("_set");
@@ -69,4 +79,5 @@ pub(crate) fn get_market_info(ctx: Context, msg: &Message, args: &[&str]) {
             )
         ),
     }
+    return Ok(());
 }
