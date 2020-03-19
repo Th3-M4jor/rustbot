@@ -4,13 +4,13 @@ extern crate lazy_static;
 use std::process::exit;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
-use std::sync::RwLock;
+use tokio::sync::RwLock;
 
 use serenity::{
+    async_trait,
     framework::standard::{
-        Args, CommandResult,
-        macros::{command, group},
-        StandardFramework,
+        macros::{command, group, hook},
+        Args, CommandResult, StandardFramework,
     },
     model::{channel::Message, gateway::Ready},
     prelude::*,
@@ -20,7 +20,7 @@ use crate::bot_data::BotData;
 use crate::library::{
     blights::*, chip_library::*, full_library::*, ncp_library::*, virus_library::*, Library,
 };
-use crate::warframe::{*, market::*};
+use crate::warframe::{market::*, *};
 
 use crate::dice::*;
 use crate::util::*;
@@ -90,6 +90,7 @@ lazy_static! {
 
 struct Handler;
 
+#[async_trait]
 impl EventHandler for Handler {
     // Event handlers are dispatched through a threadpool, and so multiple
     // events can be dispatched simultaneously.
@@ -120,17 +121,19 @@ impl EventHandler for Handler {
     }
     */
 
-    fn ready(&self, ctx: Context, ready: Ready) {
+    async fn ready(&self, ctx: Context, ready: Ready) {
         lazy_static! {
             static ref FIRST_LOGIN: AtomicBool = AtomicBool::new(true);
         }
-        let data = ctx.data.read();
+        let data = ctx.data.read().await;
         let config = data.get::<BotData>().expect("no bot data, panicking");
 
         let guild = serenity::model::guild::Guild::get(&ctx, config.main_server)
+            .await
             .expect("could not find main server");
         let owner = guild
             .member(&ctx, config.owner)
+            .await
             .expect("could not grab owner");
         let message_to_owner;
         if FIRST_LOGIN.load(Ordering::Relaxed) {
@@ -141,21 +144,25 @@ impl EventHandler for Handler {
             message_to_owner = "an error occurred, reconnected and ready";
             println!("{:?}", ready.trace);
         }
-        let owner_user = owner.user.read();
+        let owner_user = owner.user.read().await;
         owner_user
             .dm(&ctx, |m| {
                 m.content(message_to_owner);
                 return m;
             })
+            .await
             .expect("could not dm owner");
         let action = config.cmd_prefix.clone() + "help for a list of commands";
-        ctx.set_activity(Activity::playing(&action));
+        ctx.set_activity(Activity::playing(&action)).await;
     }
 }
 
 #[group]
-#[commands(manager, phb, die, reload, audit, send_help, get_blight, roll, roll_stats)]
+#[commands(
+    manager, phb, die, reload, audit, send_help, get_blight, roll, roll_stats
+)]
 struct General;
+
 
 #[group]
 #[commands(get_sortie, get_fissures, market)]
@@ -176,43 +183,42 @@ struct BnbViruses;
 struct BnbNcps;
 
 #[command]
-fn manager(ctx: &mut Context, msg: &Message, _: Args) -> CommandResult {
-    let data = ctx.data.read();
+async fn manager(ctx: &mut Context, msg: &Message, _: Args) -> CommandResult {
+    let data = ctx.data.read().await;
     let config = data.get::<BotData>().expect("could not get config");
     say!(ctx, msg, &config.manager);
-    Ok(())
+    return Ok(());
 }
 
 #[command]
-fn phb(ctx: &mut Context, msg: &Message, _: Args) -> CommandResult {
-    let data = ctx.data.read();
+async fn phb(ctx: &mut Context, msg: &Message, _: Args) -> CommandResult {
+    let data = ctx.data.read().await;
     let config = data.get::<BotData>().expect("could not get config");
     say!(ctx, msg, &config.phb);
-    Ok(())
+    return Ok(());
 }
 
 #[command]
-fn die(ctx: &mut Context, msg: &Message, _: Args) -> CommandResult {
-    let data = ctx.data.read();
+async fn die(ctx: &mut Context, msg: &Message, _: Args) -> CommandResult {
+    let data = ctx.data.read().await;
     let config = data.get::<BotData>().expect("config not found");
 
     if msg.author.id == config.owner {
-        ctx.invisible();
-        ctx.shard.shutdown_clean();
+        ctx.invisible().await;
         exit(0);
     }
-    Ok(())
+    return Ok(());
 }
 
 #[command]
-fn reload(ctx: &mut Context, msg: &Message, _: Args) -> CommandResult {
-    let data = ctx.data.read();
+async fn reload(ctx: &mut Context, msg: &Message, _: Args) -> CommandResult {
+    let data = ctx.data.read().await;
     let config = data.get::<BotData>().expect("could not get config");
     if msg.author.id != config.owner && !config.admins.contains(msg.author.id.as_u64()) {
         return Ok(());
     }
 
-    if let Err(_) = msg.channel_id.broadcast_typing(&ctx.http) {
+    if let Err(_) = msg.channel_id.broadcast_typing(&ctx.http).await {
         println!("could not broadcast typing, not reloading");
         return Ok(());
     }
@@ -221,18 +227,17 @@ fn reload(ctx: &mut Context, msg: &Message, _: Args) -> CommandResult {
     {
         let full_library_lock = data.get::<FullLibrary>().expect("full library not found");
         let mut full_library = full_library_lock
-            .write()
-            .expect("full library poisoned, panicking");
+            .write().await;
+            //.expect("full library poisoned, panicking");
         full_library.clear();
         let mut full_duplicates: Vec<String> = vec![];
         {
             let chip_library_lock = data.get::<ChipLibrary>().expect("chip library not found");
-            let mut chip_library = chip_library_lock
-                .write()
-                .expect("chip library was poisoned, panicking");
+            let mut chip_library = chip_library_lock.write().await;
+                //.expect("chip library was poisoned, panicking");
             let chip_reload_res = chip_library.load_chips();
             //let str_to_send;
-            match chip_reload_res {
+            match chip_reload_res.await {
                 Ok(s) => str_to_send = format!("{} chips loaded\n", s),
                 Err(e) => str_to_send = format!("{}\n", e.to_string()),
             }
@@ -245,18 +250,17 @@ fn reload(ctx: &mut Context, msg: &Message, _: Args) -> CommandResult {
         }
         {
             let blight_lock = data.get::<Blights>().expect("Blights not found");
-            let mut blights = blight_lock.write().expect("blights poisoned, panicking");
-            match blights.load() {
+            let mut blights = blight_lock.write().await;//.expect("blights poisoned, panicking");
+            match blights.load().await {
                 Ok(()) => str_to_send.push_str("blights reloaded successfully\n"),
                 Err(e) => str_to_send.push_str(&format!("{}\n", e.to_string())),
             }
         }
         {
             let ncp_library_lock = data.get::<NCPLibrary>().expect("ncp library not found");
-            let mut ncp_library = ncp_library_lock
-                .write()
-                .expect("chip library was poisoned, panicking");
-            let count = ncp_library.load_programs();
+            let mut ncp_library = ncp_library_lock.write().await;
+                //.expect("chip library was poisoned, panicking");
+            let count = ncp_library.load_programs().await;
             //say!(ctx, msg, format!("{} NCPs loaded", count));
             str_to_send.push_str(&format!("{} NCPs loaded\n", count));
             for val in ncp_library.get_collection().values() {
@@ -268,10 +272,9 @@ fn reload(ctx: &mut Context, msg: &Message, _: Args) -> CommandResult {
         }
         {
             let virus_library_lock = data.get::<VirusLibrary>().expect("virus library not found");
-            let mut virus_library = virus_library_lock
-                .write()
-                .expect("virus library was poisoned, panicking");
-            match virus_library.load_viruses() {
+            let mut virus_library = virus_library_lock.write().await;
+                //.expect("virus library was poisoned, panicking");
+            match virus_library.load_viruses().await {
                 Ok(s) => str_to_send.push_str(&format!("{} viruses were loaded\n", s)),
                 Err(e) => str_to_send.push_str(&format!("{}", e.to_string())),
             }
@@ -291,14 +294,16 @@ fn reload(ctx: &mut Context, msg: &Message, _: Args) -> CommandResult {
     return Ok(());
 }
 
-
 #[command]
 #[aliases("help")]
-fn send_help(ctx: &mut Context, msg: &Message, _: Args) -> CommandResult {
-    let res = msg.author.dm(ctx, |m| {
-        m.content(format!("```{}```", *HELP_STRING));
-        return m;
-    });
+async fn send_help(ctx: &mut Context, msg: &Message, _: Args) -> CommandResult {
+    let res = msg
+        .author
+        .dm(ctx, |m| {
+            m.content(format!("```{}```", *HELP_STRING));
+            return m;
+        })
+        .await;
     if res.is_err() {
         println!("Could not send help message: {:?}", res.unwrap_err());
     }
@@ -307,18 +312,42 @@ fn send_help(ctx: &mut Context, msg: &Message, _: Args) -> CommandResult {
 
 #[command]
 #[aliases("about")]
-fn about_bot(ctx: &mut Context, msg: &Message, _: Args) -> CommandResult {
-    let res = msg.author.dm(ctx, |m| {
-        m.content(format!("```{}```", *ABOUT_BOT));
-        return m;
-    });
+async fn about_bot(ctx: &mut Context, msg: &Message, _: Args) -> CommandResult {
+    let res = msg
+        .author
+        .dm(ctx, |m| {
+            m.content(format!("```{}```", *ABOUT_BOT));
+            return m;
+        })
+        .await;
     if res.is_err() {
         println!("Could not send help message: {:?}", res.unwrap_err());
     }
     return Ok(());
 }
 
-fn main() {
+#[hook]
+async fn default_command(ctx: &mut Context, msg: &Message, _: &str) {
+    let mut args: Vec<&str>;
+    let new_first;
+
+    {
+        let data = ctx.data.read().await;
+        let config = data.get::<BotData>().expect("no config found");
+        if !msg.content.starts_with(&config.cmd_prefix) {
+            return;
+        }
+        //msg_content_clone = msg.content.clone();
+        args = msg.content.split(" ").collect();
+        new_first = args[0].replacen(&config.cmd_prefix, "", 1);
+        args[0] = new_first.as_str();
+    }
+
+    search_full_library(ctx, msg, &args).await;
+}
+
+#[tokio::main]
+async fn main() {
     let chip_library_mutex = RwLock::new(ChipLibrary::new());
     let ncp_library_mutex = RwLock::new(NCPLibrary::new());
     let virus_library_mutex = RwLock::new(VirusLibrary::new());
@@ -328,8 +357,8 @@ fn main() {
     //let mut chip_library = ChipLibrary::new();
 
     {
-        let mut blights = blight_mutex.write().unwrap();
-        match blights.load() {
+        let mut blights = blight_mutex.write().await;
+        match blights.load().await {
             Ok(()) => {
                 println!("blights loaded");
             }
@@ -337,8 +366,8 @@ fn main() {
                 println!("{}", e.to_string());
             }
         }
-        let mut chip_library = chip_library_mutex.write().unwrap();
-        match chip_library.load_chips() {
+        let mut chip_library = chip_library_mutex.write().await;
+        match chip_library.load_chips().await {
             Ok(s) => {
                 println!("{} chips were loaded", s);
             }
@@ -346,16 +375,16 @@ fn main() {
                 println!("{}", e.to_string());
             }
         }
-        let mut ncp_library = ncp_library_mutex.write().unwrap();
-        let ncp_count = ncp_library.load_programs();
+        let mut ncp_library = ncp_library_mutex.write().await;
+        let ncp_count = ncp_library.load_programs().await;
         println!("{} programs loaded", ncp_count);
-        let mut virus_library = virus_library_mutex.write().unwrap();
-        match virus_library.load_viruses() {
+        let mut virus_library = virus_library_mutex.write().await;
+        match virus_library.load_viruses().await {
             Ok(s) => println!("{} viruses were loaded", s),
             Err(e) => println!("{}", e.to_string()),
         }
 
-        let mut full_library = full_library_mutex.write().unwrap();
+        let mut full_library = full_library_mutex.write().await;
         for val in chip_library.get_collection().values() {
             let obj = FullLibraryType::BattleChip(Arc::clone(val));
             if let Err(e) = full_library.insert(obj) {
@@ -379,10 +408,23 @@ fn main() {
 
     let config = BotData::new();
     let prefix = config.cmd_prefix.clone();
-    let mut client = Client::new(&config.token, Handler).expect("Err creating client");
+    let framework = StandardFramework::new()
+        .configure(move |c| {
+            c.with_whitespace(true)
+                .prefix(&prefix)
+                .case_insensitivity(true)
+        })
+        .unrecognised_command(default_command)
+        .group(&GENERAL_GROUP)
+        .group(&BNBCHIPS_GROUP)
+        .group(&BNBVIRUSES_GROUP)
+        .group(&WARFRAME_GROUP);
+    let mut client = Client::new_with_framework(&config.token, Handler, framework)
+        .await
+        .expect("Err creating client");
     // set scope to ensure that lock is released immediately
     {
-        let mut data = client.data.write();
+        let mut data = client.data.write().await;
         data.insert::<ChipLibrary>(chip_library_mutex);
         data.insert::<NCPLibrary>(ncp_library_mutex);
         data.insert::<VirusLibrary>(virus_library_mutex);
@@ -395,9 +437,21 @@ fn main() {
     //
     // Shards will automatically attempt to reconnect, and will perform
     // exponential backoff until it reconnects.
+
+    
+        //.group(&WARFRAME_GROUP)
+        //.group(&BNBCHIPS_GROUP)
+        //.group(&BNBVIRUSES_GROUP)
+        //.group(&BNBNCPS_GROUP);
+
+    /*
     client.with_framework(
         StandardFramework::new()
-            .configure(move |c| c.with_whitespace(true).prefix(&prefix).case_insensitivity(true))
+            .configure(move |c| {
+                c.with_whitespace(true)
+                    .prefix(&prefix)
+                    .case_insensitivity(true)
+            })
             .unrecognised_command(|ctx, msg, _| {
                 let mut args: Vec<&str>;
                 let new_first;
@@ -422,7 +476,8 @@ fn main() {
             .group(&BNBVIRUSES_GROUP)
             .group(&BNBNCPS_GROUP),
     );
-    if let Err(why) = client.start() {
+    */
+    if let Err(why) = client.start().await {
         println!("Client error: {:?}", why);
     }
 }

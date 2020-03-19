@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use std::sync::RwLock;
+use tokio::sync::RwLock;
 use std::sync::Arc;
 
 use serde::{Serialize};
@@ -9,7 +9,7 @@ use serenity::framework::standard::{macros::command, Args, CommandResult};
 #[cfg(not(debug_assertions))]
 use serde_json;
 #[cfg(not(debug_assertions))]
-use std::fs;
+use tokio::fs;
 
 use regex::Regex;
 
@@ -81,16 +81,16 @@ impl NCPLibrary {
         }
     }
 
-    pub fn load_programs(&mut self) -> usize {
+    pub async fn load_programs(&mut self) -> usize {
         lazy_static! {
             static ref NCP_TEST: Regex =
                 Regex::new(r"(.+)\s\((\d+)\sEB\)\s-\s(.+)").expect("Bad NCP regex");
         }
         self.library.clear();
         let mut ncp_list: Vec<Box<NCP>> = vec![];
-        let ncp_text = reqwest::blocking::get(NCP_URL)
+        let ncp_text = reqwest::get(NCP_URL).await
             .expect("no request result")
-            .text()
+            .text().await
             .expect("no response text")
             .replace("â€™", "'")
             .replace("\u{FEFF}", "")
@@ -137,7 +137,7 @@ impl NCPLibrary {
         #[cfg(not(debug_assertions))]
         {
             let j = serde_json::to_string_pretty(&ncp_list).expect("could not serialize to json");
-            fs::write("naviCust.json", j).expect("could not write to naviCust.json");
+            fs::write("naviCust.json", j).await.expect("could not write to naviCust.json");
         }
         while !ncp_list.is_empty() {
             let ncp = ncp_list.pop().unwrap();
@@ -160,33 +160,29 @@ impl TypeMapKey for NCPLibrary {
 
 #[command]
 #[aliases("ncp")]
-pub(crate) fn send_ncp(ctx: &mut Context, msg: &Message, args: Args) -> CommandResult {
+pub(crate) async fn send_ncp(ctx: &mut Context, msg: &Message, args: Args) -> CommandResult {
     if args.len() < 1 {
         say!(ctx, msg, "you must provide a name");
         return Ok(());
     }
-    let data = ctx.data.read();
+    let data = ctx.data.read().await;
     let library_lock = data.get::<NCPLibrary>().expect("NCP library not found");
-    let library = library_lock
-        .read()
-        .expect("library was poisoned, panicking");
-    search_lib_obj(&ctx, msg, args.current().unwrap(), library);
+    let library = library_lock.read().await;
+    say!(ctx, msg, search_lib_obj(args.current().await.unwrap(), library));
     return Ok(());
 }
 
 #[command]
 #[aliases("ncpcolor")]
-pub(crate) fn send_ncp_color(ctx: &mut Context, msg: &Message, args: Args) -> CommandResult {
+pub(crate) async fn send_ncp_color(ctx: &mut Context, msg: &Message, args: Args) -> CommandResult {
     if args.len() < 1 {
         say!(ctx, msg, "you must provide a name");
         return Ok(());
     }
-    let data = ctx.data.read();
+    let data = ctx.data.read().await;
     let library_lock = data.get::<NCPLibrary>().expect("NCP library not found");
-    let library = library_lock
-        .read()
-        .expect("library was poisoned, panicking");
-    match library.search_color(args.current().unwrap()) {
+    let library = library_lock.read().await;
+    match library.search_color(args.current().await.unwrap()) {
         Some(list) => long_say!(ctx, msg, list, ", "),
         None => say!(ctx, msg, "Nothing matched your search"),
     }

@@ -72,12 +72,12 @@ impl DieRoll {
 
 #[command]
 #[aliases("reroll")]
-pub(crate) fn roll(ctx: &mut Context, msg: &Message, _: Args) -> CommandResult {
+pub(crate) async fn roll(ctx: &mut Context, msg: &Message, _: Args) -> CommandResult {
     let mut args: Vec<&str>;
     let new_first;
 
     {
-        let data = ctx.data.read();
+        let data = ctx.data.read().await;
         let config = data.get::<BotData>().expect("no config found");
         //msg_content_clone = msg.content.clone();
         args = msg.content.split(" ").collect();
@@ -92,7 +92,7 @@ pub(crate) fn roll(ctx: &mut Context, msg: &Message, _: Args) -> CommandResult {
             msg,
             format!(
                 "{}, you must supply a number of dice to roll",
-                msg.author.mention()
+                msg.author.mention().await
             )
         );
         return Ok(());
@@ -116,13 +116,13 @@ pub(crate) fn roll(ctx: &mut Context, msg: &Message, _: Args) -> CommandResult {
     if repl_str.len() > 1850 {
         reply = format!(
             "{}, you rolled: {}\n[There were too many die rolls to show the result of each one]",
-            msg.author.mention(),
+            msg.author.mention().await,
             amt
         );
     } else {
         reply = format!(
             "{}, you rolled: {}\n{}",
-            msg.author.mention(),
+            msg.author.mention().await,
             amt,
             repl_str
         );
@@ -133,7 +133,7 @@ pub(crate) fn roll(ctx: &mut Context, msg: &Message, _: Args) -> CommandResult {
 
 #[command]
 #[aliases("rollstats")]
-pub(crate) fn roll_stats(ctx: &mut Context, msg: &Message, _: Args) -> CommandResult {
+pub(crate) async fn roll_stats(ctx: &mut Context, msg: &Message, _: Args) -> CommandResult {
     let mut stats: [i64; 6] = [0; 6];
     let mut rolls: Vec<i64> = vec![];
     for i in &mut stats {
@@ -152,7 +152,7 @@ pub(crate) fn roll_stats(ctx: &mut Context, msg: &Message, _: Args) -> CommandRe
         msg,
         format!(
             "{}, 4d6 drop the lowest:\n{:?}",
-            msg.author.mention(),
+            msg.author.mention().await,
             stats
         )
     );

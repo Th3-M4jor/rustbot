@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use std::sync::Arc;
-use std::sync::RwLock;
+use tokio::sync::RwLock;
 
 use serenity::{model::channel::Message, prelude::*};
 use crate::library::{Library, LibraryObject};
@@ -99,15 +99,14 @@ impl Library for FullLibrary {
     }
 }
 
-pub (crate) fn search_full_library(ctx: &Context, msg: &Message, args: &[&str]) {
+pub (crate) async fn search_full_library(ctx: &Context, msg: &Message, args: &[&str]) {
     let to_search = args.join(" ");
-    let data = ctx.data.read();
+    let data = ctx.data.read().await;
     let library_lock =
         data.get::<FullLibrary>().expect("Full library not found");
-    let library = library_lock
-        .read()
-        .expect("library was poisoned, panicking");
-    search_lib_obj(&ctx, msg, &to_search, library);
+    let library = library_lock.read().await;
+        //.expect("library was poisoned, panicking");
+    say!(ctx, msg, search_lib_obj(&to_search, library));
 }
 
 impl TypeMapKey for FullLibrary {

@@ -8,19 +8,19 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-reqwest = { version = "*"}
+reqwest = { version = "*", features = ["blocking"]}
 serde_json = "*"
 serde = { version = "*", features = ["rc"] }
 regex = "*"
 lazy_static = "*"
 simple-error = "*"
 unicode-normalization = "*"
-serenity = { version = "*", features = ["framework", "standard_framework"]}
+#serenity = { version = "*", features = ["framework", "standard_framework"]}
 rand = "*"
 strsim = "*"
 chrono = "*"
 tokio  = { version = "0.2", features = ["full"] }
-#serenity = { git = "https://github.com/Lakelezz/serenity.git", branch = "await" }
+serenity = { git = "https://github.com/Lakelezz/serenity.git", branch = "await", features = ["framework", "standard_framework"] }
 futures = "*"
 
 [profile.release]

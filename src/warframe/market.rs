@@ -11,12 +11,12 @@ use std::f64::NAN;
 //https://docs.google.com/document/d/1121cjBNN4BeZdMBGil6Qbuqse-sWpEXPpitQH5fb_Fo/edit#heading=h.yi84u2lickud
 //URL for warframe market API
 
-fn make_request(name: &str) -> Result<Vec<String>, Box<dyn std::error::Error>> {
+async fn make_request(name: &str) -> Result<Vec<String>, SimpleError> {
     let url = format!("https://api.warframe.market/v1/items/{}/orders", name);
 
-    let text = reqwest::blocking::get(&url)?.text()?;
+    let text = reqwest::get(&url).await.map_err(|_| SimpleError::new("Could not make market request"))?.text().await.map_err(|_| SimpleError::new("Could not parse response of market request"))?;
 
-    let mut json: serde_json::Value = serde_json::from_str(&text)?;
+    let mut json: serde_json::Value = serde_json::from_str(&text).map_err(|_| SimpleError::new("Could not parse market json data"))?;
     let orders = json["payload"]["orders"]
         .as_array_mut()
         .ok_or(SimpleError::new("could not convert to array"))?;
@@ -44,7 +44,7 @@ fn make_request(name: &str) -> Result<Vec<String>, Box<dyn std::error::Error>> {
 }
 
 #[command]
-pub(crate) fn market(ctx: &mut Context, msg: &Message, args: Args) -> CommandResult {
+pub(crate) async fn market(ctx: &mut Context, msg: &Message, args: Args) -> CommandResult {
 
     let new_args_res = args.remains();
     let new_args: Vec<&str>;
@@ -68,7 +68,7 @@ pub(crate) fn market(ctx: &mut Context, msg: &Message, args: Args) -> CommandRes
         to_search.push_str("_set");
     }
 
-    match make_request(&to_search) {
+    match make_request(&to_search).await {
         Ok(res) => long_say!(ctx, msg, res, "\n"),
         Err(e) => say!(
             ctx,

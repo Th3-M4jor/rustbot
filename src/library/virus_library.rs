@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use std::sync::RwLock;
+use tokio::sync::RwLock;
 use std::sync::Arc;
 
 use rand::distributions::{Distribution, Uniform};
@@ -14,7 +14,7 @@ use serde::Serialize;
 #[cfg(not(debug_assertions))]
 use serde_json;
 #[cfg(not(debug_assertions))]
-use std::fs;
+use tokio::fs;
 
 use regex::Regex;
 
@@ -93,7 +93,7 @@ impl VirusLibrary {
         }
     }
 
-    pub fn load_viruses(&mut self) -> Result<usize, SimpleError> {
+    pub async fn load_viruses(&mut self) -> Result<usize, SimpleError> {
         lazy_static! {
             static ref VIRUS_REGEX: Regex =
                 Regex::new(r"^\s*((.+)\s+\((\w+)\))\s*$").expect("could not compile virus regex");
@@ -107,9 +107,9 @@ impl VirusLibrary {
 
         //let mut virus_list : Vec<Box<Virus>> = vec![];
         self.duplicates.clear();
-        let virus_text = reqwest::blocking::get(VIRUS_URL)
+        let virus_text = reqwest::get(VIRUS_URL).await
             .expect("no request result")
-            .text()
+            .text().await
             .expect("no response text")
             .replace("â€™", "'")
             .replace("\u{FEFF}", "")
@@ -238,7 +238,7 @@ impl VirusLibrary {
 
                 let j = serde_json::to_string_pretty(&viruses)
                     .expect("could not serialize virus library to JSON");
-                fs::write("./virusCompendium.json", j)
+                fs::write("./virusCompendium.json", j).await
                     .expect("could not write to virusCompendium.json");
             }
 
@@ -338,37 +338,35 @@ impl VirusLibrary {
 
 #[command]
 #[aliases("virus")]
-pub(crate) fn send_virus(ctx: &mut Context, msg: &Message, args: Args) -> CommandResult {
+pub(crate) async fn send_virus(ctx: &mut Context, msg: &Message, args: Args) -> CommandResult {
     if args.len() < 1 {
         say!(ctx, msg, "you must provide a name");
         return Ok(());
     }
     let to_search = args.rest();
-    let data = ctx.data.read();
+    let data = ctx.data.read().await;
     let library_lock =
         data.get::<VirusLibrary>().expect("Virus library not found");
-    let library = library_lock
-        .read()
-        .expect("library was poisoned, panicking");
-    search_lib_obj(&ctx, msg, &to_search, library);
+    let library = library_lock.read().await;
+        //.expect("library was poisoned, panicking");
+    say!(ctx, msg, search_lib_obj(&to_search, library));
     return Ok(());
 }
 
 #[command]
 #[aliases("viruselement")]
-pub(crate) fn send_virus_element(ctx: &mut Context, msg: &Message, args: Args) -> CommandResult {
+pub(crate) async fn send_virus_element(ctx: &mut Context, msg: &Message, args: Args) -> CommandResult {
     if args.len() < 1 {
         say!(ctx, msg, "you must provide an element");
         return Ok(());
     }
 
-    let data = ctx.data.read();
+    let data = ctx.data.read().await;
     let library_lock: &RwLock<VirusLibrary> =
         data.get::<VirusLibrary>().expect("Virus library not found");
-    let library = library_lock
-        .read()
-        .expect("Virus library poisoned, panicking");
-    let elem_res = library.search_element(args.current().unwrap());
+    let library = library_lock.read().await;
+        //.expect("Virus library poisoned, panicking");
+    let elem_res = library.search_element(args.current().await.unwrap());
     match elem_res {
         Some(elem) => long_say!(ctx, msg, elem, ", "),
         None => say!(
@@ -383,25 +381,24 @@ pub(crate) fn send_virus_element(ctx: &mut Context, msg: &Message, args: Args) -
 
 #[command]
 #[aliases("cr")]
-pub(crate) fn send_virus_cr(ctx: &mut Context, msg: &Message, mut args: Args) -> CommandResult {
+pub(crate) async fn send_virus_cr(ctx: &mut Context, msg: &Message, mut args: Args) -> CommandResult {
     if args.len() < 1 {
         say!(ctx, msg, "you must provide a CR to search for");
         return Ok(());
     }
     
-    let cr_to_get_res = args.single::<u8>();
+    let cr_to_get_res = args.single::<u8>().await;
 
     if cr_to_get_res.is_err() {
         say!(ctx, msg, "an invalid number was provided");
         return Ok(());
     }
     let cr_to_get = cr_to_get_res.unwrap();
-    let data = ctx.data.read();
+    let data = ctx.data.read().await;
     let library_lock: &RwLock<VirusLibrary> =
         data.get::<VirusLibrary>().expect("Virus library not found");
-    let library = library_lock
-        .read()
-        .expect("library was poisoned, panicking");
+    let library = library_lock.read().await;
+        //.expect("library was poisoned, panicking");
     match library.get_cr(cr_to_get) {
         Some(val) => long_say!(ctx, msg, val, ", "),
         None => say!(ctx, msg, "There are currently no viruses in that CR"),
@@ -411,7 +408,7 @@ pub(crate) fn send_virus_cr(ctx: &mut Context, msg: &Message, mut args: Args) ->
 
 #[command]
 #[aliases("encounter")]
-pub(crate) fn send_random_encounter(ctx: &mut Context, msg: &Message, mut args: Args) -> CommandResult {
+pub(crate) async fn send_random_encounter(ctx: &mut Context, msg: &Message, mut args: Args) -> CommandResult {
     if args.len() < 2 {
         say!(
             ctx,
@@ -424,20 +421,19 @@ pub(crate) fn send_random_encounter(ctx: &mut Context, msg: &Message, mut args: 
         );
         return Ok(());
     }
-    let first_arg = args.single::<String>().unwrap();
+    let first_arg = args.single::<String>().await.unwrap();
     //args.advance();
-    let second_arg = args.single::<String>().unwrap(); 
+    let second_arg = args.single::<String>().await.unwrap(); 
     let virus_count = second_arg.parse::<isize>().unwrap_or(-1);
     if virus_count <= 0 {
         say!(ctx, msg, "an invalid number of viruses were given");
         return Ok(());
     }
-    let data = ctx.data.read();
+    let data = ctx.data.read().await;
     let library_lock: &RwLock<VirusLibrary> =
         data.get::<VirusLibrary>().expect("Virus library not found");
-    let library = library_lock
-        .read()
-        .expect("library was poisoned, panicking");
+    let library = library_lock.read().await;
+        //.expect("library was poisoned, panicking");
     let single_cr_res = first_arg.parse::<isize>();
     let to_send: Vec<&str>;
 
@@ -488,19 +484,18 @@ pub(crate) fn send_random_encounter(ctx: &mut Context, msg: &Message, mut args: 
 
 #[command]
 #[aliases("family")]
-pub(crate) fn send_family(ctx: &mut Context, msg: &Message, args: Args) -> CommandResult {
+pub(crate) async fn send_family(ctx: &mut Context, msg: &Message, args: Args) -> CommandResult {
     if args.len() < 1 {
         say!(ctx, msg, "you must provide a name");
         return Ok(());
     }
     //let to_join = &args[1..];
     let to_search = args.rest();
-    let data = ctx.data.read();
+    let data = ctx.data.read().await;
     let library_lock: &RwLock<VirusLibrary> =
         data.get::<VirusLibrary>().expect("Virus library not found");
-    let library = library_lock
-        .read()
-        .expect("library was poisoned, panicking");
+    let library = library_lock.read().await;
+        //.expect("library was poisoned, panicking");
     match library.get_family(&to_search) {
         Some(res) => long_say!(ctx, msg, res, ", "),
         None => say!(ctx, msg, "There is no family under that name"),

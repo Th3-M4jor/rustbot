@@ -4,13 +4,13 @@ use serenity::framework::standard::{
     macros::command,
 };
 use crate::bot_data::BotData;
-use std::fs;
+use tokio::fs;
 
 ///fn say(ctx: Context, msg: Message, say: an expression returning a string)
 
 macro_rules! say {
     ($ctx: ident, $msg: ident, $say: expr) => {
-        if let Err(why) = $msg.channel_id.say(&$ctx.http, $say) {
+        if let Err(why) = $msg.channel_id.say(&$ctx.http, $say).await {
             println!("Could not send message: {:?}", why);
         }
     };
@@ -18,13 +18,13 @@ macro_rules! say {
 
 macro_rules! long_say {
     ($ctx: ident,  $msg: ident, $say: expr, $sep: expr) => {
-        if let Err(why) = $crate::send_long_message(&$ctx, &$msg, $say, $sep) {
+        if let Err(why) = $crate::send_long_message(&$ctx, &$msg, $say, $sep).await {
             println!("Could not send message: {:?}", why);
         }
     };
 }
 
-pub(crate) fn send_long_message<T, S>(
+pub(crate) async fn send_long_message<T, S>(
     ctx: &Context,
     msg: &Message,
     to_send: T,
@@ -41,7 +41,7 @@ where
         let to_push = format!("{}", val);
         //a single message cannot be greater than 2000 chars
         if reply.len() + to_push.len() > 1950 {
-            msg.channel_id.say(&ctx.http, &reply)?;
+            msg.channel_id.say(&ctx.http, &reply).await?;
             reply.clear();
         }
         reply.push_str(&to_push);
@@ -51,7 +51,7 @@ where
     for _ in 0..sep.len() {
         reply.pop();
     }
-    return msg.channel_id.say(&ctx.http, &reply);
+    return msg.channel_id.say(&ctx.http, &reply).await;
 }
 
 pub(crate) fn build_time_rem(now: i64, end: i64) -> String {
@@ -71,15 +71,15 @@ pub(crate) fn build_time_rem(now: i64, end: i64) -> String {
 
 
 #[command]
-pub(crate) fn audit(ctx: &mut Context, msg: &Message, _ : Args) -> CommandResult {
-    let data = ctx.data.read();
+pub(crate) async fn audit(ctx: &mut Context, msg: &Message, _ : Args) -> CommandResult {
+    let data = ctx.data.read().await;
     let config = data.get::<BotData>().expect("config not found");
 
     if msg.author.id != config.owner {
         return Ok(());
     }
 
-    let res = fs::read_to_string("./nohup.out");
+    let res = fs::read_to_string("./nohup.out").await;
     match res {
         Ok(val) => {
             let lines : Vec<&str> = val.split("\n")

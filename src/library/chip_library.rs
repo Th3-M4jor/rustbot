@@ -4,7 +4,7 @@ use serenity::framework::standard::{macros::command, Args, CommandResult};
 use serenity::{model::channel::Message, prelude::*};
 use std::collections::HashMap;
 use std::sync::Arc;
-use std::sync::RwLock;
+use tokio::sync::RwLock;
 use super::super::bot_data::BotData;
 
 use simple_error::SimpleError;
@@ -14,7 +14,7 @@ use crate::library::battlechip::BattleChip;
 use crate::library::elements::Elements;
 use crate::library::{search_lib_obj, Library};
 use std::borrow::BorrowMut;
-use std::fs;
+use tokio::fs;
 
 use std::str::FromStr;
 
@@ -41,13 +41,13 @@ impl ChipLibrary {
     }
 
     //returns number of chips loaded or a simple error
-    pub fn load_chips(&mut self) -> Result<usize, SimpleError> {
+    pub async fn load_chips(&mut self) -> Result<usize, SimpleError> {
         self.chips.clear();
 
         //get chip text and replace necessary characters for compatibility
-        let chip_text = reqwest::blocking::get(CHIP_URL)
+        let chip_text = reqwest::get(CHIP_URL).await
             .expect("no request result")
-            .text()
+            .text().await
             .expect("no response text")
             .replace("â€™", "'")
             .replace("\u{FEFF}", "")
@@ -58,7 +58,7 @@ impl ChipLibrary {
             .collect();
 
         //load in custom chips if any
-        let special_chips_res = fs::read_to_string("./custom_chips.txt");
+        let special_chips_res = fs::read_to_string("./custom_chips.txt").await;
         let special_chip_text;
         if special_chips_res.is_ok() {
             special_chip_text = special_chips_res.unwrap();
@@ -90,7 +90,7 @@ impl ChipLibrary {
         #[cfg(not(debug_assertions))]
         {
             let j = serde_json::to_string_pretty(&chips).expect("could not serialize to json");
-            fs::write("chips.json", j).expect("could nto write to chips.json");
+            fs::write("chips.json", j).await.expect("could nto write to chips.json");
         }
 
         while !chips.is_empty() {
@@ -160,32 +160,31 @@ impl TypeMapKey for ChipLibrary {
 
 #[command]
 #[aliases("chip")]
-pub(crate) fn send_chip(ctx: &mut Context, msg: &Message, args: Args) -> CommandResult {
+pub(crate) async fn send_chip(ctx: &mut Context, msg: &Message, args: Args) -> CommandResult {
+    
     if args.len() == 0 {
         say!(ctx, msg, "you must provide a name");
         return Ok(());
     };
 
-    let to_get = args.current().unwrap();
-    let data = ctx.data.read();
+    let to_get = args.current().await.unwrap();
+    let data = ctx.data.read().await;
     let library_lock = data.get::<ChipLibrary>().expect("chip library not found");
-    let library = library_lock
-        .read()
-        .expect("library was poisoned, panicking");
+    let library = library_lock.read().await;
     //let library = locked_library.read().expect("library was poisoned");
     //search!(ctx, msg, to_get, library);
-    search_lib_obj(ctx, msg, to_get, library);
+    say!(ctx, msg, search_lib_obj(to_get, library));
     return Ok(());
 }
 
 #[command]
 #[aliases("skill","skilluser","skillcheck","skilltarget")]
-pub(crate) fn send_chip_skill(ctx: &mut Context, msg: &Message, _: Args) -> CommandResult {
+pub(crate) async fn send_chip_skill(ctx: &mut Context, msg: &Message, _: Args) -> CommandResult {
     let mut args: Vec<&str>;
     let new_first;
 
     {
-        let data = ctx.data.read();
+        let data = ctx.data.read().await;
         let config = data.get::<BotData>().expect("no config found");
         //msg_content_clone = msg.content.clone();
         args = msg.content.split(" ").collect();
@@ -197,11 +196,10 @@ pub(crate) fn send_chip_skill(ctx: &mut Context, msg: &Message, _: Args) -> Comm
         say!(ctx, msg, "you must provide a skill");
         return Ok(());
     }
-    let data = ctx.data.read();
+    let data = ctx.data.read().await;
     let library_lock = data.get::<ChipLibrary>().expect("chip library not found");
-    let library = library_lock
-        .read()
-        .expect("chip library poisoned, panicking");
+    let library = library_lock.read().await;
+        //.expect("chip library poisoned, panicking");
     let skill_res; // = library.search_skill(args[1]);
     match args[0].to_lowercase().as_str() {
         "skill" => skill_res = library.search_skill(args[1]),
@@ -221,16 +219,15 @@ pub(crate) fn send_chip_skill(ctx: &mut Context, msg: &Message, _: Args) -> Comm
 
 #[command]
 #[aliases("element")]
-pub(crate) fn send_chip_element(ctx: &mut Context, msg: &Message, args: Args) -> CommandResult {
+pub(crate) async fn send_chip_element(ctx: &mut Context, msg: &Message, args: Args) -> CommandResult {
     if args.len() < 1 {
         say!(ctx, msg, "you must provide an element");
         return Ok(());
     }
-    let data = ctx.data.read();
+    let data = ctx.data.read().await;
     let library_lock = data.get::<ChipLibrary>().expect("chip library not found");
-    let library = library_lock
-        .read()
-        .expect("chip library poisoned, panicking");
+    let library = library_lock.read().await;
+        //.expect("chip library poisoned, panicking");
     let elem_res = library.search_element(args.rest());
 
     match elem_res {

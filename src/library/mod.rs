@@ -8,7 +8,7 @@ pub(crate) mod blights;
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use serenity::{model::channel::Message, prelude::*};
+use serenity::{prelude::*};
 
 use strsim::jaro_winkler;
 
@@ -91,15 +91,14 @@ pub trait Library: TypeMapKey {
     }
 }
 
-pub(crate) fn search_lib_obj<U, T>(ctx: &Context, msg: &Message, search: &str, lib: T)
+pub(crate) fn search_lib_obj<U, T>(search: &str, lib: T) -> String
     where
     U: Library,
     T: Deref<Target=U>
     {
     let item = lib.get(search);
     if item.is_some() {
-        say!(ctx, msg, format!("{}", item.unwrap()));
-        return;
+        return format!("{}", item.unwrap());
     }
     let mut item_search;
     match lib.name_contains(search, None) {
@@ -108,10 +107,9 @@ pub(crate) fn search_lib_obj<U, T>(ctx: &Context, msg: &Message, search: &str, l
     }
     if item_search.len() == 1 {
         let found_item = lib.get(&item_search[0]).unwrap();
-        say!(ctx, msg, format!("{}", found_item));
-        return;
+        return format!("{}", found_item);
     }
     item_search.dedup();
     let to_send: String = item_search.join(", ");
-    say!(ctx, msg, format!("Did you mean: {}", to_send));
+    return format!("Did you mean: {}", to_send);
 }
