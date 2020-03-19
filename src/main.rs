@@ -378,7 +378,6 @@ async fn about_bot(ctx: &mut Context, msg: &Message, _: Args) -> CommandResult {
 
 #[hook]
 async fn default_command(ctx: &mut Context, msg: &Message, _: &str) {
-    println!("I have recieved an unrecognized command");
     let mut args: Vec<&str>;
     let new_first;
 
