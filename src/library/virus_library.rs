@@ -381,16 +381,19 @@ pub(crate) fn send_virus_element(ctx: &mut Context, msg: &Message, args: Args) -
 }
 
 
-pub(crate) fn send_virus_cr(ctx: Context, msg: &Message, args: &[&str]) {
-    if args.len() < 2 {
+#[command]
+#[aliases("cr")]
+pub(crate) fn send_virus_cr(ctx: &mut Context, msg: &Message, mut args: Args) -> CommandResult {
+    if args.len() < 1 {
         say!(ctx, msg, "you must provide a CR to search for");
-        return;
+        return Ok(());
     }
-    let cr_to_get_res = args[1].trim().parse::<u8>();
+    
+    let cr_to_get_res = args.single::<u8>();
 
     if cr_to_get_res.is_err() {
         say!(ctx, msg, "an invalid number was provided");
-        return;
+        return Ok(());
     }
     let cr_to_get = cr_to_get_res.unwrap();
     let data = ctx.data.read();
@@ -403,10 +406,13 @@ pub(crate) fn send_virus_cr(ctx: Context, msg: &Message, args: &[&str]) {
         Some(val) => long_say!(ctx, msg, val, ", "),
         None => say!(ctx, msg, "There are currently no viruses in that CR"),
     }
+    return Ok(());
 }
 
-pub(crate) fn send_random_encounter(ctx: Context, msg: &Message, args: &[&str]) {
-    if args.len() < 3 {
+#[command]
+#[aliases("encounter")]
+pub(crate) fn send_random_encounter(ctx: &mut Context, msg: &Message, mut args: Args) -> CommandResult {
+    if args.len() < 2 {
         say!(
             ctx,
             msg,
@@ -416,12 +422,15 @@ pub(crate) fn send_random_encounter(ctx: Context, msg: &Message, args: &[&str]) 
                 "This will return 5 random viruses in CR 2 & 3"
             )
         );
-        return;
+        return Ok(());
     }
-    let virus_count = args[2].parse::<isize>().unwrap_or(-1);
+    let first_arg = args.single::<String>().unwrap();
+    //args.advance();
+    let second_arg = args.single::<String>().unwrap(); 
+    let virus_count = second_arg.parse::<isize>().unwrap_or(-1);
     if virus_count <= 0 {
         say!(ctx, msg, "an invalid number of viruses were given");
-        return;
+        return Ok(());
     }
     let data = ctx.data.read();
     let library_lock: &RwLock<VirusLibrary> =
@@ -429,7 +438,7 @@ pub(crate) fn send_random_encounter(ctx: Context, msg: &Message, args: &[&str]) 
     let library = library_lock
         .read()
         .expect("library was poisoned, panicking");
-    let single_cr_res = args[1].parse::<isize>();
+    let single_cr_res = first_arg.parse::<isize>();
     let to_send: Vec<&str>;
 
     //was it a single CR or a range?
@@ -438,22 +447,22 @@ pub(crate) fn send_random_encounter(ctx: Context, msg: &Message, args: &[&str]) 
         let single_cr = single_cr_res.unwrap();
         if single_cr <= 0 || single_cr > library.get_highest_cr() as isize {
             say!(ctx, msg, "an invalid single CR was given");
-            return;
+            return Ok(());
         }
         to_send = library
             .single_cr_random_encounter(single_cr as u8, virus_count as usize)
             .expect("failed to get viruses");
     } else {
-        let cr_range: Vec<&str> = args[1].trim().split('-').collect();
+        let cr_range: Vec<&str> = first_arg.trim().split('-').collect();
         if cr_range.len() != 2 {
             say!(ctx, msg, "That is an invalid CR range");
-            return;
+            return Ok(());
         }
         let first_cr_res = cr_range[0].parse::<u8>();
         let second_cr_res = cr_range[1].parse::<u8>();
         if first_cr_res.is_err() || second_cr_res.is_err() {
             say!(ctx, msg, "That is an invalid CR range");
-            return;
+            return Ok(());
         }
         let first_cr_num = first_cr_res.unwrap();
         let second_cr_num = second_cr_res.unwrap();
@@ -474,15 +483,18 @@ pub(crate) fn send_random_encounter(ctx: Context, msg: &Message, args: &[&str]) 
         }
     }
     long_say!(ctx, msg, to_send, ", ");
+    return Ok(());
 }
 
-pub(crate) fn send_family(ctx: Context, msg: &Message, args: &[&str]) {
-    if args.len() < 2 {
+#[command]
+#[aliases("family")]
+pub(crate) fn send_family(ctx: &mut Context, msg: &Message, args: Args) -> CommandResult {
+    if args.len() < 1 {
         say!(ctx, msg, "you must provide a name");
-        return;
+        return Ok(());
     }
-    let to_join = &args[1..];
-    let to_search = to_join.join(" ");
+    //let to_join = &args[1..];
+    let to_search = args.rest();
     let data = ctx.data.read();
     let library_lock: &RwLock<VirusLibrary> =
         data.get::<VirusLibrary>().expect("Virus library not found");
@@ -493,5 +505,6 @@ pub(crate) fn send_family(ctx: Context, msg: &Message, args: &[&str]) {
         Some(res) => long_say!(ctx, msg, res, ", "),
         None => say!(ctx, msg, "There is no family under that name"),
     }
+    return Ok(());
 }
 

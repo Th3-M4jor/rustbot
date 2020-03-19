@@ -4,6 +4,7 @@ use std::sync::Arc;
 
 use serde::{Serialize};
 use serenity::{model::channel::Message, prelude::*};
+use serenity::framework::standard::{macros::command, Args, CommandResult};
 
 #[cfg(not(debug_assertions))]
 use serde_json;
@@ -157,31 +158,37 @@ impl TypeMapKey for NCPLibrary {
     type Value = RwLock<NCPLibrary>;
 }
 
-pub(crate) fn send_ncp(ctx: Context, msg: &Message, args: &[&str]) {
-    if args.len() < 2 {
+#[command]
+#[aliases("ncp")]
+pub(crate) fn send_ncp(ctx: &mut Context, msg: &Message, args: Args) -> CommandResult {
+    if args.len() < 1 {
         say!(ctx, msg, "you must provide a name");
-        return;
+        return Ok(());
     }
     let data = ctx.data.read();
     let library_lock = data.get::<NCPLibrary>().expect("NCP library not found");
     let library = library_lock
         .read()
         .expect("library was poisoned, panicking");
-    search_lib_obj(&ctx, msg, args[1], library);
+    search_lib_obj(&ctx, msg, args.current().unwrap(), library);
+    return Ok(());
 }
 
-pub(crate) fn send_ncp_color(ctx: Context, msg: &Message, args: &[&str]) {
-    if args.len() < 2 {
+#[command]
+#[aliases("ncpcolor")]
+pub(crate) fn send_ncp_color(ctx: &mut Context, msg: &Message, args: Args) -> CommandResult {
+    if args.len() < 1 {
         say!(ctx, msg, "you must provide a name");
-        return;
+        return Ok(());
     }
     let data = ctx.data.read();
     let library_lock = data.get::<NCPLibrary>().expect("NCP library not found");
     let library = library_lock
         .read()
         .expect("library was poisoned, panicking");
-    match library.search_color(args[1]) {
+    match library.search_color(args.current().unwrap()) {
         Some(list) => long_say!(ctx, msg, list, ", "),
         None => say!(ctx, msg, "Nothing matched your search"),
     }
+    return Ok(());
 }

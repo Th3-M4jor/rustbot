@@ -22,7 +22,7 @@ use crate::library::{
 };
 use crate::warframe::{*, market::*};
 
-use crate::dice::{roll, roll_stats};
+use crate::dice::*;
 use crate::util::*;
 use serenity::model::gateway::Activity;
 use std::fs;
@@ -154,7 +154,7 @@ impl EventHandler for Handler {
 }
 
 #[group]
-#[commands(manager, phb, die, reload, audit, send_help)]
+#[commands(manager, phb, die, reload, audit, send_help, get_blight, roll, roll_stats)]
 struct General;
 
 #[group]
@@ -165,15 +165,16 @@ struct Warframe;
 #[group]
 #[commands(send_chip, send_chip_skill, send_chip_element)]
 struct BnbChips;
-/*
-#[group]
-#[commands()]
-struct Bnb_viruses;
 
 #[group]
-#[commands()]
-struct Bnb_ncps;
-*/
+#[commands(send_virus, send_virus_element, send_virus_cr, send_random_encounter, send_family)]
+struct BnbViruses;
+
+
+#[group]
+#[commands(send_ncp, send_ncp_color)]
+struct BnbNcps;
+
 #[command]
 fn manager(ctx: &mut Context, msg: &Message, _: Args) -> CommandResult {
     let data = ctx.data.read();
@@ -414,7 +415,12 @@ fn main() {
                 }
 
                 search_full_library(ctx, &msg, &args);
-            }).group(&GENERAL_GROUP).group(&WARFRAME_GROUP).group(&BNBCHIPS_GROUP),
+            })
+            .group(&GENERAL_GROUP)
+            .group(&WARFRAME_GROUP)
+            .group(&BNBCHIPS_GROUP)
+            .group(&BNBVIRUSES_GROUP)
+            .group(&BNBNCPS_GROUP),
     );
     if let Err(why) = client.start() {
         println!("Client error: {:?}", why);

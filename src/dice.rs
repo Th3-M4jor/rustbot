@@ -1,7 +1,9 @@
 use rand::distributions::{Distribution, Uniform};
 use rand::rngs::ThreadRng;
 use serenity::{model::channel::Message, prelude::*};
+use serenity::framework::standard::{macros::command, Args, CommandResult};
 use std::borrow::BorrowMut;
+use crate::bot_data::BotData;
 
 pub struct DieRoll;
 
@@ -68,7 +70,22 @@ impl DieRoll {
     }
 }
 
-pub(crate) fn roll(ctx: Context, msg: &Message, args: &[&str]) {
+#[command]
+#[aliases("reroll")]
+pub(crate) fn roll(ctx: &mut Context, msg: &Message, _: Args) -> CommandResult {
+    let mut args: Vec<&str>;
+    let new_first;
+
+    {
+        let data = ctx.data.read();
+        let config = data.get::<BotData>().expect("no config found");
+        //msg_content_clone = msg.content.clone();
+        args = msg.content.split(" ").collect();
+        new_first = args[0].replacen(&config.cmd_prefix, "", 1);
+        args[0] = new_first.as_str();
+    }
+    
+    
     if args.len() < 2 {
         say!(
             ctx,
@@ -78,7 +95,10 @@ pub(crate) fn roll(ctx: Context, msg: &Message, args: &[&str]) {
                 msg.author.mention()
             )
         );
+        return Ok(());
     }
+
+    
 
     //grab all but the first argument which is the command name
     let to_join = &args[1..];
@@ -108,9 +128,12 @@ pub(crate) fn roll(ctx: Context, msg: &Message, args: &[&str]) {
         );
     }
     say!(ctx, msg, reply);
+    return Ok(());
 }
 
-pub(crate) fn roll_stats(ctx: Context, msg: &Message, _: &[&str]) {
+#[command]
+#[aliases("rollstats")]
+pub(crate) fn roll_stats(ctx: &mut Context, msg: &Message, _: Args) -> CommandResult {
     let mut stats: [i64; 6] = [0; 6];
     let mut rolls: Vec<i64> = vec![];
     for i in &mut stats {
@@ -133,4 +156,5 @@ pub(crate) fn roll_stats(ctx: Context, msg: &Message, _: &[&str]) {
             stats
         )
     );
+    return Ok(());
 }

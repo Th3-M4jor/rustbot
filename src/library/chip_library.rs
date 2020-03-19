@@ -162,6 +162,7 @@ impl TypeMapKey for ChipLibrary {
 #[aliases("chip")]
 pub(crate) fn send_chip(ctx: &mut Context, msg: &Message, args: Args) -> CommandResult {
     if args.len() == 0 {
+        say!(ctx, msg, "you must provide a name");
         return Ok(());
     };
 
