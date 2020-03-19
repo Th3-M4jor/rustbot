@@ -163,20 +163,23 @@ impl EventHandler for Handler {
 )]
 struct General;
 
-
 #[group]
 #[commands(get_sortie, get_fissures, market)]
 struct Warframe;
-
 
 #[group]
 #[commands(send_chip, send_chip_skill, send_chip_element)]
 struct BnbChips;
 
 #[group]
-#[commands(send_virus, send_virus_element, send_virus_cr, send_random_encounter, send_family)]
+#[commands(
+    send_virus,
+    send_virus_element,
+    send_virus_cr,
+    send_random_encounter,
+    send_family
+)]
 struct BnbViruses;
-
 
 #[group]
 #[commands(send_ncp, send_ncp_color)]
@@ -210,12 +213,74 @@ async fn die(ctx: &mut Context, msg: &Message, _: Args) -> CommandResult {
     return Ok(());
 }
 
+async fn reload_chips(data: Arc<RwLock<ShareMap>>) -> (String, Vec<FullLibraryType>) {
+    let str_to_ret;
+    let mut vec_to_ret: Vec<FullLibraryType> = vec![];
+    let data_lock = data.read().await;
+    let chip_library_lock = data_lock
+        .get::<ChipLibrary>()
+        .expect("chip library not found");
+    let mut chip_library = chip_library_lock.write().await;
+    let chip_reload_res = chip_library.load_chips();
+    //let str_to_send;
+    match chip_reload_res.await {
+        Ok(s) => str_to_ret = format!("{} chips loaded\n", s),
+        Err(e) => str_to_ret = format!("{}\n", e.to_string()),
+    }
+    vec_to_ret.reserve(chip_library.get_collection().len());
+    for val in chip_library.get_collection().values() {
+        vec_to_ret.push(FullLibraryType::BattleChip(Arc::clone(val)));
+    }
+    return (str_to_ret, vec_to_ret);
+}
+
+async fn reload_ncps(data: Arc<RwLock<ShareMap>>) -> (String, Vec<FullLibraryType>) {
+    let str_to_ret: String;
+    let mut vec_to_ret: Vec<FullLibraryType> = vec![];
+    let data_lock = data.read().await;
+    let ncp_library_lock = data_lock
+        .get::<NCPLibrary>()
+        .expect("ncp library not found");
+    let mut ncp_library = ncp_library_lock.write().await;
+    let count = ncp_library.load_programs().await;
+    str_to_ret = format!("{} NCPs loaded\n", count);
+    vec_to_ret.reserve(count);
+    for val in ncp_library.get_collection().values() {
+        vec_to_ret.push(FullLibraryType::NCP(Arc::clone(val)));
+    }
+    return (str_to_ret, vec_to_ret);
+}
+
+async fn reload_viruses(data: Arc<RwLock<ShareMap>>) -> (String, Vec<FullLibraryType>) {
+    let str_to_ret: String;
+    let mut vec_to_ret: Vec<FullLibraryType> = vec![];
+    let data_lock = data.read().await;
+    let virus_library_lock = data_lock
+        .get::<VirusLibrary>()
+        .expect("virus library not found");
+    let mut virus_library = virus_library_lock.write().await;
+    //.expect("virus library was poisoned, panicking");
+    match virus_library.load_viruses().await {
+        Ok(s) => str_to_ret = format!("{} viruses were loaded\n", s),
+        Err(e) => str_to_ret = format!("{}", e.to_string()),
+    }
+
+    vec_to_ret.reserve(virus_library.get_collection().len());
+    for val in virus_library.get_collection().values() {
+        vec_to_ret.push(FullLibraryType::Virus(Arc::clone(val)));
+    }
+
+    return (str_to_ret, vec_to_ret);
+}
+
 #[command]
 async fn reload(ctx: &mut Context, msg: &Message, _: Args) -> CommandResult {
-    let data = ctx.data.read().await;
-    let config = data.get::<BotData>().expect("could not get config");
-    if msg.author.id != config.owner && !config.admins.contains(msg.author.id.as_u64()) {
-        return Ok(());
+    {
+        let data = ctx.data.read().await;
+        let config = data.get::<BotData>().expect("could not get config");
+        if msg.author.id != config.owner && !config.admins.contains(msg.author.id.as_u64()) {
+            return Ok(());
+        }
     }
 
     if let Err(_) = msg.channel_id.broadcast_typing(&ctx.http).await {
@@ -223,73 +288,58 @@ async fn reload(ctx: &mut Context, msg: &Message, _: Args) -> CommandResult {
         return Ok(());
     }
 
-    let mut str_to_send;
+    let chip_data = Arc::clone(&ctx.data);
+    let ncp_data = Arc::clone(&ctx.data);
+    let virus_data = Arc::clone(&ctx.data);
+
+    let mut str_to_send = String::new();
+    let chip_future = reload_chips(chip_data);
+    let ncp_future = reload_ncps(ncp_data);
+    let virus_future = reload_viruses(virus_data);
+    let (chip_res, ncp_res, virus_res) = tokio::join!(chip_future, ncp_future, virus_future);
+
+    let data = ctx.data.read().await;
+    let blight_string;
     {
-        let full_library_lock = data.get::<FullLibrary>().expect("full library not found");
-        let mut full_library = full_library_lock
-            .write().await;
-            //.expect("full library poisoned, panicking");
-        full_library.clear();
-        let mut full_duplicates: Vec<String> = vec![];
-        {
-            let chip_library_lock = data.get::<ChipLibrary>().expect("chip library not found");
-            let mut chip_library = chip_library_lock.write().await;
-                //.expect("chip library was poisoned, panicking");
-            let chip_reload_res = chip_library.load_chips();
-            //let str_to_send;
-            match chip_reload_res.await {
-                Ok(s) => str_to_send = format!("{} chips loaded\n", s),
-                Err(e) => str_to_send = format!("{}\n", e.to_string()),
-            }
-            for val in chip_library.get_collection().values() {
-                let obj = FullLibraryType::BattleChip(Arc::clone(val));
-                if let Err(e) = full_library.insert(obj) {
-                    full_duplicates.push(e.to_string());
-                }
-            }
-        }
-        {
-            let blight_lock = data.get::<Blights>().expect("Blights not found");
-            let mut blights = blight_lock.write().await;//.expect("blights poisoned, panicking");
-            match blights.load().await {
-                Ok(()) => str_to_send.push_str("blights reloaded successfully\n"),
-                Err(e) => str_to_send.push_str(&format!("{}\n", e.to_string())),
-            }
-        }
-        {
-            let ncp_library_lock = data.get::<NCPLibrary>().expect("ncp library not found");
-            let mut ncp_library = ncp_library_lock.write().await;
-                //.expect("chip library was poisoned, panicking");
-            let count = ncp_library.load_programs().await;
-            //say!(ctx, msg, format!("{} NCPs loaded", count));
-            str_to_send.push_str(&format!("{} NCPs loaded\n", count));
-            for val in ncp_library.get_collection().values() {
-                let obj = FullLibraryType::NCP(Arc::clone(val));
-                if let Err(e) = full_library.insert(obj) {
-                    full_duplicates.push(e.to_string());
-                }
-            }
-        }
-        {
-            let virus_library_lock = data.get::<VirusLibrary>().expect("virus library not found");
-            let mut virus_library = virus_library_lock.write().await;
-                //.expect("virus library was poisoned, panicking");
-            match virus_library.load_viruses().await {
-                Ok(s) => str_to_send.push_str(&format!("{} viruses were loaded\n", s)),
-                Err(e) => str_to_send.push_str(&format!("{}", e.to_string())),
-            }
-            for val in virus_library.get_collection().values() {
-                let obj = FullLibraryType::Virus(Arc::clone(val));
-                if let Err(e) = full_library.insert(obj) {
-                    full_duplicates.push(e.to_string());
-                }
-            }
-        }
-        if full_duplicates.len() > 0 {
-            str_to_send.push('\n');
-            str_to_send.push_str(&format!("full duplicates: {:?}", full_duplicates));
+        let blight_lock = data.get::<Blights>().expect("Blights not found");
+        let mut blights = blight_lock.write().await; //.expect("blights poisoned, panicking");
+        match blights.load().await {
+            Ok(()) => blight_string = String::from("blights reloaded successfully\n"),
+            Err(e) => blight_string = format!("{}\n", e.to_string()),
         }
     }
+
+    let full_library_lock = data.get::<FullLibrary>().expect("full library not found");
+    let mut full_library = full_library_lock.write().await;
+    let mut full_duplicates: Vec<String> = vec![];
+    full_library.clear();
+    for chip in chip_res.1 {
+        if let Err(e) = full_library.insert(chip) {
+            full_duplicates.push(e.to_string());
+        }
+    }
+
+    for ncp in ncp_res.1 {
+        if let Err(e) = full_library.insert(ncp) {
+            full_duplicates.push(e.to_string());
+        }
+    }
+
+    for virus in virus_res.1 {
+        if let Err(e) = full_library.insert(virus) {
+            full_duplicates.push(e.to_string());
+        }
+    }
+
+    str_to_send.push_str(&chip_res.0);
+    str_to_send.push_str(&ncp_res.0);
+    str_to_send.push_str(&virus_res.0);
+    str_to_send.push_str(&blight_string);
+
+    if full_duplicates.len() > 0 {
+        str_to_send.push_str(&format!("\nfull duplicates: {:?}", full_duplicates));
+    }
+
     say!(ctx, msg, str_to_send);
     return Ok(());
 }
@@ -328,6 +378,7 @@ async fn about_bot(ctx: &mut Context, msg: &Message, _: Args) -> CommandResult {
 
 #[hook]
 async fn default_command(ctx: &mut Context, msg: &Message, _: &str) {
+    println!("I have recieved an unrecognized command");
     let mut args: Vec<&str>;
     let new_first;
 
@@ -418,6 +469,7 @@ async fn main() {
         .group(&GENERAL_GROUP)
         .group(&BNBCHIPS_GROUP)
         .group(&BNBVIRUSES_GROUP)
+        .group(&BNBNCPS_GROUP)
         .group(&WARFRAME_GROUP);
     let mut client = Client::new_with_framework(&config.token, Handler, framework)
         .await
@@ -438,45 +490,6 @@ async fn main() {
     // Shards will automatically attempt to reconnect, and will perform
     // exponential backoff until it reconnects.
 
-    
-        //.group(&WARFRAME_GROUP)
-        //.group(&BNBCHIPS_GROUP)
-        //.group(&BNBVIRUSES_GROUP)
-        //.group(&BNBNCPS_GROUP);
-
-    /*
-    client.with_framework(
-        StandardFramework::new()
-            .configure(move |c| {
-                c.with_whitespace(true)
-                    .prefix(&prefix)
-                    .case_insensitivity(true)
-            })
-            .unrecognised_command(|ctx, msg, _| {
-                let mut args: Vec<&str>;
-                let new_first;
-
-                {
-                    let data = ctx.data.read();
-                    let config = data.get::<BotData>().expect("no config found");
-                    if !msg.content.starts_with(&config.cmd_prefix) {
-                        return;
-                    }
-                    //msg_content_clone = msg.content.clone();
-                    args = msg.content.split(" ").collect();
-                    new_first = args[0].replacen(&config.cmd_prefix, "", 1);
-                    args[0] = new_first.as_str();
-                }
-
-                search_full_library(ctx, &msg, &args);
-            })
-            .group(&GENERAL_GROUP)
-            .group(&WARFRAME_GROUP)
-            .group(&BNBCHIPS_GROUP)
-            .group(&BNBVIRUSES_GROUP)
-            .group(&BNBNCPS_GROUP),
-    );
-    */
     if let Err(why) = client.start().await {
         println!("Client error: {:?}", why);
     }
