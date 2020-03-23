@@ -50,6 +50,10 @@ impl WarframeData {
         let dat_lock_clone = Arc::clone(&self.data);
         tokio::spawn(async move {
             tokio::time::delay_for(Duration::from_secs(300)).await;
+            #[cfg(debug_assertions)]
+            {
+                println!("Removing cached Warframe data");
+            }
             let mut dat : RwLockWriteGuard<serde_json::Value> = dat_lock_clone.write().await;
             *dat = serde_json::Value::Null;
         });
@@ -112,7 +116,9 @@ impl WarframeData {
             let tier = val["tier"].as_str()?;
             let expiry_str = val["expiry"].as_str()?;
             let expire_time = DateTime::parse_from_rfc3339(expiry_str).ok()?.timestamp();
-
+            if expire_time < 0 {
+                continue;
+            }
             let to_add = format!(
                 "{}, {}, {}; expires in: {}",
                 mission,
