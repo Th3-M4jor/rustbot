@@ -3,13 +3,14 @@ use chrono::prelude::*;
 use serenity::{model::channel::Message, prelude::*};
 use serenity::framework::standard::{
     Args, CommandResult,
-    macros::command,
+    macros::*,
 };
-use std::sync::RwLock;
+use tokio::sync::{RwLock, RwLockReadGuard, RwLockWriteGuard};
 use std::sync::Arc;
 
 use serde_json;
 use std::time::Duration;
+use market::*;
 
 pub(crate) mod market;
 
@@ -31,56 +32,45 @@ pub struct WarframeData {
 }
 
 impl WarframeData {
+    
     pub fn new() -> WarframeData {
         let data = Arc::new(RwLock::new(serde_json::Value::Null));
-        let thread_dat = Arc::clone(&data);
-        std::thread::spawn(move || {
-            WarframeData::load_loop(thread_dat);
-        });
         WarframeData {
             data,
         }
     }
+    
 
-    fn load_loop(warframe_json: Arc<RwLock<serde_json::Value>>) {
-        let mut client = reqwest::blocking::Client::new();
-        let mut wait_time: u64 = 120;
-        loop {
-            let res = WarframeData::load(&client);
-            match res {
-                Ok(info) => {
-                    wait_time = 120;
-                    let mut dat = warframe_json
-                        .write()
-                        .expect("warframe data poisoned, panicking");
-                    *dat = info;
-                }
-                Err(e) => {
-                    //errored, rebuilding client for safety
-                    println!("{:?}", e);
-                    client = reqwest::blocking::Client::new();
-                    //wait for longer than two minutes, back-off when error
-                    if wait_time < 960 {
-                        wait_time *= 2;
-                    }
-                }
-            }
+    async fn load(&self) -> Result<(), Box<dyn std::error::Error>> {
+        let mut dat : RwLockWriteGuard<serde_json::Value> = self.data.write().await;
+        let response = reqwest::get(WARFRAME_URL).await?; //client.get(WARFRAME_URL).send()?;
+        let text = response.text().await?.replace("â€™", "'").replace("\u{FEFF}", "");
+        *dat = serde_json::from_str(&text)?;
+        drop(dat);
+        let dat_lock_clone = Arc::clone(&self.data);
+        tokio::spawn(async move {
+            tokio::time::delay_for(Duration::from_secs(300)).await;
+            let mut dat : RwLockWriteGuard<serde_json::Value> = dat_lock_clone.write().await;
+            *dat = serde_json::Value::Null;
+        });
+        return Ok(());
+    }
 
-            std::thread::sleep(Duration::from_secs(wait_time));
+    async fn try_reload(&self) -> Result<bool, Box<dyn std::error::Error>> {
+        
+        let data : RwLockReadGuard<serde_json::Value> = self.data.read().await;
+        if !data.is_null() {
+            return Ok(false);
         }
+        
+        drop(data);
+        self.load().await?;
+        return Ok(true);
     }
 
-    fn load(
-        client: &reqwest::blocking::Client,
-    ) -> Result<serde_json::Value, Box<dyn std::error::Error>> {
-        let response = client.get(WARFRAME_URL).send()?;
-        let text = response.text()?.replace("â€™", "'").replace("\u{FEFF}", "");
-        let dat: serde_json::Value = serde_json::from_str(&text)?;
-        return Ok(dat);
-    }
-
-    pub fn sortie(&self) -> Option<String> {
-        let dat = self.data.read().ok()?;
+    pub async fn sortie(&self) -> Option<String> {
+        self.try_reload().await.ok()?;
+        let dat : RwLockReadGuard<serde_json::Value> = self.data.read().await;
         let mut to_ret = String::from("faction: ");
         let sortie = &dat["sortie"];
         let faction = sortie["faction"].as_str()?;
@@ -104,8 +94,9 @@ impl WarframeData {
         return Some(to_ret);
     }
 
-    pub fn fissures(&self) -> Option<Vec<String>> {
-        let dat = self.data.read().ok()?;
+    pub async fn fissures(&self) -> Option<Vec<String>> {
+        self.try_reload().await.ok()?;
+        let dat : RwLockReadGuard<serde_json::Value> = self.data.read().await;
         let mut fissures = dat["fissures"].as_array()?.clone();
         fissures.sort_unstable_by(|a, b| {
             a["tierNum"]
@@ -139,13 +130,23 @@ impl WarframeData {
     }
 }
 
+
+#[group]
+//#[prefixes("w", "warframe")]
+#[commands(get_sortie, get_fissures, market)]
+struct Warframe;
+
 #[command]
 #[aliases("fissures")]
 pub(crate) async fn get_fissures(ctx: &mut Context, msg: &Message, _: Args) -> CommandResult {
+    if let Err(_) = msg.channel_id.broadcast_typing(&ctx.http).await {
+        println!("could not broadcast typing, not reloading");
+        return Ok(());
+    }
     let data = ctx.data.read().await;
     let warframe_dat = data.get::<WarframeData>().expect("no warframe data found");
 
-    match warframe_dat.fissures() {
+    match warframe_dat.fissures().await {
         Some(val) => long_say!(ctx, msg, &val, "\n"),
         None => say!(
             ctx,
@@ -159,10 +160,14 @@ pub(crate) async fn get_fissures(ctx: &mut Context, msg: &Message, _: Args) -> C
 #[command]
 #[aliases("sortie")]
 pub(crate) async fn get_sortie(ctx: &mut Context, msg: &Message, _: Args) -> CommandResult {
+    if let Err(_) = msg.channel_id.broadcast_typing(&ctx.http).await {
+        println!("could not broadcast typing, not reloading");
+        return Ok(());
+    }
     let data = ctx.data.read().await;
     let warframe_dat = data.get::<WarframeData>().expect("no warframe data found");
 
-    match warframe_dat.sortie() {
+    match warframe_dat.sortie().await {
         Some(val) => say!(ctx, msg, &val),
         None => say!(ctx, msg, "could not build sortie message, inform the owner"),
     }

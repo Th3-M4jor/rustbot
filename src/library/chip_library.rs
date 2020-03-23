@@ -1,11 +1,10 @@
 #[cfg(not(debug_assertions))]
 use serde_json;
-use serenity::framework::standard::{macros::command, Args, CommandResult};
+use serenity::framework::standard::{macros::*, Args, CommandResult};
 use serenity::{model::channel::Message, prelude::*};
 use std::collections::HashMap;
 use std::sync::Arc;
-use tokio::sync::RwLock;
-use super::super::bot_data::BotData;
+use tokio::sync::{RwLockReadGuard, RwLock};
 
 use simple_error::SimpleError;
 
@@ -158,8 +157,15 @@ impl TypeMapKey for ChipLibrary {
     type Value = RwLock<ChipLibrary>;
 }
 
+
+#[group]
+#[commands(send_chip, send_chip_skill, send_chip_skill_user, send_chip_skill_target, send_chip_skill_check, send_chip_element)]
+struct BnbChips;
+
+
 #[command]
 #[aliases("chip")]
+#[min_args(1)]
 pub(crate) async fn send_chip(ctx: &mut Context, msg: &Message, args: Args) -> CommandResult {
     
     if args.len() == 0 {
@@ -178,40 +184,77 @@ pub(crate) async fn send_chip(ctx: &mut Context, msg: &Message, args: Args) -> C
 }
 
 #[command]
-#[aliases("skill","skilluser","skillcheck","skilltarget")]
-pub(crate) async fn send_chip_skill(ctx: &mut Context, msg: &Message, _: Args) -> CommandResult {
-    let mut args: Vec<&str>;
-    let new_first;
-
-    {
-        let data = ctx.data.read().await;
-        let config = data.get::<BotData>().expect("no config found");
-        //msg_content_clone = msg.content.clone();
-        args = msg.content.split(" ").collect();
-        new_first = args[0].replacen(&config.cmd_prefix, "", 1);
-        args[0] = new_first.as_str();
-    }
-
+#[aliases("skill")]
+#[min_args(1)]
+async fn send_chip_skill(ctx: &mut Context, msg: &Message, mut args: Args) -> CommandResult {
     if args.len() < 1 {
         say!(ctx, msg, "you must provide a skill");
         return Ok(());
     }
-    let data = ctx.data.read().await;
+    let skill = args.single::<String>()?;
+    let data : RwLockReadGuard<ShareMap> = ctx.data.read().await;
     let library_lock = data.get::<ChipLibrary>().expect("chip library not found");
-    let library = library_lock.read().await;
-        //.expect("chip library poisoned, panicking");
-    let skill_res; // = library.search_skill(args[1]);
-    match args[0].to_lowercase().as_str() {
-        "skill" => skill_res = library.search_skill(args[1]),
-        "skilluser" => skill_res = library.search_skill_user(args[1]),
-        "skilltarget" => skill_res = library.search_skill_target(args[1]),
-        "skillcheck" => skill_res = library.search_skill_check(args[1]),
-        "send_chip_skill" => skill_res = library.search_skill(args[1]),
-        _ => unreachable!(),
+    let library : RwLockReadGuard<ChipLibrary> = library_lock.read().await;
+    match library.search_skill(&skill) {
+        Some(chips) => long_say!(ctx, msg, chips, ", "),
+        None => say!(ctx, msg, "nothing matched your search"),
     }
+    return Ok(());
+}
 
-    match skill_res {
-        Some(skills) => long_say!(ctx, msg, skills, ", "),
+#[command]
+#[aliases("skilluser")]
+#[min_args(1)]
+async fn send_chip_skill_user(ctx: &mut Context, msg: &Message, mut args: Args) -> CommandResult {
+    if args.len() < 1 {
+        say!(ctx, msg, "you must provide a skill");
+        return Ok(());
+    }
+    let skill = args.single::<String>()?;
+    let data : RwLockReadGuard<ShareMap> = ctx.data.read().await;
+    let library_lock = data.get::<ChipLibrary>().expect("chip library not found");
+    let library : RwLockReadGuard<ChipLibrary> = library_lock.read().await;
+    match library.search_skill_user(&skill) {
+        Some(chips) => long_say!(ctx, msg, chips, ", "),
+        None => say!(ctx, msg, "nothing matched your search"),
+    }
+    return Ok(());
+}
+
+
+#[command]
+#[aliases("skilltarget")]
+#[min_args(1)]
+async fn send_chip_skill_target(ctx: &mut Context, msg: &Message, mut args: Args) -> CommandResult {
+    if args.len() < 1 {
+        say!(ctx, msg, "you must provide a skill");
+        return Ok(());
+    }
+    let skill = args.single::<String>()?;
+    let data : RwLockReadGuard<ShareMap> = ctx.data.read().await;
+    let library_lock = data.get::<ChipLibrary>().expect("chip library not found");
+    let library : RwLockReadGuard<ChipLibrary> = library_lock.read().await;
+    match library.search_skill_target(&skill) {
+        Some(chips) => long_say!(ctx, msg, chips, ", "),
+        None => say!(ctx, msg, "nothing matched your search"),
+    }
+    return Ok(());
+}
+
+#[command]
+#[aliases("skillcheck")]
+#[min_args(1)]
+async fn send_chip_skill_check(ctx: &mut Context, msg: &Message, mut args: Args) -> CommandResult {
+    if args.len() < 1 {
+        say!(ctx, msg, "you must provide a skill");
+        return Ok(());
+    }
+    let skill = args.single::<String>()?;
+    let data : RwLockReadGuard<ShareMap> = ctx.data.read().await;
+    let library_lock = data.get::<ChipLibrary>().expect("chip library not found");
+    let library : RwLockReadGuard<ChipLibrary> = library_lock.read().await;
+    match library.search_skill_check(&skill) {
+        Some(chips) => long_say!(ctx, msg, chips, ", "),
         None => say!(ctx, msg, "nothing matched your search"),
     }
     return Ok(());
@@ -219,6 +262,7 @@ pub(crate) async fn send_chip_skill(ctx: &mut Context, msg: &Message, _: Args) -
 
 #[command]
 #[aliases("element")]
+#[min_args(1)]
 pub(crate) async fn send_chip_element(ctx: &mut Context, msg: &Message, args: Args) -> CommandResult {
     if args.len() < 1 {
         say!(ctx, msg, "you must provide an element");

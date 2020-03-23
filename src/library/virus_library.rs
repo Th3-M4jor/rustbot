@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use tokio::sync::RwLock;
+use tokio::sync::{RwLockReadGuard, RwLock};
 use std::sync::Arc;
 
 use rand::distributions::{Distribution, Uniform};
@@ -7,7 +7,7 @@ use rand::distributions::{Distribution, Uniform};
 use rand::rngs::ThreadRng;
 
 use serenity::{model::channel::Message, prelude::*};
-use serenity::framework::standard::{macros::command, Args, CommandResult};
+use serenity::framework::standard::{macros::*, Args, CommandResult};
 
 use serde::Serialize;
 
@@ -334,10 +334,20 @@ impl VirusLibrary {
     }
 }
 
+#[group]
+#[commands(
+    send_virus,
+    send_virus_element,
+    send_virus_cr,
+    send_random_encounter,
+    send_family
+)]
+struct BnbViruses;
 
 
 #[command]
 #[aliases("virus")]
+#[min_args(1)]
 pub(crate) async fn send_virus(ctx: &mut Context, msg: &Message, args: Args) -> CommandResult {
     if args.len() < 1 {
         say!(ctx, msg, "you must provide a name");
@@ -355,6 +365,7 @@ pub(crate) async fn send_virus(ctx: &mut Context, msg: &Message, args: Args) -> 
 
 #[command]
 #[aliases("viruselement")]
+#[min_args(1)]
 pub(crate) async fn send_virus_element(ctx: &mut Context, msg: &Message, args: Args) -> CommandResult {
     if args.len() < 1 {
         say!(ctx, msg, "you must provide an element");
@@ -381,6 +392,7 @@ pub(crate) async fn send_virus_element(ctx: &mut Context, msg: &Message, args: A
 
 #[command]
 #[aliases("cr")]
+#[min_args(1)]
 pub(crate) async fn send_virus_cr(ctx: &mut Context, msg: &Message, mut args: Args) -> CommandResult {
     if args.len() < 1 {
         say!(ctx, msg, "you must provide a CR to search for");
@@ -408,6 +420,7 @@ pub(crate) async fn send_virus_cr(ctx: &mut Context, msg: &Message, mut args: Ar
 
 #[command]
 #[aliases("encounter")]
+#[min_args(2)]
 pub(crate) async fn send_random_encounter(ctx: &mut Context, msg: &Message, mut args: Args) -> CommandResult {
     if args.len() < 2 {
         say!(
@@ -432,7 +445,7 @@ pub(crate) async fn send_random_encounter(ctx: &mut Context, msg: &Message, mut 
     let data = ctx.data.read().await;
     let library_lock: &RwLock<VirusLibrary> =
         data.get::<VirusLibrary>().expect("Virus library not found");
-    let library = library_lock.read().await;
+    let library : RwLockReadGuard<VirusLibrary> = library_lock.read().await;
         //.expect("library was poisoned, panicking");
     let single_cr_res = first_arg.parse::<isize>();
     let to_send: Vec<&str>;
@@ -484,6 +497,7 @@ pub(crate) async fn send_random_encounter(ctx: &mut Context, msg: &Message, mut 
 
 #[command]
 #[aliases("family")]
+#[min_args(1)]
 pub(crate) async fn send_family(ctx: &mut Context, msg: &Message, args: Args) -> CommandResult {
     if args.len() < 1 {
         say!(ctx, msg, "you must provide a name");

@@ -1,7 +1,7 @@
 use serenity::{model::channel::Message, prelude::*};
 use serenity::framework::standard::{
     Args, CommandResult,
-    macros::command,
+    macros::*,
 };
 
 use serde_json::Value;
@@ -44,6 +44,8 @@ async fn make_request(name: &str) -> Result<Vec<String>, SimpleError> {
 }
 
 #[command]
+#[min_args(1)]
+#[bucket = "Warframe_Market"]
 pub(crate) async fn market(ctx: &mut Context, msg: &Message, args: Args) -> CommandResult {
 
     let new_args_res = args.remains();

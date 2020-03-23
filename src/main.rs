@@ -1,18 +1,18 @@
 #[macro_use]
 extern crate lazy_static;
 
-use std::process::exit;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
-use tokio::sync::RwLock;
+use tokio::sync::{RwLock, RwLockReadGuard};
 
 use serenity::{
     async_trait,
+    client::bridge::gateway::ShardManager,
     framework::standard::{
-        macros::{command, group, hook},
-        Args, CommandResult, StandardFramework,
+        macros::{check, command, group, hook},
+        Args, CheckResult, CommandOptions, CommandResult, StandardFramework,
     },
-    model::{channel::Message, gateway::Ready},
+    model::{channel::Message, gateway::Activity, gateway::Ready, guild::PartialGuild},
     prelude::*,
 };
 
@@ -20,11 +20,10 @@ use crate::bot_data::BotData;
 use crate::library::{
     blights::*, chip_library::*, full_library::*, ncp_library::*, virus_library::*, Library,
 };
-use crate::warframe::{market::*, *};
+use crate::warframe::*;
 
 use crate::dice::*;
 use crate::util::*;
-use serenity::model::gateway::Activity;
 use std::fs;
 
 //use regex::Replacer;
@@ -37,55 +36,17 @@ mod warframe;
 
 //type BotCommand = fn(Context, &Message, &[&str]) -> ();
 
+struct ShardManagerContainer;
+
+impl TypeMapKey for ShardManagerContainer {
+    type Value = Arc<Mutex<ShardManager>>;
+}
+
 lazy_static! {
-
-    /*
-    static ref COMMANDS: HashMap<String, BotCommand> = {
-        let mut cmd_map = HashMap::new();
-
-        //need cast to BotCommand here once and rest are implicit to avoid compiler error due to type mismatch
-        cmd_map.insert("chip".to_string(), send_chip as BotCommand);
-
-        cmd_map.insert("cr".to_string(), send_virus_cr);
-        cmd_map.insert("element".to_string(), send_chip_element);
-
-        cmd_map.insert("ncp".to_string(), send_ncp);
-        cmd_map.insert("ncpcolor".to_string(), send_ncp_color);
-        cmd_map.insert("blight".to_string(), get_blight);
-
-        cmd_map.insert("reload".to_string(), reload);
-        cmd_map.insert("die".to_string(), check_exit);
-
-        cmd_map.insert("skill".to_string(), send_chip_skill);
-        cmd_map.insert("skilluser".to_string(), send_chip_skill);
-        cmd_map.insert("skilltarget".to_string(), send_chip_skill);
-        cmd_map.insert("skillcheck".to_string(), send_chip_skill);
-
-        cmd_map.insert("roll".to_string(), roll);
-        cmd_map.insert("reroll".to_string(), roll);
-        cmd_map.insert("rollstats".to_string(), roll_stats);
-
-        cmd_map.insert("virus".to_string(), send_virus);
-        cmd_map.insert("encounter".to_string(), send_random_encounter);
-        cmd_map.insert("viruselement".to_string(), send_virus_element);
-        cmd_map.insert("family".to_string(), send_family);
-
-        cmd_map.insert("help".to_string(), send_help);
-        cmd_map.insert("about".to_string(), about_bot);
-        cmd_map.insert("audit".to_string(), audit_log);
-        cmd_map.insert("manager".to_string(), manager);
-        cmd_map.insert("phb".to_string(), send_handbook);
-
-        cmd_map.insert("sortie".to_string(), get_sortie);
-        cmd_map.insert("fissures".to_string(), get_fissures);
-        cmd_map.insert("market".to_string(), get_market_info);
-        return cmd_map;
-    };
-    */
-
-    static ref HELP_STRING: String = fs::read_to_string("./help.txt").unwrap_or("help text is missing, bug the owner".to_string());
-
-    static ref ABOUT_BOT: String = fs::read_to_string("./about.txt").unwrap_or("about text is missing, bug the owner".to_string());
+    static ref HELP_STRING: String = fs::read_to_string("./help.txt")
+        .unwrap_or("help text is missing, bug the owner".to_string());
+    static ref ABOUT_BOT: String = fs::read_to_string("./about.txt")
+        .unwrap_or("about text is missing, bug the owner".to_string());
 }
 
 struct Handler;
@@ -94,41 +55,16 @@ struct Handler;
 impl EventHandler for Handler {
     // Event handlers are dispatched through a threadpool, and so multiple
     // events can be dispatched simultaneously.
-    /*
-    fn message(&self, ctx: Context, msg: Message) {
-        //let msg_content_clone;
-        let mut args: Vec<&str>;
-        let new_first;
-
-        {
-            let data = ctx.data.read();
-            let config = data.get::<BotData>().expect("no config found");
-            if !msg.content.starts_with(&config.cmd_prefix) {
-                return;
-            }
-            //msg_content_clone = msg.content.clone();
-            args = msg.content.split(" ").collect();
-            new_first = args[0].replacen(&config.cmd_prefix, "", 1);
-            args[0] = new_first.as_str();
-        }
-
-        //get the command from a jump table
-        let cmd_res = COMMANDS.get(&args[0].to_lowercase());
-        match cmd_res {
-            Some(cmd) => cmd(ctx, &msg, &args),
-            None => search_full_library(ctx, &msg, &args),
-        }
-    }
-    */
+    
 
     async fn ready(&self, ctx: Context, ready: Ready) {
         lazy_static! {
             static ref FIRST_LOGIN: AtomicBool = AtomicBool::new(true);
         }
-        let data = ctx.data.read().await;
+        let data: RwLockReadGuard<ShareMap> = ctx.data.read().await;
         let config = data.get::<BotData>().expect("no bot data, panicking");
 
-        let guild = serenity::model::guild::Guild::get(&ctx, config.main_server)
+        let guild: PartialGuild = serenity::model::guild::Guild::get(&ctx, config.main_server)
             .await
             .expect("could not find main server");
         let owner = guild
@@ -158,36 +94,17 @@ impl EventHandler for Handler {
 }
 
 #[group]
-#[commands(
-    manager, phb, die, reload, audit, send_help, get_blight, roll, roll_stats
-)]
-struct General;
+#[owners_only]
+#[commands(die, audit)]
+struct Administrative;
 
 #[group]
-#[commands(get_sortie, get_fissures, market)]
-struct Warframe;
-
-#[group]
-#[commands(send_chip, send_chip_skill, send_chip_element)]
-struct BnbChips;
-
-#[group]
-#[commands(
-    send_virus,
-    send_virus_element,
-    send_virus_cr,
-    send_random_encounter,
-    send_family
-)]
-struct BnbViruses;
-
-#[group]
-#[commands(send_ncp, send_ncp_color)]
-struct BnbNcps;
+#[commands(manager, phb, reload, get_blight)]
+struct BnbGeneral;
 
 #[command]
 async fn manager(ctx: &mut Context, msg: &Message, _: Args) -> CommandResult {
-    let data = ctx.data.read().await;
+    let data: RwLockReadGuard<ShareMap> = ctx.data.read().await;
     let config = data.get::<BotData>().expect("could not get config");
     say!(ctx, msg, &config.manager);
     return Ok(());
@@ -195,7 +112,7 @@ async fn manager(ctx: &mut Context, msg: &Message, _: Args) -> CommandResult {
 
 #[command]
 async fn phb(ctx: &mut Context, msg: &Message, _: Args) -> CommandResult {
-    let data = ctx.data.read().await;
+    let data: RwLockReadGuard<ShareMap> = ctx.data.read().await;
     let config = data.get::<BotData>().expect("could not get config");
     say!(ctx, msg, &config.phb);
     return Ok(());
@@ -203,12 +120,13 @@ async fn phb(ctx: &mut Context, msg: &Message, _: Args) -> CommandResult {
 
 #[command]
 async fn die(ctx: &mut Context, msg: &Message, _: Args) -> CommandResult {
-    let data = ctx.data.read().await;
-    let config = data.get::<BotData>().expect("config not found");
+    let data: RwLockReadGuard<ShareMap> = ctx.data.read().await;
 
-    if msg.author.id == config.owner {
-        ctx.invisible().await;
-        exit(0);
+    ctx.invisible().await;
+    if let Some(manager) = data.get::<ShardManagerContainer>() {
+        manager.lock().await.shutdown_all().await;
+    } else {
+        let _ = msg.reply(&ctx, "There was a problem getting the shard manager");
     }
     return Ok(());
 }
@@ -273,15 +191,33 @@ async fn reload_viruses(data: Arc<RwLock<ShareMap>>) -> (String, Vec<FullLibrary
     return (str_to_ret, vec_to_ret);
 }
 
+#[check]
+#[name = "Admin"]
+async fn admin_check(
+    ctx: &mut Context,
+    msg: &Message,
+    _: &mut Args,
+    _: &CommandOptions,
+) -> CheckResult {
+    let data: RwLockReadGuard<ShareMap> = ctx.data.read().await;
+    let config = data.get::<BotData>().expect("could not get config");
+
+    return (msg.author.id == config.owner || config.admins.contains(msg.author.id.as_u64()))
+        .into();
+}
+
 #[command]
+#[checks(Admin)]
 async fn reload(ctx: &mut Context, msg: &Message, _: Args) -> CommandResult {
+    /*
     {
-        let data = ctx.data.read().await;
+        let data: RwLockReadGuard<ShareMap> = ctx.data.read().await;
         let config = data.get::<BotData>().expect("could not get config");
         if msg.author.id != config.owner && !config.admins.contains(msg.author.id.as_u64()) {
             return Ok(());
         }
     }
+    */
 
     if let Err(_) = msg.channel_id.broadcast_typing(&ctx.http).await {
         println!("could not broadcast typing, not reloading");
@@ -298,7 +234,7 @@ async fn reload(ctx: &mut Context, msg: &Message, _: Args) -> CommandResult {
     let virus_future = reload_viruses(virus_data);
     let (chip_res, ncp_res, virus_res) = tokio::join!(chip_future, ncp_future, virus_future);
 
-    let data = ctx.data.read().await;
+    let data: RwLockReadGuard<ShareMap> = ctx.data.read().await;
     let blight_string;
     {
         let blight_lock = data.get::<Blights>().expect("Blights not found");
@@ -457,15 +393,22 @@ async fn main() {
     }
 
     let config = BotData::new();
+    let mut owners = std::collections::HashSet::new();
+    let owner_id = serenity::model::id::UserId::from(config.owner);
+    owners.insert(owner_id);
     let prefix = config.cmd_prefix.clone();
     let framework = StandardFramework::new()
         .configure(move |c| {
             c.with_whitespace(true)
                 .prefix(&prefix)
                 .case_insensitivity(true)
+                .owners(owners)
         })
         .unrecognised_command(default_command)
-        .group(&GENERAL_GROUP)
+        .bucket("Warframe_Market", |b| b.delay(5)).await
+        .group(&ADMINISTRATIVE_GROUP)
+        .group(&DICECOMMAND_GROUP)
+        .group(&BNBGENERAL_GROUP)
         .group(&BNBCHIPS_GROUP)
         .group(&BNBVIRUSES_GROUP)
         .group(&BNBNCPS_GROUP)
@@ -483,6 +426,7 @@ async fn main() {
         data.insert::<WarframeData>(warframe_data);
         data.insert::<FullLibrary>(full_library_mutex);
         data.insert::<Blights>(blight_mutex);
+        data.insert::<ShardManagerContainer>(Arc::clone(&client.shard_manager));
     }
     // Finally, start a single shard, and start listening to events.
     //
@@ -491,5 +435,7 @@ async fn main() {
 
     if let Err(why) = client.start().await {
         println!("Client error: {:?}", why);
+    } else {
+        println!("Bot shutdown successfully");
     }
 }

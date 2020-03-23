@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 use serde::{Serialize};
 use serenity::{model::channel::Message, prelude::*};
-use serenity::framework::standard::{macros::command, Args, CommandResult};
+use serenity::framework::standard::{macros::*, Args, CommandResult};
 
 #[cfg(not(debug_assertions))]
 use serde_json;
@@ -158,8 +158,13 @@ impl TypeMapKey for NCPLibrary {
     type Value = RwLock<NCPLibrary>;
 }
 
+#[group]
+#[commands(send_ncp, send_ncp_color)]
+struct BnbNcps;
+
 #[command]
 #[aliases("ncp")]
+#[min_args(1)]
 pub(crate) async fn send_ncp(ctx: &mut Context, msg: &Message, args: Args) -> CommandResult {
     if args.len() < 1 {
         say!(ctx, msg, "you must provide a name");
@@ -174,6 +179,7 @@ pub(crate) async fn send_ncp(ctx: &mut Context, msg: &Message, args: Args) -> Co
 
 #[command]
 #[aliases("ncpcolor")]
+#[min_args(1)]
 pub(crate) async fn send_ncp_color(ctx: &mut Context, msg: &Message, args: Args) -> CommandResult {
     if args.len() < 1 {
         say!(ctx, msg, "you must provide a name");

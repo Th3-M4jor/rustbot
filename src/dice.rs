@@ -1,19 +1,20 @@
 use rand::distributions::{Distribution, Uniform};
 use rand::rngs::ThreadRng;
 use serenity::{model::channel::Message, prelude::*};
-use serenity::framework::standard::{macros::command, Args, CommandResult};
-use std::borrow::BorrowMut;
-use crate::bot_data::BotData;
+use serenity::framework::standard::{macros::*, Args, CommandResult};
 
 pub struct DieRoll;
 
 impl DieRoll {
-    pub fn roll_dice(to_roll: &str, rolls: &mut Vec<i64>, reroll: bool) -> i64 {
+    pub fn roll_dice(to_roll: &str, reroll: bool) -> (i64, Vec<i64>) {
         let mut to_ret: i64 = 0;
+        let mut rolls : Vec<i64> = vec![];
         let a: Vec<&str> = to_roll.split('+').collect();
         if a.len() > 1 {
             for b in a {
-                to_ret += DieRoll::roll_dice(b, rolls, reroll);
+                let (res, mut vec_to_push) = DieRoll::roll_dice(b, reroll);
+                to_ret += res;
+                rolls.append(&mut vec_to_push);
             }
         } else {
             let d: Vec<&str> = a[0].split('d').collect();
@@ -23,10 +24,10 @@ impl DieRoll {
                 match res {
                     Ok(val) => {
                         rolls.push(val);
-                        return val;
+                        return (val, rolls);
                     }
                     Err(_) => {
-                        return 0;
+                        return (-1, vec![]);
                     }
                 }
             }
@@ -53,7 +54,6 @@ impl DieRoll {
                 let die = Uniform::from(1..=f);
                 let mut u: i64 = 0;
                 for _ in 0..amt_to_roll {
-                    //let to_add = rng.gen::<i64>().abs() % f + 1;
                     let mut to_add = die.sample(&mut rng);
                     if reroll && to_add < 2 {
                         let new_to_add = die.sample(&mut rng);
@@ -66,51 +66,20 @@ impl DieRoll {
             }
         }
 
-        return to_ret;
+        return (to_ret, rolls);
     }
 }
 
-#[command]
-#[aliases("reroll")]
-pub(crate) async fn roll(ctx: &mut Context, msg: &Message, _: Args) -> CommandResult {
-    let mut args: Vec<&str>;
-    let new_first;
+#[group]
+#[commands(
+    roll, reroll, roll_stats
+)]
+struct DiceCommand;
 
-    {
-        let data = ctx.data.read().await;
-        let config = data.get::<BotData>().expect("no config found");
-        //msg_content_clone = msg.content.clone();
-        args = msg.content.split(" ").collect();
-        new_first = args[0].replacen(&config.cmd_prefix, "", 1);
-        args[0] = new_first.as_str();
-    }
-    
-    
-    if args.len() < 2 {
-        say!(
-            ctx,
-            msg,
-            format!(
-                "{}, you must supply a number of dice to roll",
-                msg.author.mention().await
-            )
-        );
-        return Ok(());
-    }
+async fn perform_roll(ctx: &mut Context, msg: &Message, to_roll: &str, reroll: bool) {
 
-    
-
-    //grab all but the first argument which is the command name
-    let to_join = &args[1..];
-
-    let to_roll = to_join.join(" ");
-    let mut results: Vec<i64> = vec![];
-    let amt;
-    if args[0] == "reroll" {
-        amt = DieRoll::roll_dice(&to_roll, results.borrow_mut(), true);
-    } else {
-        amt = DieRoll::roll_dice(&to_roll, results.borrow_mut(), false);
-    }
+    //let mut results: Vec<i64> = vec![];
+    let (amt, results) = DieRoll::roll_dice(&to_roll, reroll);
     let repl_str = format!("{:?}", results);
     let reply;
     if repl_str.len() > 1850 {
@@ -128,6 +97,44 @@ pub(crate) async fn roll(ctx: &mut Context, msg: &Message, _: Args) -> CommandRe
         );
     }
     say!(ctx, msg, reply);
+
+}
+
+#[command]
+#[min_args(1)]
+async fn reroll(ctx: &mut Context, msg: &Message, args: Args) -> CommandResult {
+    
+    if args.len() < 1 {
+        say!(
+            ctx,
+            msg,
+            format!(
+                "{}, you must supply a number of dice to roll",
+                msg.author.mention().await
+            )
+        );
+        return Ok(());
+    }
+    perform_roll(ctx, msg, args.rest(), true).await;
+    return Ok(());
+}
+
+
+#[command]
+#[min_args(1)]
+pub(crate) async fn roll(ctx: &mut Context, msg: &Message, args: Args) -> CommandResult {
+    if args.len() < 1 {
+        say!(
+            ctx,
+            msg,
+            format!(
+                "{}, you must supply a number of dice to roll",
+                msg.author.mention().await
+            )
+        );
+        return Ok(());
+    }
+    perform_roll(ctx, msg, args.rest(), false).await;
     return Ok(());
 }
 
@@ -135,10 +142,10 @@ pub(crate) async fn roll(ctx: &mut Context, msg: &Message, _: Args) -> CommandRe
 #[aliases("rollstats")]
 pub(crate) async fn roll_stats(ctx: &mut Context, msg: &Message, _: Args) -> CommandResult {
     let mut stats: [i64; 6] = [0; 6];
-    let mut rolls: Vec<i64> = vec![];
+    //let mut rolls: Vec<i64> = vec![];
     for i in &mut stats {
-        rolls.clear();
-        DieRoll::roll_dice("4d6", &mut rolls, false);
+        //rolls.clear();
+        let (_, mut rolls) = DieRoll::roll_dice("4d6", false);
 
         //sort reverse to put lowest at the end
         rolls.sort_unstable_by(|a, b| b.cmp(a));

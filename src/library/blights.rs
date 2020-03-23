@@ -33,6 +33,7 @@ impl TypeMapKey for Blights {
 
 #[command]
 #[aliases("blight")]
+#[min_args(1)]
 pub(crate) async fn get_blight(ctx: &mut Context, msg: &Message, args: Args) -> CommandResult{
     if args.len() < 1 {
         say!(ctx, msg, "you must provide an element");
