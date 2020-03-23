@@ -366,7 +366,7 @@ pub(crate) async fn send_virus_element(ctx: &mut Context, msg: &Message, args: A
         data.get::<VirusLibrary>().expect("Virus library not found");
     let library = library_lock.read().await;
         //.expect("Virus library poisoned, panicking");
-    let elem_res = library.search_element(args.current().await.unwrap());
+    let elem_res = library.search_element(args.current().unwrap());
     match elem_res {
         Some(elem) => long_say!(ctx, msg, elem, ", "),
         None => say!(
@@ -387,7 +387,7 @@ pub(crate) async fn send_virus_cr(ctx: &mut Context, msg: &Message, mut args: Ar
         return Ok(());
     }
     
-    let cr_to_get_res = args.single::<u8>().await;
+    let cr_to_get_res = args.single::<u8>();
 
     if cr_to_get_res.is_err() {
         say!(ctx, msg, "an invalid number was provided");
@@ -421,9 +421,9 @@ pub(crate) async fn send_random_encounter(ctx: &mut Context, msg: &Message, mut 
         );
         return Ok(());
     }
-    let first_arg = args.single::<String>().await.unwrap();
+    let first_arg = args.single::<String>().unwrap();
     //args.advance();
-    let second_arg = args.single::<String>().await.unwrap(); 
+    let second_arg = args.single::<String>().unwrap(); 
     let virus_count = second_arg.parse::<isize>().unwrap_or(-1);
     if virus_count <= 0 {
         say!(ctx, msg, "an invalid number of viruses were given");

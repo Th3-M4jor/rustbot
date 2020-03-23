@@ -167,7 +167,7 @@ pub(crate) async fn send_chip(ctx: &mut Context, msg: &Message, args: Args) -> C
         return Ok(());
     };
 
-    let to_get = args.current().await.unwrap();
+    let to_get = args.current().unwrap();
     let data = ctx.data.read().await;
     let library_lock = data.get::<ChipLibrary>().expect("chip library not found");
     let library = library_lock.read().await;

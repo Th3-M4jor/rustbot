@@ -168,7 +168,7 @@ pub(crate) async fn send_ncp(ctx: &mut Context, msg: &Message, args: Args) -> Co
     let data = ctx.data.read().await;
     let library_lock = data.get::<NCPLibrary>().expect("NCP library not found");
     let library = library_lock.read().await;
-    say!(ctx, msg, search_lib_obj(args.current().await.unwrap(), library));
+    say!(ctx, msg, search_lib_obj(args.current().unwrap(), library));
     return Ok(());
 }
 
@@ -182,7 +182,7 @@ pub(crate) async fn send_ncp_color(ctx: &mut Context, msg: &Message, args: Args)
     let data = ctx.data.read().await;
     let library_lock = data.get::<NCPLibrary>().expect("NCP library not found");
     let library = library_lock.read().await;
-    match library.search_color(args.current().await.unwrap()) {
+    match library.search_color(args.current().unwrap()) {
         Some(list) => long_say!(ctx, msg, list, ", "),
         None => say!(ctx, msg, "Nothing matched your search"),
     }

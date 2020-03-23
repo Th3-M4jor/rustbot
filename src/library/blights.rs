@@ -41,7 +41,7 @@ pub(crate) async fn get_blight(ctx: &mut Context, msg: &Message, args: Args) -> 
     let data = ctx.data.read().await;
     let blight_lock = data.get::<Blights>().expect("blights not found");
     let blights = blight_lock.read().await;
-    let res = blights.get(args.current().await.unwrap());//.unwrap_or("There is no blight with that element, perhaps you spelled it wrong?");
+    let res = blights.get(args.current().unwrap());//.unwrap_or("There is no blight with that element, perhaps you spelled it wrong?");
     let to_send = match res {
         Some(val) => format!("```{}```", val),
         None => String::from("There is no blight with that element, perhaps you spelled it wrong?"),
