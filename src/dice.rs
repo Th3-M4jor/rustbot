@@ -101,7 +101,6 @@ async fn perform_roll(ctx: &mut Context, msg: &Message, to_roll: &str, reroll: b
 }
 
 #[command]
-#[min_args(1)]
 async fn reroll(ctx: &mut Context, msg: &Message, args: Args) -> CommandResult {
     
     if args.len() < 1 {
@@ -121,7 +120,6 @@ async fn reroll(ctx: &mut Context, msg: &Message, args: Args) -> CommandResult {
 
 
 #[command]
-#[min_args(1)]
 pub(crate) async fn roll(ctx: &mut Context, msg: &Message, args: Args) -> CommandResult {
     if args.len() < 1 {
         say!(

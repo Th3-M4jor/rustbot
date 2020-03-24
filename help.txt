@@ -6,36 +6,17 @@
 
 %chip
     get the description of a chip with the specified name
-    or a list of chips that could match that name
 
-%cr
-    get a list of viruses in a given cr
-
-%element
+%chip element
     get a list of chips that are of the given element
-
-%encounter
-    generates a random encounter
-    the required format is "%encounter 2 5" or "%encounter 2-3 6"
-    the first returns 5 random viruses in CR 2, the second returns
-    6 random viruses in between CR2 and CR3 (inclusive)
-
-%family
-    if given the name of the first virus in a family, will return all viruses in that family
-
-%fissures
-    returns a list of all active warframe fissures (PC)
 
 %manager
     sends a link to the chip manager
 
-%market
-    search the warframe market for people selling an item (PC)
-
 %ncp
     get the description of a given ncp
 
-%ncpColor
+%ncp color
     get a list of all NCP's with that color
 
 %phb
@@ -51,24 +32,42 @@
     Roll character stats for D&D 5e by rolling 4d6 and dropping the lowest 6 times
 
 %skill
-    get a list of chips that use the specified skill
-    in it's attack roll
+    get a list of chips that use the specified skill in it's attack roll
 
-%skillCheck
+%skill check
     get a list of chips where the required check's DC or save modifier uses the given skill
 
-%skillTarget
+%skill target
     get a list of chips where the required check's save bonus uses the given skill
 
-%skillUser
+%skill User
     get a list of chips where the required check's DC is modified by the given skill
-
-%sortie
-    returns the currently active sortie in Warframe (PC)
 
 %virus
     get the description of the given virus
-    or a list of viruses that could match that name
 
-%virusElement
-    returns a list of viruses with the given element
+%virus element
+    get a list of viruses with the given element
+
+%virus cr
+    get a list of viruses in a given cr
+
+%virus encounter
+    generates a random encounter
+    the required format is "%encounter 2 5" or "%encounter 2-4 6"
+    the first gives 5 random viruses in CR 2, the second gives
+    6 random viruses between CR2 and CR4
+
+%virus family
+    given the name of the first virus in a family, will return all viruses in that family
+
+%warframe fissures
+    gets a list of all active warframe fissures (PC)
+
+%warframe market
+    search the warframe market for people selling an item (PC)
+
+%warframe sortie
+    gets the currently active sortie in Warframe (PC)
+
+Aliases: chip = c, ncp = n, virus = v, warframe = w

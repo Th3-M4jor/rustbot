@@ -159,12 +159,13 @@ impl TypeMapKey for NCPLibrary {
 }
 
 #[group]
+#[prefixes("n", "ncp")]
+#[default_command(send_ncp)]
 #[commands(send_ncp, send_ncp_color)]
 struct BnbNcps;
 
 #[command]
 #[aliases("ncp")]
-#[min_args(1)]
 pub(crate) async fn send_ncp(ctx: &mut Context, msg: &Message, args: Args) -> CommandResult {
     if args.len() < 1 {
         say!(ctx, msg, "you must provide a name");
@@ -178,11 +179,10 @@ pub(crate) async fn send_ncp(ctx: &mut Context, msg: &Message, args: Args) -> Co
 }
 
 #[command]
-#[aliases("ncpcolor")]
-#[min_args(1)]
+#[aliases("color")]
 pub(crate) async fn send_ncp_color(ctx: &mut Context, msg: &Message, args: Args) -> CommandResult {
     if args.len() < 1 {
-        say!(ctx, msg, "you must provide a name");
+        say!(ctx, msg, format!("you must provide a color\nValid colors are: `{:?}`", COLORS));
         return Ok(());
     }
     let data = ctx.data.read().await;
@@ -190,7 +190,7 @@ pub(crate) async fn send_ncp_color(ctx: &mut Context, msg: &Message, args: Args)
     let library = library_lock.read().await;
     match library.search_color(args.current().unwrap()) {
         Some(list) => long_say!(ctx, msg, list, ", "),
-        None => say!(ctx, msg, "Nothing matched your search"),
+        None => say!(ctx, msg, format!("None found, perhaps you used an invalid color?\nValid colors are: `{:?}`", COLORS)),
     }
     return Ok(());
 }

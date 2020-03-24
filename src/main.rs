@@ -99,7 +99,7 @@ impl EventHandler for Handler {
 struct Administrative;
 
 #[group]
-#[commands(manager, phb, reload, get_blight)]
+#[commands(manager, phb, reload, get_blight, about_bot, send_help)]
 struct BnbGeneral;
 
 #[command]
@@ -410,9 +410,11 @@ async fn main() {
         .group(&DICECOMMAND_GROUP)
         .group(&BNBGENERAL_GROUP)
         .group(&BNBCHIPS_GROUP)
+        .group(&BNBSKILLS_GROUP)
         .group(&BNBVIRUSES_GROUP)
         .group(&BNBNCPS_GROUP)
         .group(&WARFRAME_GROUP);
+
     let mut client = Client::new_with_framework(&config.token, Handler, framework)
         .await
         .expect("Err creating client");

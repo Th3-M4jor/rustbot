@@ -159,13 +159,19 @@ impl TypeMapKey for ChipLibrary {
 
 
 #[group]
-#[commands(send_chip, send_chip_skill, send_chip_skill_user, send_chip_skill_target, send_chip_skill_check, send_chip_element)]
+#[prefixes("c", "chip")]
+#[default_command(send_chip)]
+#[commands(send_chip, send_chip_element)]
 struct BnbChips;
 
+#[group]
+#[prefixes("s", "skill")]
+#[default_command(send_chip_skill)]
+#[commands(send_chip_skill, send_chip_skill_user, send_chip_skill_target, send_chip_skill_check)]
+struct BnBSkills;
 
 #[command]
 #[aliases("chip")]
-#[min_args(1)]
 pub(crate) async fn send_chip(ctx: &mut Context, msg: &Message, args: Args) -> CommandResult {
     
     if args.len() == 0 {
@@ -185,7 +191,6 @@ pub(crate) async fn send_chip(ctx: &mut Context, msg: &Message, args: Args) -> C
 
 #[command]
 #[aliases("skill")]
-#[min_args(1)]
 async fn send_chip_skill(ctx: &mut Context, msg: &Message, mut args: Args) -> CommandResult {
     if args.len() < 1 {
         say!(ctx, msg, "you must provide a skill");
@@ -203,8 +208,7 @@ async fn send_chip_skill(ctx: &mut Context, msg: &Message, mut args: Args) -> Co
 }
 
 #[command]
-#[aliases("skilluser")]
-#[min_args(1)]
+#[aliases("user")]
 async fn send_chip_skill_user(ctx: &mut Context, msg: &Message, mut args: Args) -> CommandResult {
     if args.len() < 1 {
         say!(ctx, msg, "you must provide a skill");
@@ -223,8 +227,7 @@ async fn send_chip_skill_user(ctx: &mut Context, msg: &Message, mut args: Args) 
 
 
 #[command]
-#[aliases("skilltarget")]
-#[min_args(1)]
+#[aliases("target")]
 async fn send_chip_skill_target(ctx: &mut Context, msg: &Message, mut args: Args) -> CommandResult {
     if args.len() < 1 {
         say!(ctx, msg, "you must provide a skill");
@@ -242,8 +245,7 @@ async fn send_chip_skill_target(ctx: &mut Context, msg: &Message, mut args: Args
 }
 
 #[command]
-#[aliases("skillcheck")]
-#[min_args(1)]
+#[aliases("check")]
 async fn send_chip_skill_check(ctx: &mut Context, msg: &Message, mut args: Args) -> CommandResult {
     if args.len() < 1 {
         say!(ctx, msg, "you must provide a skill");
@@ -262,7 +264,6 @@ async fn send_chip_skill_check(ctx: &mut Context, msg: &Message, mut args: Args)
 
 #[command]
 #[aliases("element")]
-#[min_args(1)]
 pub(crate) async fn send_chip_element(ctx: &mut Context, msg: &Message, args: Args) -> CommandResult {
     if args.len() < 1 {
         say!(ctx, msg, "you must provide an element");

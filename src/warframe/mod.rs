@@ -138,7 +138,7 @@ impl WarframeData {
 
 
 #[group]
-//#[prefixes("w", "warframe")]
+#[prefixes("w", "warframe")]
 #[commands(get_sortie, get_fissures, market)]
 struct Warframe;
 
