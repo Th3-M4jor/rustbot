@@ -31,8 +31,7 @@ impl TypeMapKey for Blights {
     type Value = RwLock<Blights>;
 }
 
-#[command]
-#[aliases("blight")]
+#[command("blight")]
 pub(crate) async fn get_blight(ctx: &mut Context, msg: &Message, args: Args) -> CommandResult{
     if args.len() < 1 {
         say!(ctx, msg, "you must provide an element");

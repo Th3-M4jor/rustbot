@@ -164,8 +164,8 @@ impl TypeMapKey for NCPLibrary {
 #[commands(send_ncp, send_ncp_color)]
 struct BnbNcps;
 
-#[command]
-#[aliases("ncp")]
+#[command("ncp")]
+#[min_args(1)]
 pub(crate) async fn send_ncp(ctx: &mut Context, msg: &Message, args: Args) -> CommandResult {
     if args.len() < 1 {
         say!(ctx, msg, "you must provide a name");
@@ -178,8 +178,8 @@ pub(crate) async fn send_ncp(ctx: &mut Context, msg: &Message, args: Args) -> Co
     return Ok(());
 }
 
-#[command]
-#[aliases("color")]
+#[command("color")]
+#[min_args(1)]
 pub(crate) async fn send_ncp_color(ctx: &mut Context, msg: &Message, args: Args) -> CommandResult {
     if args.len() < 1 {
         say!(ctx, msg, format!("you must provide a color\nValid colors are: `{:?}`", COLORS));

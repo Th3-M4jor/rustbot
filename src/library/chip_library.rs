@@ -170,8 +170,7 @@ struct BnbChips;
 #[commands(send_chip_skill, send_chip_skill_user, send_chip_skill_target, send_chip_skill_check)]
 struct BnBSkills;
 
-#[command]
-#[aliases("chip")]
+#[command("chip")]
 pub(crate) async fn send_chip(ctx: &mut Context, msg: &Message, args: Args) -> CommandResult {
     
     if args.len() == 0 {
@@ -189,8 +188,7 @@ pub(crate) async fn send_chip(ctx: &mut Context, msg: &Message, args: Args) -> C
     return Ok(());
 }
 
-#[command]
-#[aliases("skill")]
+#[command("skill")]
 async fn send_chip_skill(ctx: &mut Context, msg: &Message, mut args: Args) -> CommandResult {
     if args.len() < 1 {
         say!(ctx, msg, "you must provide a skill");
@@ -207,8 +205,7 @@ async fn send_chip_skill(ctx: &mut Context, msg: &Message, mut args: Args) -> Co
     return Ok(());
 }
 
-#[command]
-#[aliases("user")]
+#[command("user")]
 async fn send_chip_skill_user(ctx: &mut Context, msg: &Message, mut args: Args) -> CommandResult {
     if args.len() < 1 {
         say!(ctx, msg, "you must provide a skill");
@@ -226,8 +223,7 @@ async fn send_chip_skill_user(ctx: &mut Context, msg: &Message, mut args: Args) 
 }
 
 
-#[command]
-#[aliases("target")]
+#[command("target")]
 async fn send_chip_skill_target(ctx: &mut Context, msg: &Message, mut args: Args) -> CommandResult {
     if args.len() < 1 {
         say!(ctx, msg, "you must provide a skill");
@@ -244,8 +240,7 @@ async fn send_chip_skill_target(ctx: &mut Context, msg: &Message, mut args: Args
     return Ok(());
 }
 
-#[command]
-#[aliases("check")]
+#[command("check")]
 async fn send_chip_skill_check(ctx: &mut Context, msg: &Message, mut args: Args) -> CommandResult {
     if args.len() < 1 {
         say!(ctx, msg, "you must provide a skill");
@@ -262,8 +257,7 @@ async fn send_chip_skill_check(ctx: &mut Context, msg: &Message, mut args: Args)
     return Ok(());
 }
 
-#[command]
-#[aliases("element")]
+#[command("element")]
 pub(crate) async fn send_chip_element(ctx: &mut Context, msg: &Message, args: Args) -> CommandResult {
     if args.len() < 1 {
         say!(ctx, msg, "you must provide an element");

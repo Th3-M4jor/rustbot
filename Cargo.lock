@@ -855,7 +855,7 @@ dependencies = [
 
 [[package]]
 name = "rustbot"
-version = "0.2.0"
+version = "0.4.0"
 dependencies = [
  "chrono 0.4.11 (registry+https://github.com/rust-lang/crates.io-index)",
  "futures 0.3.4 (registry+https://github.com/rust-lang/crates.io-index)",

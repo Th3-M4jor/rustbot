@@ -347,8 +347,7 @@ impl VirusLibrary {
 struct BnbViruses;
 
 
-#[command]
-#[aliases("virus")]
+#[command("virus")]
 pub(crate) async fn send_virus(ctx: &mut Context, msg: &Message, args: Args) -> CommandResult {
     if args.len() < 1 {
         say!(ctx, msg, "you must provide a name");
@@ -364,8 +363,7 @@ pub(crate) async fn send_virus(ctx: &mut Context, msg: &Message, args: Args) -> 
     return Ok(());
 }
 
-#[command]
-#[aliases("element")]
+#[command("element")]
 pub(crate) async fn send_virus_element(ctx: &mut Context, msg: &Message, args: Args) -> CommandResult {
     if args.len() < 1 {
         say!(ctx, msg, "you must provide an element");
@@ -390,8 +388,7 @@ pub(crate) async fn send_virus_element(ctx: &mut Context, msg: &Message, args: A
 }
 
 
-#[command]
-#[aliases("cr")]
+#[command("cr")]
 pub(crate) async fn send_virus_cr(ctx: &mut Context, msg: &Message, mut args: Args) -> CommandResult {
     if args.len() < 1 {
         say!(ctx, msg, "you must provide a CR to search for");
@@ -417,8 +414,7 @@ pub(crate) async fn send_virus_cr(ctx: &mut Context, msg: &Message, mut args: Ar
     return Ok(());
 }
 
-#[command]
-#[aliases("encounter")]
+#[command("encounter")]
 pub(crate) async fn send_random_encounter(ctx: &mut Context, msg: &Message, mut args: Args) -> CommandResult {
     if args.len() < 2 {
         say!(
@@ -493,8 +489,7 @@ pub(crate) async fn send_random_encounter(ctx: &mut Context, msg: &Message, mut 
     return Ok(());
 }
 
-#[command]
-#[aliases("family")]
+#[command("family")]
 pub(crate) async fn send_family(ctx: &mut Context, msg: &Message, args: Args) -> CommandResult {
     if args.len() < 1 {
         say!(ctx, msg, "you must provide a name");

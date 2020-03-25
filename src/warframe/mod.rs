@@ -142,8 +142,8 @@ impl WarframeData {
 #[commands(get_sortie, get_fissures, market)]
 struct Warframe;
 
-#[command]
-#[aliases("fissures")]
+#[command("fissures")]
+#[description = "Get info about the current warframe fissures (PC)"]
 pub(crate) async fn get_fissures(ctx: &mut Context, msg: &Message, _: Args) -> CommandResult {
     if let Err(_) = msg.channel_id.broadcast_typing(&ctx.http).await {
         println!("could not broadcast typing, not reloading");
@@ -163,8 +163,8 @@ pub(crate) async fn get_fissures(ctx: &mut Context, msg: &Message, _: Args) -> C
     return Ok(());
 }
 
-#[command]
-#[aliases("sortie")]
+#[command("sortie")]
+#[description = "Get info about the current warframe sortie (PC)"]
 pub(crate) async fn get_sortie(ctx: &mut Context, msg: &Message, _: Args) -> CommandResult {
     if let Err(_) = msg.channel_id.broadcast_typing(&ctx.http).await {
         println!("could not broadcast typing, not reloading");

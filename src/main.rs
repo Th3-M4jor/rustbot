@@ -9,10 +9,11 @@ use serenity::{
     async_trait,
     client::bridge::gateway::ShardManager,
     framework::standard::{
-        macros::{check, command, group, hook},
-        Args, CheckResult, CommandOptions, CommandResult, StandardFramework,
+        help_commands,
+        macros::*,
+        Args, CheckResult, CommandOptions, CommandResult, HelpOptions, StandardFramework, CommandGroup,
     },
-    model::{channel::Message, gateway::Activity, gateway::Ready, guild::PartialGuild},
+    model::{channel::Message, gateway::Activity, gateway::Ready, guild::PartialGuild, id::UserId},
     prelude::*,
 };
 
@@ -55,7 +56,6 @@ struct Handler;
 impl EventHandler for Handler {
     // Event handlers are dispatched through a threadpool, and so multiple
     // events can be dispatched simultaneously.
-    
 
     async fn ready(&self, ctx: Context, ready: Ready) {
         lazy_static! {
@@ -93,13 +93,29 @@ impl EventHandler for Handler {
     }
 }
 
+#[help]
+#[max_levenshtein_distance(3)]
+#[lacking_permissions = "Hide"]
+#[command_not_found_text = "Could not find: `{}`."]
+#[individual_command_tip = "If you want more information about a specific command, just pass the command as argument."]
+async fn help_command(
+    context: &mut Context,
+    msg: &Message,
+    args: Args,
+    help_options: &'static HelpOptions,
+    groups: &[&'static CommandGroup],
+    owners: std::collections::HashSet<UserId>,
+) -> CommandResult {
+    help_commands::with_embeds(context, msg, args, help_options, groups, owners).await
+}
+
 #[group]
 #[owners_only]
 #[commands(die, audit)]
-struct Administrative;
+struct Admin;
 
 #[group]
-#[commands(manager, phb, reload, get_blight, about_bot, send_help)]
+#[commands(manager, phb, reload, get_blight, about_bot)]
 struct BnbGeneral;
 
 #[command]
@@ -208,6 +224,7 @@ async fn admin_check(
 
 #[command]
 #[checks(Admin)]
+#[help_available(false)]
 async fn reload(ctx: &mut Context, msg: &Message, _: Args) -> CommandResult {
     /*
     {
@@ -280,6 +297,7 @@ async fn reload(ctx: &mut Context, msg: &Message, _: Args) -> CommandResult {
     return Ok(());
 }
 
+/*
 #[command]
 #[aliases("help")]
 async fn send_help(ctx: &mut Context, msg: &Message, _: Args) -> CommandResult {
@@ -295,9 +313,9 @@ async fn send_help(ctx: &mut Context, msg: &Message, _: Args) -> CommandResult {
     }
     return Ok(());
 }
+*/
 
-#[command]
-#[aliases("about")]
+#[command("about")]
 async fn about_bot(ctx: &mut Context, msg: &Message, _: Args) -> CommandResult {
     let res = msg
         .author
@@ -405,9 +423,11 @@ async fn main() {
                 .owners(owners)
         })
         .unrecognised_command(default_command)
-        .bucket("Warframe_Market", |b| b.delay(5)).await
-        .group(&ADMINISTRATIVE_GROUP)
-        .group(&DICECOMMAND_GROUP)
+        .bucket("Warframe_Market", |b| b.delay(5))
+        .await
+        .help(&HELP_COMMAND)
+        .group(&ADMIN_GROUP)
+        .group(&DICE_GROUP)
         .group(&BNBGENERAL_GROUP)
         .group(&BNBCHIPS_GROUP)
         .group(&BNBSKILLS_GROUP)

@@ -74,7 +74,7 @@ impl DieRoll {
 #[commands(
     roll, reroll, roll_stats
 )]
-struct DiceCommand;
+struct Dice;
 
 async fn perform_roll(ctx: &mut Context, msg: &Message, to_roll: &str, reroll: bool) {
 
@@ -101,6 +101,7 @@ async fn perform_roll(ctx: &mut Context, msg: &Message, to_roll: &str, reroll: b
 }
 
 #[command]
+#[min_args(1)]
 async fn reroll(ctx: &mut Context, msg: &Message, args: Args) -> CommandResult {
     
     if args.len() < 1 {
@@ -120,6 +121,7 @@ async fn reroll(ctx: &mut Context, msg: &Message, args: Args) -> CommandResult {
 
 
 #[command]
+#[min_args(1)]
 pub(crate) async fn roll(ctx: &mut Context, msg: &Message, args: Args) -> CommandResult {
     if args.len() < 1 {
         say!(
@@ -136,8 +138,8 @@ pub(crate) async fn roll(ctx: &mut Context, msg: &Message, args: Args) -> Comman
     return Ok(());
 }
 
-#[command]
-#[aliases("rollstats")]
+#[command("rollstats")]
+//#[aliases("rollstats")]
 pub(crate) async fn roll_stats(ctx: &mut Context, msg: &Message, _: Args) -> CommandResult {
     let mut stats: [i64; 6] = [0; 6];
     //let mut rolls: Vec<i64> = vec![];
