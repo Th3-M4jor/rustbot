@@ -95,9 +95,14 @@ impl EventHandler for Handler {
 
 #[help]
 #[max_levenshtein_distance(3)]
-#[lacking_permissions = "Hide"]
+#[lacking_permissions = "hide"]
+#[lacking_ownership = "hide"]
 #[command_not_found_text = "Could not find: `{}`."]
-#[individual_command_tip = "If you want more information about a specific command, just pass the command as argument."]
+#[strikethrough_commands_tip_in_dm(" ")]
+#[strikethrough_commands_tip_in_guild(" ")]
+#[individual_command_tip = "If you want more information about a specific command, just pass the command as an argument.\n\
+If an unknown command name is given, all Battlechips, Navi-Customizer Parts, and Viruses are searched for that name with \
+battlechips being prioritized. (NCP's and Viruses may have a _n or _v appended to their name if there is a chip with that name)"]
 async fn help_command(
     context: &mut Context,
     msg: &Message,
@@ -112,13 +117,16 @@ async fn help_command(
 #[group]
 #[owners_only]
 #[commands(die, audit)]
-struct Admin;
+#[description("Administrative commands for the bot")]
+struct Owner;
 
 #[group]
 #[commands(manager, phb, reload, get_blight, about_bot)]
+#[description("Misc. commands related to BnB")]
 struct BnbGeneral;
 
 #[command]
+#[description("Get a link to the BnB Battlechip manager website")]
 async fn manager(ctx: &mut Context, msg: &Message, _: Args) -> CommandResult {
     let data: RwLockReadGuard<ShareMap> = ctx.data.read().await;
     let config = data.get::<BotData>().expect("could not get config");
@@ -127,6 +135,7 @@ async fn manager(ctx: &mut Context, msg: &Message, _: Args) -> CommandResult {
 }
 
 #[command]
+#[description("Get a link to the BnB Players Handbook")]
 async fn phb(ctx: &mut Context, msg: &Message, _: Args) -> CommandResult {
     let data: RwLockReadGuard<ShareMap> = ctx.data.read().await;
     let config = data.get::<BotData>().expect("could not get config");
@@ -135,6 +144,7 @@ async fn phb(ctx: &mut Context, msg: &Message, _: Args) -> CommandResult {
 }
 
 #[command]
+#[description("Tells the bot to \"die\" and it will try to shutdown gracefully")]
 async fn die(ctx: &mut Context, msg: &Message, _: Args) -> CommandResult {
     let data: RwLockReadGuard<ShareMap> = ctx.data.read().await;
 
@@ -143,6 +153,7 @@ async fn die(ctx: &mut Context, msg: &Message, _: Args) -> CommandResult {
         manager.lock().await.shutdown_all().await;
     } else {
         let _ = msg.reply(&ctx, "There was a problem getting the shard manager");
+        std::process::exit(1);
     }
     return Ok(());
 }
@@ -224,17 +235,9 @@ async fn admin_check(
 
 #[command]
 #[checks(Admin)]
-#[help_available(false)]
+//#[help_available(false)]
+#[description("Reload all Blights, BattleChips, NaviCust Parts, and Viruses")]
 async fn reload(ctx: &mut Context, msg: &Message, _: Args) -> CommandResult {
-    /*
-    {
-        let data: RwLockReadGuard<ShareMap> = ctx.data.read().await;
-        let config = data.get::<BotData>().expect("could not get config");
-        if msg.author.id != config.owner && !config.admins.contains(msg.author.id.as_u64()) {
-            return Ok(());
-        }
-    }
-    */
 
     if let Err(_) = msg.channel_id.broadcast_typing(&ctx.http).await {
         println!("could not broadcast typing, not reloading");
@@ -297,25 +300,8 @@ async fn reload(ctx: &mut Context, msg: &Message, _: Args) -> CommandResult {
     return Ok(());
 }
 
-/*
-#[command]
-#[aliases("help")]
-async fn send_help(ctx: &mut Context, msg: &Message, _: Args) -> CommandResult {
-    let res = msg
-        .author
-        .dm(ctx, |m| {
-            m.content(format!("```{}```", *HELP_STRING));
-            return m;
-        })
-        .await;
-    if res.is_err() {
-        println!("Could not send help message: {:?}", res.unwrap_err());
-    }
-    return Ok(());
-}
-*/
-
 #[command("about")]
+#[description("get some information about the bot itself")]
 async fn about_bot(ctx: &mut Context, msg: &Message, _: Args) -> CommandResult {
     let res = msg
         .author
@@ -426,7 +412,7 @@ async fn main() {
         .bucket("Warframe_Market", |b| b.delay(5))
         .await
         .help(&HELP_COMMAND)
-        .group(&ADMIN_GROUP)
+        .group(&OWNER_GROUP)
         .group(&DICE_GROUP)
         .group(&BNBGENERAL_GROUP)
         .group(&BNBCHIPS_GROUP)

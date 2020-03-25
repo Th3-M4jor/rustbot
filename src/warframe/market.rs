@@ -44,7 +44,6 @@ async fn make_request(name: &str) -> Result<Vec<String>, SimpleError> {
 }
 
 #[command]
-#[min_args(1)]
 #[bucket = "Warframe_Market"]
 #[description = "Search warframe.market for people selling a given item"]
 #[example = "wukong prime"]

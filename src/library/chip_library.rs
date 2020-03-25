@@ -162,15 +162,19 @@ impl TypeMapKey for ChipLibrary {
 #[prefixes("c", "chip")]
 #[default_command(send_chip)]
 #[commands(send_chip, send_chip_element)]
+#[description("A group of commands related to Navi-Customizer Parts, see `c chip` for the get chip command help")]
 struct BnbChips;
 
 #[group]
 #[prefixes("s", "skill")]
 #[default_command(send_chip_skill)]
 #[commands(send_chip_skill, send_chip_skill_user, send_chip_skill_target, send_chip_skill_check)]
+#[description("A group of commands related to Battlechip skills, see `s skill` for the get chip by skill help")]
 struct BnBSkills;
 
 #[command("chip")]
+#[description("get the description of a chip with the specified name, or suggestions if there is not a chip with that name")]
+#[example = "Airshot"]
 pub(crate) async fn send_chip(ctx: &mut Context, msg: &Message, args: Args) -> CommandResult {
     
     if args.len() == 0 {
@@ -189,6 +193,8 @@ pub(crate) async fn send_chip(ctx: &mut Context, msg: &Message, args: Args) -> C
 }
 
 #[command("skill")]
+#[description("get a list of chips that use the specified skill in it's attack roll")]
+#[example = "Sense"]
 async fn send_chip_skill(ctx: &mut Context, msg: &Message, mut args: Args) -> CommandResult {
     if args.len() < 1 {
         say!(ctx, msg, "you must provide a skill");
@@ -206,6 +212,8 @@ async fn send_chip_skill(ctx: &mut Context, msg: &Message, mut args: Args) -> Co
 }
 
 #[command("user")]
+#[description("get a list of chips that have a save and the DC is determined by the specified skill")]
+#[example = "Strength"]
 async fn send_chip_skill_user(ctx: &mut Context, msg: &Message, mut args: Args) -> CommandResult {
     if args.len() < 1 {
         say!(ctx, msg, "you must provide a skill");
@@ -224,6 +232,8 @@ async fn send_chip_skill_user(ctx: &mut Context, msg: &Message, mut args: Args) 
 
 
 #[command("target")]
+#[description("get a list of chips where the specified skill is used to make the save by the target")]
+#[example = "Speed"]
 async fn send_chip_skill_target(ctx: &mut Context, msg: &Message, mut args: Args) -> CommandResult {
     if args.len() < 1 {
         say!(ctx, msg, "you must provide a skill");
@@ -241,6 +251,8 @@ async fn send_chip_skill_target(ctx: &mut Context, msg: &Message, mut args: Args
 }
 
 #[command("check")]
+#[description("get a list of chips where the specified skill is used either to determine the save DC or to make the save")]
+#[example = "Bravery"]
 async fn send_chip_skill_check(ctx: &mut Context, msg: &Message, mut args: Args) -> CommandResult {
     if args.len() < 1 {
         say!(ctx, msg, "you must provide a skill");
@@ -258,6 +270,8 @@ async fn send_chip_skill_check(ctx: &mut Context, msg: &Message, mut args: Args)
 }
 
 #[command("element")]
+#[description("get a list of chips which are of the specified element")]
+#[example = "Aqua"]
 pub(crate) async fn send_chip_element(ctx: &mut Context, msg: &Message, args: Args) -> CommandResult {
     if args.len() < 1 {
         say!(ctx, msg, "you must provide an element");

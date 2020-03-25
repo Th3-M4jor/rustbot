@@ -71,6 +71,7 @@ pub(crate) fn build_time_rem(now: i64, end: i64) -> String {
 
 
 #[command]
+#[description("Get the last few lines of the server log file")]
 pub(crate) async fn audit(ctx: &mut Context, msg: &Message, _ : Args) -> CommandResult {
     let data = ctx.data.read().await;
     let config = data.get::<BotData>().expect("config not found");

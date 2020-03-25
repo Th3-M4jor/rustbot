@@ -335,7 +335,7 @@ impl VirusLibrary {
 }
 
 #[group]
-#[prefixes("virus", "v")]
+#[prefixes("v", "virus")]
 #[default_command(send_virus)]
 #[commands(
     send_virus,
@@ -344,10 +344,13 @@ impl VirusLibrary {
     send_random_encounter,
     send_family
 )]
+#[description("A group of commands related to viruses, see `v virus` for the get virus command help")]
 struct BnbViruses;
 
 
 #[command("virus")]
+#[description("Get the description of the virus with that name, or suggestions if a virus with that name does not exist")]
+#[example = "Mettaur"]
 pub(crate) async fn send_virus(ctx: &mut Context, msg: &Message, args: Args) -> CommandResult {
     if args.len() < 1 {
         say!(ctx, msg, "you must provide a name");
@@ -364,6 +367,8 @@ pub(crate) async fn send_virus(ctx: &mut Context, msg: &Message, args: Args) -> 
 }
 
 #[command("element")]
+#[description("Get a list of all viruses which are of the given element")]
+#[example = "Elec"]
 pub(crate) async fn send_virus_element(ctx: &mut Context, msg: &Message, args: Args) -> CommandResult {
     if args.len() < 1 {
         say!(ctx, msg, "you must provide an element");
@@ -388,7 +393,9 @@ pub(crate) async fn send_virus_element(ctx: &mut Context, msg: &Message, args: A
 }
 
 
-#[command("cr")]
+#[command("CR")]
+#[description("Get a list of all viruses which are of the given CR")]
+#[example = "4"]
 pub(crate) async fn send_virus_cr(ctx: &mut Context, msg: &Message, mut args: Args) -> CommandResult {
     if args.len() < 1 {
         say!(ctx, msg, "you must provide a CR to search for");
@@ -415,6 +422,9 @@ pub(crate) async fn send_virus_cr(ctx: &mut Context, msg: &Message, mut args: Ar
 }
 
 #[command("encounter")]
+#[description("Builds a random encounter with a given number of viruses and within a given CR or CR range")]
+#[example = "2-3 5"]
+#[example = "4 6"]
 pub(crate) async fn send_random_encounter(ctx: &mut Context, msg: &Message, mut args: Args) -> CommandResult {
     if args.len() < 2 {
         say!(
@@ -490,6 +500,8 @@ pub(crate) async fn send_random_encounter(ctx: &mut Context, msg: &Message, mut 
 }
 
 #[command("family")]
+#[description("Lists all viruses who are determined to be of a particular family, given the name of the first virus in it\nNote: Only guaranteed to work if they follow the 2 3 EX scheme")]
+#[example = "Swordy"]
 pub(crate) async fn send_family(ctx: &mut Context, msg: &Message, args: Args) -> CommandResult {
     if args.len() < 1 {
         say!(ctx, msg, "you must provide a name");

@@ -162,10 +162,12 @@ impl TypeMapKey for NCPLibrary {
 #[prefixes("n", "ncp")]
 #[default_command(send_ncp)]
 #[commands(send_ncp, send_ncp_color)]
+#[description("A group of commands related to Navi-Customizer Parts, see `n ncp` for the get NCP command help")]
 struct BnbNcps;
 
 #[command("ncp")]
-#[min_args(1)]
+#[description("get the description of an NCP with the specified name, or suggestions if there is not an NCP with that name")]
+#[example = "Undershirt"]
 pub(crate) async fn send_ncp(ctx: &mut Context, msg: &Message, args: Args) -> CommandResult {
     if args.len() < 1 {
         say!(ctx, msg, "you must provide a name");
@@ -179,7 +181,8 @@ pub(crate) async fn send_ncp(ctx: &mut Context, msg: &Message, args: Args) -> Co
 }
 
 #[command("color")]
-#[min_args(1)]
+#[description("get a list of NCPs which are of the specified color, valid colors are\n: white, pink, yellow, green, blue, red, gray")]
+#[example = "pink"]
 pub(crate) async fn send_ncp_color(ctx: &mut Context, msg: &Message, args: Args) -> CommandResult {
     if args.len() < 1 {
         say!(ctx, msg, format!("you must provide a color\nValid colors are: `{:?}`", COLORS));

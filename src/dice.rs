@@ -74,6 +74,7 @@ impl DieRoll {
 #[commands(
     roll, reroll, roll_stats
 )]
+#[description("A group of commands related to rolling dice")]
 struct Dice;
 
 async fn perform_roll(ctx: &mut Context, msg: &Message, to_roll: &str, reroll: bool) {
@@ -101,7 +102,7 @@ async fn perform_roll(ctx: &mut Context, msg: &Message, to_roll: &str, reroll: b
 }
 
 #[command]
-#[min_args(1)]
+#[description("Same as the roll command, except 1's and 2's will be re-rolled once, keeping the higher result")]
 async fn reroll(ctx: &mut Context, msg: &Message, args: Args) -> CommandResult {
     
     if args.len() < 1 {
@@ -121,7 +122,9 @@ async fn reroll(ctx: &mut Context, msg: &Message, args: Args) -> CommandResult {
 
 
 #[command]
-#[min_args(1)]
+#[description("Roll a number of dice, using the format XdY where X is the number of dice, and Y is the number of sides on the die to roll")]
+#[example = "1d20"]
+#[example = "4d27"]
 pub(crate) async fn roll(ctx: &mut Context, msg: &Message, args: Args) -> CommandResult {
     if args.len() < 1 {
         say!(
@@ -139,7 +142,7 @@ pub(crate) async fn roll(ctx: &mut Context, msg: &Message, args: Args) -> Comman
 }
 
 #[command("rollstats")]
-//#[aliases("rollstats")]
+#[description("Roll character stats for D&D 5e by rolling 4d6 and dropping the lowest 6 times")]
 pub(crate) async fn roll_stats(ctx: &mut Context, msg: &Message, _: Args) -> CommandResult {
     let mut stats: [i64; 6] = [0; 6];
     //let mut rolls: Vec<i64> = vec![];
