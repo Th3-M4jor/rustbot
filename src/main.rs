@@ -317,7 +317,7 @@ async fn about_bot(ctx: &mut Context, msg: &Message, _: Args) -> CommandResult {
 }
 
 #[hook]
-async fn default_command(ctx: &mut Context, msg: &Message, _: &str) {
+async fn search_everything_command(ctx: &mut Context, msg: &Message, _: &str) {
     let mut args: Vec<&str>;
     let new_first;
 
@@ -408,7 +408,7 @@ async fn main() {
                 .case_insensitivity(true)
                 .owners(owners)
         })
-        .unrecognised_command(default_command)
+        .unrecognised_command(search_everything_command)
         .bucket("Warframe_Market", |b| b.delay(5))
         .await
         .help(&HELP_COMMAND)
