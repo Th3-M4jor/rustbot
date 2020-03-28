@@ -11,3 +11,4 @@ token.txt
 /blights.json
 /nohup.out
 .idea
+.vscode/*

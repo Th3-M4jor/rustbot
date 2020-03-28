@@ -316,6 +316,7 @@ async fn about_bot(ctx: &mut Context, msg: &Message, _: Args) -> CommandResult {
     return Ok(());
 }
 
+/*
 #[hook]
 async fn search_everything_command(ctx: &mut Context, msg: &Message, _: &str) {
     let mut args: Vec<&str>;
@@ -327,6 +328,7 @@ async fn search_everything_command(ctx: &mut Context, msg: &Message, _: &str) {
         if !msg.content.starts_with(&config.cmd_prefix) {
             return;
         }
+        #[cfg(debug_assertions)]
         println!("unrecognized command called");
         args = msg.content.split(" ").collect();
         new_first = args[0].replacen(&config.cmd_prefix, "", 1);
@@ -335,6 +337,7 @@ async fn search_everything_command(ctx: &mut Context, msg: &Message, _: &str) {
 
     search_full_library(ctx, msg, &args).await;
 }
+*/
 
 #[hook]
 async fn default_message(ctx: &mut Context, msg: &Message) {
@@ -346,6 +349,7 @@ async fn default_message(ctx: &mut Context, msg: &Message) {
         if !msg.content.starts_with(&config.cmd_prefix) {
             return;
         }
+        #[cfg(debug_assertions)]
         println!("Default message called");
         args = msg.content.split(" ").collect();
         new_first = args[0].replacen(&config.cmd_prefix, "", 1);
@@ -353,6 +357,13 @@ async fn default_message(ctx: &mut Context, msg: &Message) {
     }
 
     search_full_library(ctx, msg, &args).await;
+}
+
+#[hook]
+async fn prefix_only_message(ctx: &mut Context, msg: &Message) {
+    #[cfg(debug_assertions)]
+    println!("I recieved only a prefix");
+    say!(ctx, msg, "You gave me only my prefix, Try my help command for how I work");
 }
 
 #[tokio::main]
@@ -426,8 +437,9 @@ async fn main() {
                 .case_insensitivity(true)
                 .owners(owners)
         })
-        .unrecognised_command(search_everything_command)
+        //.unrecognised_command(search_everything_command)
         .normal_message(default_message)
+        .prefix_only(prefix_only_message)
         .bucket("Warframe_Market", |b| b.delay(5))
         .await
         .help(&HELP_COMMAND)
