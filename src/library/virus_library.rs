@@ -393,7 +393,7 @@ pub(crate) async fn send_virus_element(ctx: &mut Context, msg: &Message, args: A
 }
 
 
-#[command("CR")]
+#[command("cr")]
 #[description("Get a list of all viruses which are of the given CR")]
 #[example = "4"]
 pub(crate) async fn send_virus_cr(ctx: &mut Context, msg: &Message, mut args: Args) -> CommandResult {
