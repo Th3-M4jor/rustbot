@@ -17,6 +17,7 @@ use std::borrow::BorrowMut;
 #[cfg(not(debug_assertions))]
 use tokio::fs;
 
+use std::str::FromStr;
 
 //const CHIP_URL: &'static str = "https://docs.google.com/feeds/download/documents/export/Export?id=1lvAKkymOplIJj6jS-N5__9aLIDXI6bETIMz01MK9MfY&exportFormat=txt";
 
