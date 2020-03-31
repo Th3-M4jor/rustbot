@@ -14,7 +14,9 @@ use crate::library::elements::Elements;
 use crate::library::{search_lib_obj, Library};
 use std::borrow::BorrowMut;
 
-use std::str::FromStr;
+#[cfg(not(debug_assertions))]
+use tokio::fs;
+
 
 //const CHIP_URL: &'static str = "https://docs.google.com/feeds/download/documents/export/Export?id=1lvAKkymOplIJj6jS-N5__9aLIDXI6bETIMz01MK9MfY&exportFormat=txt";
 
@@ -99,7 +101,7 @@ impl ChipLibrary {
         #[cfg(not(debug_assertions))]
         {
             let j = serde_json::to_string_pretty(&chips).expect("could not serialize to json");
-            fs::write("chips.json", j).await.expect("could nto write to chips.json");
+            fs::write("chips.json", j).await.expect("could not write to chips.json");
         }
 
         while !chips.is_empty() {
