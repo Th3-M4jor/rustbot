@@ -18,7 +18,7 @@ use std::fmt::Formatter;
 
 use unicode_normalization::UnicodeNormalization;
 
-const NCP_URL: &'static str = "https://docs.google.com/feeds/download/documents/export/Export?id=1VhZSnjvwSTMxKKfJvKcwqaJDqxD_dXarmAlAYRmlV2k&exportFormat=txt";
+//const NCP_URL: &'static str = "https://docs.google.com/feeds/download/documents/export/Export?id=1VhZSnjvwSTMxKKfJvKcwqaJDqxD_dXarmAlAYRmlV2k&exportFormat=txt";
 
 #[derive(Serialize)]
 #[serde(rename_all(serialize = "PascalCase"))]
@@ -61,6 +61,7 @@ impl std::fmt::Display for NCP {
 
 pub struct NCPLibrary {
     library: HashMap<String, Arc<Box<NCP>>>,
+    ncp_url: String,
 }
 
 const COLORS: &[&str] = &["white", "pink", "yellow", "green", "blue", "red", "gray"];
@@ -75,9 +76,10 @@ impl Library for NCPLibrary {
 }
 
 impl NCPLibrary {
-    pub fn new() -> NCPLibrary {
+    pub fn new(url: &str) -> NCPLibrary {
         NCPLibrary {
             library: HashMap::new(),
+            ncp_url: String::from(url),
         }
     }
 
@@ -88,7 +90,7 @@ impl NCPLibrary {
         }
         self.library.clear();
         let mut ncp_list: Vec<Box<NCP>> = vec![];
-        let ncp_text = reqwest::get(NCP_URL).await
+        let ncp_text = reqwest::get(&self.ncp_url).await
             .expect("no request result")
             .text().await
             .expect("no response text")

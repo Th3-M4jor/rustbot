@@ -368,9 +368,10 @@ async fn prefix_only_message(ctx: &mut Context, msg: &Message) {
 
 #[tokio::main]
 async fn main() {
-    let chip_library_mutex = RwLock::new(ChipLibrary::new());
-    let ncp_library_mutex = RwLock::new(NCPLibrary::new());
-    let virus_library_mutex = RwLock::new(VirusLibrary::new());
+    let config = BotData::new();
+    let chip_library_mutex = RwLock::new(ChipLibrary::new(&config.chip_url, &config.custom_chip_url));
+    let ncp_library_mutex = RwLock::new(NCPLibrary::new(&config.ncp_url));
+    let virus_library_mutex = RwLock::new(VirusLibrary::new(&config.virus_url));
     let warframe_data = WarframeData::new();
     let full_library_mutex = RwLock::new(FullLibrary::new());
     let blight_mutex = RwLock::new(Blights::new());
@@ -424,8 +425,6 @@ async fn main() {
         }
         println!("Full library loaded, size is {}", full_library.len());
     }
-
-    let config = BotData::new();
     let mut owners = std::collections::HashSet::new();
     let owner_id = serenity::model::id::UserId::from(config.owner);
     owners.insert(owner_id);

@@ -13,14 +13,15 @@ use crate::library::battlechip::BattleChip;
 use crate::library::elements::Elements;
 use crate::library::{search_lib_obj, Library};
 use std::borrow::BorrowMut;
-use tokio::fs;
 
 use std::str::FromStr;
 
-const CHIP_URL: &'static str = "https://docs.google.com/feeds/download/documents/export/Export?id=1lvAKkymOplIJj6jS-N5__9aLIDXI6bETIMz01MK9MfY&exportFormat=txt";
+//const CHIP_URL: &'static str = "https://docs.google.com/feeds/download/documents/export/Export?id=1lvAKkymOplIJj6jS-N5__9aLIDXI6bETIMz01MK9MfY&exportFormat=txt";
 
 pub struct ChipLibrary {
     chips: HashMap<String, Arc<Box<BattleChip>>>,
+    chip_url: String,
+    custom_chip_url: String,
 }
 
 impl Library for ChipLibrary {
@@ -33,9 +34,11 @@ impl Library for ChipLibrary {
 }
 
 impl ChipLibrary {
-    pub fn new() -> ChipLibrary {
+    pub fn new(url: &str, custom_url: &str) -> ChipLibrary {
         ChipLibrary {
             chips: HashMap::new(),
+            chip_url: String::from(url),
+            custom_chip_url: String::from(custom_url),
         }
     }
 
@@ -44,7 +47,7 @@ impl ChipLibrary {
         self.chips.clear();
 
         //get chip text and replace necessary characters for compatibility
-        let chip_text = reqwest::get(CHIP_URL).await
+        let chip_text = reqwest::get(&self.chip_url).await
             .expect("no request result")
             .text().await
             .expect("no response text")
@@ -57,10 +60,17 @@ impl ChipLibrary {
             .collect();
 
         //load in custom chips if any
-        let special_chips_res = fs::read_to_string("./custom_chips.txt").await;
+        let special_chips_res = reqwest::get(&self.custom_chip_url).await;
         let special_chip_text;
         if special_chips_res.is_ok() {
-            special_chip_text = special_chips_res.unwrap();
+            special_chip_text = special_chips_res
+            .unwrap()
+            .text().await
+            .expect("no response text")
+            .replace("â€™", "'")
+            .replace("\u{FEFF}", "")
+            .replace("\r", "")
+            ;
             let mut special_chip_arr: Vec<&str> = special_chip_text
                 .split("\n")
                 .filter(|&i| !i.trim().is_empty())

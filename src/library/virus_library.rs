@@ -25,7 +25,7 @@ use std::fmt::Formatter;
 use std::str::FromStr;
 use unicode_normalization::UnicodeNormalization;
 
-const VIRUS_URL: &'static str = "https://docs.google.com/feeds/download/documents/export/Export?id=1PZKYP0mzzxMTmjJ8CfrUMapgQPHgi24Ev6VB3XLBUrU&exportFormat=txt";
+//const VIRUS_URL: &'static str = "https://docs.google.com/feeds/download/documents/export/Export?id=1PZKYP0mzzxMTmjJ8CfrUMapgQPHgi24Ev6VB3XLBUrU&exportFormat=txt";
 
 #[derive(Serialize)]
 #[serde(rename_all(serialize = "PascalCase"))]
@@ -68,6 +68,7 @@ pub struct VirusLibrary {
     library: HashMap<String, Arc<Box<Virus>>>,
     highest_cr: u8,
     duplicates: Vec<String>,
+    virus_url: String,
 }
 
 impl TypeMapKey for VirusLibrary {
@@ -85,11 +86,12 @@ impl Library for VirusLibrary {
 
 
 impl VirusLibrary {
-    pub fn new() -> VirusLibrary {
+    pub fn new(url: &str) -> VirusLibrary {
         VirusLibrary {
             library: HashMap::new(),
             highest_cr: 0,
             duplicates: vec![],
+            virus_url: String::from(url),
         }
     }
 
@@ -107,7 +109,7 @@ impl VirusLibrary {
 
         //let mut virus_list : Vec<Box<Virus>> = vec![];
         self.duplicates.clear();
-        let virus_text = reqwest::get(VIRUS_URL).await
+        let virus_text = reqwest::get(&self.virus_url).await
             .expect("no request result")
             .text().await
             .expect("no response text")
