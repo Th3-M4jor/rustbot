@@ -1,12 +1,20 @@
-use serenity::{model::channel::Message, prelude::*};
-use serenity::framework::standard::{
-    Args, CommandResult,
-    macros::command,
-};
+use serenity::framework::standard::{macros::command, Args, CommandResult};
+use serenity::{client::bridge::gateway::ShardManager, model::channel::Message, prelude::*};
+
+use std::sync::Arc;
+
+use tokio::sync::RwLockReadGuard;
+
 use crate::bot_data::BotData;
 use tokio::fs;
 
 ///fn say(ctx: Context, msg: Message, say: an expression returning a string)
+
+pub struct ShardManagerContainer;
+
+impl TypeMapKey for ShardManagerContainer {
+    type Value = Arc<Mutex<ShardManager>>;
+}
 
 macro_rules! say {
     ($ctx: ident, $msg: ident, $say: expr) => {
@@ -69,10 +77,9 @@ pub(crate) fn build_time_rem(now: i64, end: i64) -> String {
     };
 }
 
-
 #[command]
 #[description("Get the last few lines of the server log file")]
-pub(crate) async fn audit(ctx: &mut Context, msg: &Message, _ : Args) -> CommandResult {
+pub(crate) async fn audit(ctx: &mut Context, msg: &Message, _: Args) -> CommandResult {
     let data = ctx.data.read().await;
     let config = data.get::<BotData>().expect("config not found");
 
@@ -83,16 +90,46 @@ pub(crate) async fn audit(ctx: &mut Context, msg: &Message, _ : Args) -> Command
     let res = fs::read_to_string("./nohup.out").await;
     match res {
         Ok(val) => {
-            let lines : Vec<&str> = val.split("\n")
-                .filter(|&i| !i.trim().is_empty())
-                .collect();
+            let lines: Vec<&str> = val.split("\n").filter(|&i| !i.trim().is_empty()).collect();
             let len = lines.len() - 11;
             long_say!(ctx, msg, &lines[len..], "\n");
-        },
+        }
         Err(err) => {
             say!(ctx, msg, format!("unable to get log, {}", err.to_string()));
-        },
+        }
     }
     return Ok(());
+}
 
+#[command]
+#[description("Get a link to the BnB Battlechip manager website")]
+async fn manager(ctx: &mut Context, msg: &Message, _: Args) -> CommandResult {
+    let data: RwLockReadGuard<ShareMap> = ctx.data.read().await;
+    let config = data.get::<BotData>().expect("could not get config");
+    say!(ctx, msg, &config.manager);
+    return Ok(());
+}
+
+#[command]
+#[description("Get a link to the BnB Players Handbook")]
+async fn phb(ctx: &mut Context, msg: &Message, _: Args) -> CommandResult {
+    let data: RwLockReadGuard<ShareMap> = ctx.data.read().await;
+    let config = data.get::<BotData>().expect("could not get config");
+    say!(ctx, msg, &config.phb);
+    return Ok(());
+}
+
+#[command]
+#[description("Tells the bot to \"die\" and it will try to shutdown gracefully")]
+async fn die(ctx: &mut Context, msg: &Message, _: Args) -> CommandResult {
+    let data: RwLockReadGuard<ShareMap> = ctx.data.read().await;
+
+    ctx.invisible().await;
+    if let Some(manager) = data.get::<ShardManagerContainer>() {
+        manager.lock().await.shutdown_all().await;
+    } else {
+        let _ = msg.reply(&ctx, "There was a problem getting the shard manager");
+        std::process::exit(1);
+    }
+    return Ok(());
 }

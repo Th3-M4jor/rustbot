@@ -3,15 +3,13 @@ extern crate lazy_static;
 
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
-use tokio::sync::{RwLock, RwLockReadGuard};
+use tokio::sync::{RwLock, RwLockReadGuard, RwLockWriteGuard};
 
 use serenity::{
     async_trait,
-    client::bridge::gateway::ShardManager,
     framework::standard::{
-        help_commands,
-        macros::*,
-        Args, CheckResult, CommandOptions, CommandResult, HelpOptions, StandardFramework, CommandGroup,
+        help_commands, macros::*, Args, CheckResult, CommandError, CommandGroup, CommandOptions,
+        CommandResult, HelpOptions, StandardFramework,
     },
     model::{channel::Message, gateway::Activity, gateway::Ready, guild::PartialGuild, id::UserId},
     prelude::*,
@@ -37,15 +35,10 @@ mod warframe;
 
 //type BotCommand = fn(Context, &Message, &[&str]) -> ();
 
-struct ShardManagerContainer;
-
-impl TypeMapKey for ShardManagerContainer {
-    type Value = Arc<Mutex<ShardManager>>;
-}
+type ReloadOkType = (String, Vec<FullLibraryType>);
+type ReloadReturnType = Result<ReloadOkType, Box<dyn std::error::Error + Send + Sync>>;
 
 lazy_static! {
-    static ref HELP_STRING: String = fs::read_to_string("./help.txt")
-        .unwrap_or("help text is missing, bug the owner".to_string());
     static ref ABOUT_BOT: String = fs::read_to_string("./about.txt")
         .unwrap_or("about text is missing, bug the owner".to_string());
 }
@@ -125,61 +118,25 @@ struct Owner;
 #[description("Misc. commands related to BnB")]
 struct BnbGeneral;
 
-#[command]
-#[description("Get a link to the BnB Battlechip manager website")]
-async fn manager(ctx: &mut Context, msg: &Message, _: Args) -> CommandResult {
-    let data: RwLockReadGuard<ShareMap> = ctx.data.read().await;
-    let config = data.get::<BotData>().expect("could not get config");
-    say!(ctx, msg, &config.manager);
-    return Ok(());
-}
-
-#[command]
-#[description("Get a link to the BnB Players Handbook")]
-async fn phb(ctx: &mut Context, msg: &Message, _: Args) -> CommandResult {
-    let data: RwLockReadGuard<ShareMap> = ctx.data.read().await;
-    let config = data.get::<BotData>().expect("could not get config");
-    say!(ctx, msg, &config.phb);
-    return Ok(());
-}
-
-#[command]
-#[description("Tells the bot to \"die\" and it will try to shutdown gracefully")]
-async fn die(ctx: &mut Context, msg: &Message, _: Args) -> CommandResult {
-    let data: RwLockReadGuard<ShareMap> = ctx.data.read().await;
-
-    ctx.invisible().await;
-    if let Some(manager) = data.get::<ShardManagerContainer>() {
-        manager.lock().await.shutdown_all().await;
-    } else {
-        let _ = msg.reply(&ctx, "There was a problem getting the shard manager");
-        std::process::exit(1);
-    }
-    return Ok(());
-}
-
-async fn reload_chips(data: Arc<RwLock<ShareMap>>) -> (String, Vec<FullLibraryType>) {
+async fn reload_chips(data: Arc<RwLock<ShareMap>>) -> ReloadReturnType {
     let str_to_ret;
     let mut vec_to_ret: Vec<FullLibraryType> = vec![];
     let data_lock = data.read().await;
     let chip_library_lock = data_lock
         .get::<ChipLibrary>()
         .expect("chip library not found");
-    let mut chip_library = chip_library_lock.write().await;
-    let chip_reload_res = chip_library.load_chips();
+    let mut chip_library: RwLockWriteGuard<ChipLibrary> = chip_library_lock.write().await;
+    let chip_reload_str = chip_library.load_chips().await?;
+    str_to_ret = format!("{} chips loaded\n", chip_reload_str);
     //let str_to_send;
-    match chip_reload_res.await {
-        Ok(s) => str_to_ret = format!("{} chips loaded\n", s),
-        Err(e) => str_to_ret = format!("{}\n", e.to_string()),
-    }
     vec_to_ret.reserve(chip_library.get_collection().len());
     for val in chip_library.get_collection().values() {
         vec_to_ret.push(FullLibraryType::BattleChip(Arc::clone(val)));
     }
-    return (str_to_ret, vec_to_ret);
+    return Ok((str_to_ret, vec_to_ret));
 }
 
-async fn reload_ncps(data: Arc<RwLock<ShareMap>>) -> (String, Vec<FullLibraryType>) {
+async fn reload_ncps(data: Arc<RwLock<ShareMap>>) -> ReloadReturnType {
     let str_to_ret: String;
     let mut vec_to_ret: Vec<FullLibraryType> = vec![];
     let data_lock = data.read().await;
@@ -187,35 +144,32 @@ async fn reload_ncps(data: Arc<RwLock<ShareMap>>) -> (String, Vec<FullLibraryTyp
         .get::<NCPLibrary>()
         .expect("ncp library not found");
     let mut ncp_library = ncp_library_lock.write().await;
-    let count = ncp_library.load_programs().await;
+    let count = ncp_library.load_programs().await?;
     str_to_ret = format!("{} NCPs loaded\n", count);
     vec_to_ret.reserve(count);
     for val in ncp_library.get_collection().values() {
         vec_to_ret.push(FullLibraryType::NCP(Arc::clone(val)));
     }
-    return (str_to_ret, vec_to_ret);
+    return Ok((str_to_ret, vec_to_ret));
 }
 
-async fn reload_viruses(data: Arc<RwLock<ShareMap>>) -> (String, Vec<FullLibraryType>) {
-    let str_to_ret: String;
+async fn reload_viruses(data: Arc<RwLock<ShareMap>>) -> ReloadReturnType {
+    //let str_to_ret: String;
     let mut vec_to_ret: Vec<FullLibraryType> = vec![];
     let data_lock = data.read().await;
     let virus_library_lock = data_lock
         .get::<VirusLibrary>()
         .expect("virus library not found");
-    let mut virus_library = virus_library_lock.write().await;
+    let mut virus_library: RwLockWriteGuard<VirusLibrary> = virus_library_lock.write().await;
     //.expect("virus library was poisoned, panicking");
-    match virus_library.load_viruses().await {
-        Ok(s) => str_to_ret = format!("{} viruses were loaded\n", s),
-        Err(e) => str_to_ret = format!("{}", e.to_string()),
-    }
+    let str_to_ret = virus_library.load_viruses().await?;
 
     vec_to_ret.reserve(virus_library.get_collection().len());
     for val in virus_library.get_collection().values() {
         vec_to_ret.push(FullLibraryType::Virus(Arc::clone(val)));
     }
 
-    return (str_to_ret, vec_to_ret);
+    return Ok((str_to_ret, vec_to_ret));
 }
 
 #[check]
@@ -235,10 +189,8 @@ async fn admin_check(
 
 #[command]
 #[checks(Admin)]
-//#[help_available(false)]
 #[description("Reload all Blights, BattleChips, NaviCust Parts, and Viruses")]
 async fn reload(ctx: &mut Context, msg: &Message, _: Args) -> CommandResult {
-
     if let Err(_) = msg.channel_id.broadcast_typing(&ctx.http).await {
         println!("could not broadcast typing, not reloading");
         return Ok(());
@@ -252,8 +204,35 @@ async fn reload(ctx: &mut Context, msg: &Message, _: Args) -> CommandResult {
     let chip_future = reload_chips(chip_data);
     let ncp_future = reload_ncps(ncp_data);
     let virus_future = reload_viruses(virus_data);
-    let (chip_res, ncp_res, virus_res) = tokio::join!(chip_future, ncp_future, virus_future);
 
+    let chip_res;
+    let ncp_res;
+    let virus_res;
+
+    //let (chip_res, ncp_res, virus_res) = tokio::try_join!(chip_future, ncp_future, virus_future);
+
+    let res: Result<
+        (ReloadOkType, ReloadOkType, ReloadOkType),
+        Box<dyn std::error::Error + Send + Sync>,
+    > = tokio::try_join!(chip_future, ncp_future, virus_future);
+    match res {
+        Ok(val) => {
+            chip_res = val.0;
+            ncp_res = val.1;
+            virus_res = val.2;
+        }
+        Err(e) => {
+            say!(
+                ctx,
+                msg,
+                format!(
+                    "An error occurred, library is not guaranteed to be in a usable state:\n {}",
+                    e.to_string()
+                )
+            );
+            return Err(CommandError(e.to_string()));
+        }
+    }
     let data: RwLockReadGuard<ShareMap> = ctx.data.read().await;
     let blight_string;
     {
@@ -363,13 +342,18 @@ async fn default_message(ctx: &mut Context, msg: &Message) {
 async fn prefix_only_message(ctx: &mut Context, msg: &Message) {
     #[cfg(debug_assertions)]
     println!("I recieved only a prefix");
-    say!(ctx, msg, "You gave me only my prefix, Try my help command for how I work");
+    say!(
+        ctx,
+        msg,
+        "You gave me only my prefix, Try my help command for how I work"
+    );
 }
 
 #[tokio::main]
 async fn main() {
     let config = BotData::new();
-    let chip_library_mutex = RwLock::new(ChipLibrary::new(&config.chip_url, &config.custom_chip_url));
+    let chip_library_mutex =
+        RwLock::new(ChipLibrary::new(&config.chip_url, &config.custom_chip_url));
     let ncp_library_mutex = RwLock::new(NCPLibrary::new(&config.ncp_url));
     let virus_library_mutex = RwLock::new(VirusLibrary::new(&config.virus_url));
     let warframe_data = WarframeData::new();
@@ -396,11 +380,20 @@ async fn main() {
             }
         }
         let mut ncp_library = ncp_library_mutex.write().await;
-        let ncp_count = ncp_library.load_programs().await;
-        println!("{} programs loaded", ncp_count);
+
+        match ncp_library.load_programs().await {
+            Ok(s) => {
+                println!("{} programs loaded", s);
+            }
+            Err(e) => {
+                println!("{}", e.to_string());
+            }
+        }
+
+        //println!("{} programs loaded", ncp_count);
         let mut virus_library = virus_library_mutex.write().await;
         match virus_library.load_viruses().await {
-            Ok(s) => println!("{} viruses were loaded", s),
+            Ok(s) => println!("{}", s),
             Err(e) => println!("{}", e.to_string()),
         }
 
@@ -449,9 +442,7 @@ async fn main() {
         .group(&BNBCHIPS_GROUP)
         .group(&BNBSKILLS_GROUP)
         .group(&BNBVIRUSES_GROUP)
-        .group(&BNBNCPS_GROUP)
-        
-        ;
+        .group(&BNBNCPS_GROUP);
 
     let mut client = Client::new_with_framework(&config.token, Handler, framework)
         .await

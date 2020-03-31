@@ -4,7 +4,7 @@ use serenity::framework::standard::{macros::*, Args, CommandResult};
 use serenity::{model::channel::Message, prelude::*};
 use std::collections::HashMap;
 use std::sync::Arc;
-use tokio::sync::{RwLockReadGuard, RwLock};
+use tokio::sync::{RwLock, RwLockReadGuard};
 
 use simple_error::SimpleError;
 
@@ -46,34 +46,28 @@ impl ChipLibrary {
     }
 
     //returns number of chips loaded or a simple error
-    pub async fn load_chips(&mut self) -> Result<usize, SimpleError> {
+    pub async fn load_chips(&mut self) -> Result<usize, Box<dyn std::error::Error + Send + Sync>> {
         self.chips.clear();
 
+        let chip_text_future = ChipLibrary::get_chip_text(&self.chip_url);
+        let custom_chip_text_future = ChipLibrary::get_custom_chip_text(&self.custom_chip_url);
+
+        let (chip_text_res, special_chips_res) =
+            tokio::join!(chip_text_future, custom_chip_text_future);
+
+        let chip_text = chip_text_res?;
         //get chip text and replace necessary characters for compatibility
-        let chip_text = reqwest::get(&self.chip_url).await
-            .expect("no request result")
-            .text().await
-            .expect("no response text")
-            .replace("â€™", "'")
-            .replace("\u{FEFF}", "")
-            .replace("\r", "");
+        //let chip_text = ChipLibrary::get_chip_text(&self.chip_url).await;
         let mut chip_text_arr: Vec<&str> = chip_text
             .split("\n")
             .filter(|&i| !i.trim().is_empty())
             .collect();
 
         //load in custom chips if any
-        let special_chips_res = reqwest::get(&self.custom_chip_url).await;
+        //let special_chips_res = ChipLibrary::get_custom_chip_text(&self.custom_chip_url).await;
         let special_chip_text;
-        if special_chips_res.is_ok() {
-            special_chip_text = special_chips_res
-            .unwrap()
-            .text().await
-            .expect("no response text")
-            .replace("â€™", "'")
-            .replace("\u{FEFF}", "")
-            .replace("\r", "")
-            ;
+        if special_chips_res.is_some() {
+            special_chip_text = special_chips_res.unwrap();
             let mut special_chip_arr: Vec<&str> = special_chip_text
                 .split("\n")
                 .filter(|&i| !i.trim().is_empty())
@@ -102,7 +96,9 @@ impl ChipLibrary {
         #[cfg(not(debug_assertions))]
         {
             let j = serde_json::to_string_pretty(&chips).expect("could not serialize to json");
-            fs::write("chips.json", j).await.expect("could not write to chips.json");
+            fs::write("chips.json", j)
+                .await
+                .expect("could not write to chips.json");
         }
 
         while !chips.is_empty() {
@@ -112,17 +108,40 @@ impl ChipLibrary {
 
         if bad_chips.len() > 5 {
             let bad_str = format!("There were {} bad chips", bad_chips.len());
-            return Err(SimpleError::new(bad_str));
+            return Err(Box::new(SimpleError::new(bad_str)));
         } else if bad_chips.len() > 0 {
             let mut bad_str = format!("There were {} bad chips:\n", bad_chips.len());
             for bad_chip in bad_chips {
                 bad_str.push_str(&bad_chip);
                 bad_str.push('\n');
             }
-            return Err(SimpleError::new(bad_str));
+            return Err(Box::new(SimpleError::new(bad_str)));
         } else {
             return Ok(self.chips.len());
         }
+    }
+
+    async fn get_chip_text(url: &str) -> Result<String, Box<dyn std::error::Error + Send + Sync>> {
+        let res = reqwest::get(url)
+            .await?
+            .text()
+            .await?
+            .replace("â€™", "'")
+            .replace("\u{FEFF}", "")
+            .replace("\r", "");
+        return Ok(res);
+    }
+
+    async fn get_custom_chip_text(url: &str) -> Option<String> {
+        let special_chips_res = reqwest::get(url).await.ok()?;
+        let res = special_chips_res
+            .text()
+            .await
+            .ok()?
+            .replace("â€™", "'")
+            .replace("\u{FEFF}", "")
+            .replace("\r", "");
+        return Some(res);
     }
 
     pub fn search_element(&self, to_get: &str) -> Option<Vec<&str>> {
@@ -170,7 +189,6 @@ impl TypeMapKey for ChipLibrary {
     type Value = RwLock<ChipLibrary>;
 }
 
-
 #[group]
 #[prefixes("c", "chip")]
 #[default_command(send_chip)]
@@ -181,7 +199,12 @@ struct BnbChips;
 #[group]
 #[prefixes("s", "skill")]
 #[default_command(send_chip_skill)]
-#[commands(send_chip_skill, send_chip_skill_user, send_chip_skill_target, send_chip_skill_check)]
+#[commands(
+    send_chip_skill,
+    send_chip_skill_user,
+    send_chip_skill_target,
+    send_chip_skill_check
+)]
 #[description("A group of commands related to Battlechip skills, see `s skill` for the get chip by skill help")]
 struct BnBSkills;
 
@@ -189,7 +212,6 @@ struct BnBSkills;
 #[description("get the description of a chip with the specified name, or suggestions if there is not a chip with that name")]
 #[example = "Airshot"]
 pub(crate) async fn send_chip(ctx: &mut Context, msg: &Message, args: Args) -> CommandResult {
-    
     if args.len() == 0 {
         say!(ctx, msg, "you must provide a name");
         return Ok(());
@@ -214,9 +236,9 @@ async fn send_chip_skill(ctx: &mut Context, msg: &Message, mut args: Args) -> Co
         return Ok(());
     }
     let skill = args.single::<String>()?;
-    let data : RwLockReadGuard<ShareMap> = ctx.data.read().await;
+    let data: RwLockReadGuard<ShareMap> = ctx.data.read().await;
     let library_lock = data.get::<ChipLibrary>().expect("chip library not found");
-    let library : RwLockReadGuard<ChipLibrary> = library_lock.read().await;
+    let library: RwLockReadGuard<ChipLibrary> = library_lock.read().await;
     match library.search_skill(&skill) {
         Some(chips) => long_say!(ctx, msg, chips, ", "),
         None => say!(ctx, msg, "nothing matched your search"),
@@ -225,7 +247,9 @@ async fn send_chip_skill(ctx: &mut Context, msg: &Message, mut args: Args) -> Co
 }
 
 #[command("user")]
-#[description("get a list of chips that have a save and the DC is determined by the specified skill")]
+#[description(
+    "get a list of chips that have a save and the DC is determined by the specified skill"
+)]
 #[example = "Strength"]
 async fn send_chip_skill_user(ctx: &mut Context, msg: &Message, mut args: Args) -> CommandResult {
     if args.len() < 1 {
@@ -233,9 +257,9 @@ async fn send_chip_skill_user(ctx: &mut Context, msg: &Message, mut args: Args) 
         return Ok(());
     }
     let skill = args.single::<String>()?;
-    let data : RwLockReadGuard<ShareMap> = ctx.data.read().await;
+    let data: RwLockReadGuard<ShareMap> = ctx.data.read().await;
     let library_lock = data.get::<ChipLibrary>().expect("chip library not found");
-    let library : RwLockReadGuard<ChipLibrary> = library_lock.read().await;
+    let library: RwLockReadGuard<ChipLibrary> = library_lock.read().await;
     match library.search_skill_user(&skill) {
         Some(chips) => long_say!(ctx, msg, chips, ", "),
         None => say!(ctx, msg, "nothing matched your search"),
@@ -243,9 +267,10 @@ async fn send_chip_skill_user(ctx: &mut Context, msg: &Message, mut args: Args) 
     return Ok(());
 }
 
-
 #[command("target")]
-#[description("get a list of chips where the specified skill is used to make the save by the target")]
+#[description(
+    "get a list of chips where the specified skill is used to make the save by the target"
+)]
 #[example = "Speed"]
 async fn send_chip_skill_target(ctx: &mut Context, msg: &Message, mut args: Args) -> CommandResult {
     if args.len() < 1 {
@@ -253,9 +278,9 @@ async fn send_chip_skill_target(ctx: &mut Context, msg: &Message, mut args: Args
         return Ok(());
     }
     let skill = args.single::<String>()?;
-    let data : RwLockReadGuard<ShareMap> = ctx.data.read().await;
+    let data: RwLockReadGuard<ShareMap> = ctx.data.read().await;
     let library_lock = data.get::<ChipLibrary>().expect("chip library not found");
-    let library : RwLockReadGuard<ChipLibrary> = library_lock.read().await;
+    let library: RwLockReadGuard<ChipLibrary> = library_lock.read().await;
     match library.search_skill_target(&skill) {
         Some(chips) => long_say!(ctx, msg, chips, ", "),
         None => say!(ctx, msg, "nothing matched your search"),
@@ -272,9 +297,9 @@ async fn send_chip_skill_check(ctx: &mut Context, msg: &Message, mut args: Args)
         return Ok(());
     }
     let skill = args.single::<String>()?;
-    let data : RwLockReadGuard<ShareMap> = ctx.data.read().await;
+    let data: RwLockReadGuard<ShareMap> = ctx.data.read().await;
     let library_lock = data.get::<ChipLibrary>().expect("chip library not found");
-    let library : RwLockReadGuard<ChipLibrary> = library_lock.read().await;
+    let library: RwLockReadGuard<ChipLibrary> = library_lock.read().await;
     match library.search_skill_check(&skill) {
         Some(chips) => long_say!(ctx, msg, chips, ", "),
         None => say!(ctx, msg, "nothing matched your search"),
@@ -285,7 +310,11 @@ async fn send_chip_skill_check(ctx: &mut Context, msg: &Message, mut args: Args)
 #[command("element")]
 #[description("get a list of chips which are of the specified element")]
 #[example = "Aqua"]
-pub(crate) async fn send_chip_element(ctx: &mut Context, msg: &Message, args: Args) -> CommandResult {
+pub(crate) async fn send_chip_element(
+    ctx: &mut Context,
+    msg: &Message,
+    args: Args,
+) -> CommandResult {
     if args.len() < 1 {
         say!(ctx, msg, "you must provide an element");
         return Ok(());
@@ -293,7 +322,7 @@ pub(crate) async fn send_chip_element(ctx: &mut Context, msg: &Message, args: Ar
     let data = ctx.data.read().await;
     let library_lock = data.get::<ChipLibrary>().expect("chip library not found");
     let library = library_lock.read().await;
-        //.expect("chip library poisoned, panicking");
+    //.expect("chip library poisoned, panicking");
     let elem_res = library.search_element(args.rest());
 
     match elem_res {
@@ -303,7 +332,6 @@ pub(crate) async fn send_chip_element(ctx: &mut Context, msg: &Message, args: Ar
             msg,
             "nothing matched your search, are you sure you gave an element?"
         ),
-        
     }
     return Ok(());
 }

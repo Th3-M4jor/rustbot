@@ -1,10 +1,10 @@
 use std::collections::HashMap;
-use tokio::sync::RwLock;
 use std::sync::Arc;
+use tokio::sync::RwLock;
 
-use serde::{Serialize};
-use serenity::{model::channel::Message, prelude::*};
+use serde::Serialize;
 use serenity::framework::standard::{macros::*, Args, CommandResult};
+use serenity::{model::channel::Message, prelude::*};
 
 #[cfg(not(debug_assertions))]
 use serde_json;
@@ -83,17 +83,19 @@ impl NCPLibrary {
         }
     }
 
-    pub async fn load_programs(&mut self) -> usize {
+    pub async fn load_programs(
+        &mut self,
+    ) -> Result<usize, Box<dyn std::error::Error + Send + Sync>> {
         lazy_static! {
             static ref NCP_TEST: Regex =
                 Regex::new(r"(.+)\s\((\d+)\sEB\)\s-\s(.+)").expect("Bad NCP regex");
         }
         self.library.clear();
         let mut ncp_list: Vec<Box<NCP>> = vec![];
-        let ncp_text = reqwest::get(&self.ncp_url).await
-            .expect("no request result")
-            .text().await
-            .expect("no response text")
+        let ncp_text = reqwest::get(&self.ncp_url)
+            .await?
+            .text()
+            .await?
             .replace("â€™", "'")
             .replace("\u{FEFF}", "")
             .replace("\r", "");
@@ -139,13 +141,15 @@ impl NCPLibrary {
         #[cfg(not(debug_assertions))]
         {
             let j = serde_json::to_string_pretty(&ncp_list).expect("could not serialize to json");
-            fs::write("naviCust.json", j).await.expect("could not write to naviCust.json");
+            fs::write("naviCust.json", j)
+                .await
+                .expect("could not write to naviCust.json");
         }
         while !ncp_list.is_empty() {
             let ncp = ncp_list.pop().unwrap();
             self.library.insert(ncp.name.to_lowercase(), Arc::new(ncp));
         }
-        return self.library.len();
+        return Ok(self.library.len());
     }
 
     pub fn search_color(&self, color: &str) -> Option<Vec<&str>> {
@@ -187,7 +191,11 @@ pub(crate) async fn send_ncp(ctx: &mut Context, msg: &Message, args: Args) -> Co
 #[example = "pink"]
 pub(crate) async fn send_ncp_color(ctx: &mut Context, msg: &Message, args: Args) -> CommandResult {
     if args.len() < 1 {
-        say!(ctx, msg, format!("you must provide a color\nValid colors are: `{:?}`", COLORS));
+        say!(
+            ctx,
+            msg,
+            format!("you must provide a color\nValid colors are: `{:?}`", COLORS)
+        );
         return Ok(());
     }
     let data = ctx.data.read().await;
@@ -195,7 +203,14 @@ pub(crate) async fn send_ncp_color(ctx: &mut Context, msg: &Message, args: Args)
     let library = library_lock.read().await;
     match library.search_color(args.current().unwrap()) {
         Some(list) => long_say!(ctx, msg, list, ", "),
-        None => say!(ctx, msg, format!("None found, perhaps you used an invalid color?\nValid colors are: `{:?}`", COLORS)),
+        None => say!(
+            ctx,
+            msg,
+            format!(
+                "None found, perhaps you used an invalid color?\nValid colors are: `{:?}`",
+                COLORS
+            )
+        ),
     }
     return Ok(());
 }
