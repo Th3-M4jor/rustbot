@@ -237,7 +237,7 @@ impl VirusLibrary {
         //only write json file if not debug
         #[cfg(not(debug_assertions))]
         {
-            let mut viruses: Vec<&Arc<Box<Virus>>> = self.library.values().collect();
+            let mut viruses: Vec<&Arc<Virus>> = self.library.values().collect();
             viruses.sort_unstable_by(|a, b| a.c_r.cmp(&b.c_r).then_with(|| a.name.cmp(&b.name)));
 
             let j = serde_json::to_string_pretty(&viruses)
