@@ -367,7 +367,12 @@ pub(crate) async fn send_virus(ctx: &mut Context, msg: &Message, args: Args) -> 
     let library_lock = data.get::<VirusLibrary>().expect("Virus library not found");
     let library = library_lock.read().await;
     //.expect("library was poisoned, panicking");
-    say!(ctx, msg, search_lib_obj(&to_search, library));
+
+    match search_lib_obj(to_search, &library) {
+        Ok(val) => say!(ctx, msg, val),
+        Err(val) => say!(ctx, msg, format!("Did you mean: {}", val.join(", "))),
+    }
+    //say!(ctx, msg, search_lib_obj(&to_search, library));
     return Ok(());
 }
 

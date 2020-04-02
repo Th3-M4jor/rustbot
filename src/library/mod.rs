@@ -91,14 +91,14 @@ pub trait Library: TypeMapKey {
     }
 }
 
-pub(crate) fn search_lib_obj<U, T>(search: &str, lib: T) -> String
+pub(crate) fn search_lib_obj<'b, U, T>(search: &str, lib: &'b T) -> Result<String, Vec<&'b str>>
     where
     U: Library,
     T: Deref<Target=U>
     {
     let item = lib.get(search);
     if item.is_some() {
-        return format!("{}", item.unwrap());
+        return Ok(format!("{}", item.unwrap()));
     }
     let mut item_search;
     match lib.name_contains(search, None) {
@@ -107,9 +107,10 @@ pub(crate) fn search_lib_obj<U, T>(search: &str, lib: T) -> String
     }
     if item_search.len() == 1 {
         let found_item = lib.get(&item_search[0]).unwrap();
-        return format!("{}", found_item);
+        return Ok(format!("{}", found_item));
     }
     item_search.dedup();
-    let to_send: String = item_search.join(", ");
-    return format!("Did you mean: {}", to_send);
+    return Err(item_search);
+    //let to_send: String = item_search.join(", ");
+    //return format!("Did you mean: {}", to_send);
 }

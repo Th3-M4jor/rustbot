@@ -182,7 +182,12 @@ pub(crate) async fn send_ncp(ctx: &mut Context, msg: &Message, args: Args) -> Co
     let data = ctx.data.read().await;
     let library_lock = data.get::<NCPLibrary>().expect("NCP library not found");
     let library = library_lock.read().await;
-    say!(ctx, msg, search_lib_obj(args.current().unwrap(), library));
+
+    match search_lib_obj(args.current().unwrap(), &library) {
+        Ok(val) => say!(ctx, msg, val),
+        Err(val) => say!(ctx, msg, format!("Did you mean: {}", val.join(", "))),
+    }
+    //say!(ctx, msg, search_lib_obj(args.current().unwrap(), library));
     return Ok(());
 }
 

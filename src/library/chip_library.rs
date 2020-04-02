@@ -223,7 +223,12 @@ pub(crate) async fn send_chip(ctx: &mut Context, msg: &Message, args: Args) -> C
     let library = library_lock.read().await;
     //let library = locked_library.read().expect("library was poisoned");
     //search!(ctx, msg, to_get, library);
-    say!(ctx, msg, search_lib_obj(to_get, library));
+
+    match search_lib_obj(to_get, &library) {
+        Ok(val) => say!(ctx, msg, val),
+        Err(val) => say!(ctx, msg, format!("Did you mean: {}", val.join(", "))),
+    }
+    //say!(ctx, msg, search_lib_obj(to_get, library));
     return Ok(());
 }
 

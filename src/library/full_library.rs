@@ -2,19 +2,24 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
+use crate::library::{
+    search_lib_obj,
+    battlechip::BattleChip,
+    ncp_library::NCP,
+    virus_library::Virus,
+    Library, LibraryObject,
+};
+//use crate::library::ncp_library::NCP;
+//use crate::library::search_lib_obj;
+//use crate::library::virus_library::Virus;
+//use crate::library::{Library, LibraryObject};
 use serenity::{model::channel::Message, prelude::*};
-use crate::library::{Library, LibraryObject};
 use simple_error::SimpleError;
-use crate::library::battlechip::BattleChip;
-use crate::library::ncp_library::NCP;
-use crate::library::virus_library::Virus;
-use crate::library::search_lib_obj;
 use std::fmt::Formatter;
 
 pub struct FullLibrary {
     library: HashMap<String, FullLibraryType>,
 }
-
 
 pub enum FullLibraryType {
     #[non_exhaustive]
@@ -26,15 +31,9 @@ pub enum FullLibraryType {
 impl LibraryObject for FullLibraryType {
     fn get_name(&self) -> &str {
         match self {
-            FullLibraryType::BattleChip(chip) => {
-                chip.get_name()
-            },
-            FullLibraryType::NCP(ncp) => {
-                ncp.get_name()
-            },
-            FullLibraryType::Virus(virus) => {
-                virus.get_name()
-            }
+            FullLibraryType::BattleChip(chip) => chip.get_name(),
+            FullLibraryType::NCP(ncp) => ncp.get_name(),
+            FullLibraryType::Virus(virus) => virus.get_name(),
         }
     }
 }
@@ -42,16 +41,10 @@ impl LibraryObject for FullLibraryType {
 impl std::fmt::Display for FullLibraryType {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
         return match self {
-            FullLibraryType::BattleChip(chip) => {
-                write!(f, "{}", chip)
-            },
-            FullLibraryType::NCP(ncp) => {
-                write!(f, "{}", ncp)
-            },
-            FullLibraryType::Virus(virus) => {
-                write!(f, "{}", virus)
-            }
-        }
+            FullLibraryType::BattleChip(chip) => write!(f, "{}", chip),
+            FullLibraryType::NCP(ncp) => write!(f, "{}", ncp),
+            FullLibraryType::Virus(virus) => write!(f, "{}", virus),
+        };
     }
 }
 
@@ -66,9 +59,9 @@ impl FullLibrary {
         let res;
         if self.library.contains_key(&obj.get_name().to_lowercase()) {
             let dup = match obj {
-                FullLibraryType::NCP(_) => {"_n"},
-                FullLibraryType::BattleChip(_) => {"_c"},
-                FullLibraryType::Virus(_) => {"_v"},
+                FullLibraryType::NCP(_) => "_n",
+                FullLibraryType::BattleChip(_) => "_c",
+                FullLibraryType::Virus(_) => "_v",
             };
             let name = obj.get_name().to_lowercase() + dup;
             res = self.library.insert(name, obj);
@@ -78,7 +71,7 @@ impl FullLibrary {
         return match res {
             Some(t) => Err(SimpleError::new(format!("{}", t.get_name()))),
             None => Ok(()),
-        }
+        };
     }
 
     pub fn clear(&mut self) {
@@ -99,14 +92,17 @@ impl Library for FullLibrary {
     }
 }
 
-pub (crate) async fn search_full_library(ctx: &Context, msg: &Message, args: &[&str]) {
+pub(crate) async fn search_full_library(ctx: &Context, msg: &Message, args: &[&str]) {
     let to_search = args.join(" ");
     let data = ctx.data.read().await;
-    let library_lock =
-        data.get::<FullLibrary>().expect("Full library not found");
+    let library_lock = data.get::<FullLibrary>().expect("Full library not found");
     let library = library_lock.read().await;
-        //.expect("library was poisoned, panicking");
-    say!(ctx, msg, search_lib_obj(&to_search, library));
+    //.expect("library was poisoned, panicking");
+    match search_lib_obj(&to_search, &library) {
+        Ok(val) => say!(ctx, msg, val),
+        Err(val) => say!(ctx, msg, format!("Did you mean: {},", val.join(", "))),
+    }
+    //say!(ctx, msg, search_lib_obj(&to_search, library));
 }
 
 impl TypeMapKey for FullLibrary {
