@@ -22,16 +22,16 @@ use std::str::FromStr;
 //const CHIP_URL: &'static str = "https://docs.google.com/feeds/download/documents/export/Export?id=1lvAKkymOplIJj6jS-N5__9aLIDXI6bETIMz01MK9MfY&exportFormat=txt";
 
 pub struct ChipLibrary {
-    chips: HashMap<String, Arc<Box<BattleChip>>>,
+    chips: HashMap<String, Arc<BattleChip>>,
     chip_url: String,
     custom_chip_url: String,
 }
 
 impl Library for ChipLibrary {
-    type LibObj = Arc<Box<BattleChip>>;
+    type LibObj = Arc<BattleChip>;
 
     #[inline]
-    fn get_collection(&self) -> &HashMap<String, Arc<Box<BattleChip>>> {
+    fn get_collection(&self) -> &HashMap<String, Arc<BattleChip>> {
         return &self.chips;
     }
 }
@@ -75,7 +75,7 @@ impl ChipLibrary {
             chip_text_arr.append(special_chip_arr.borrow_mut());
         }
 
-        let mut chips: Vec<Box<BattleChip>> = vec![];
+        let mut chips: Vec<BattleChip> = vec![];
         let mut bad_chips: Vec<String> = vec![];
         for i in (0..chip_text_arr.len()).step_by(2) {
             let to_add_res = BattleChip::from_chip_string(chip_text_arr[i], chip_text_arr[i + 1]);

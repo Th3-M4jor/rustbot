@@ -18,9 +18,9 @@ pub struct FullLibrary {
 
 pub enum FullLibraryType {
     #[non_exhaustive]
-    BattleChip(Arc<Box<BattleChip>>),
-    NCP(Arc<Box<NCP>>),
-    Virus(Arc<Box<Virus>>),
+    BattleChip(Arc<BattleChip>),
+    NCP(Arc<NCP>),
+    Virus(Arc<Virus>),
 }
 
 impl LibraryObject for FullLibraryType {

@@ -65,7 +65,7 @@ impl std::fmt::Display for Virus {
 }
 
 pub struct VirusLibrary {
-    library: HashMap<String, Arc<Box<Virus>>>,
+    library: HashMap<String, Arc<Virus>>,
     highest_cr: u8,
     duplicates: Vec<String>,
     virus_url: String,
@@ -76,10 +76,10 @@ impl TypeMapKey for VirusLibrary {
 }
 
 impl Library for VirusLibrary {
-    type LibObj = Arc<Box<Virus>>;
+    type LibObj = Arc<Virus>;
 
     #[inline]
-    fn get_collection(&self) -> &HashMap<String, Arc<Box<Virus>>> {
+    fn get_collection(&self) -> &HashMap<String, Arc<Virus>> {
         return &self.library;
     }
 }
@@ -142,22 +142,22 @@ impl VirusLibrary {
                 if self.duplicates.contains(&current_virus_name.to_lowercase()) {
                     add_res = self.library.insert(
                         current_virus_full_name.to_lowercase(),
-                        Arc::new(Box::new(Virus::new(
+                        Arc::new(Virus::new(
                             &current_virus_full_name,
                             current_virus_element,
                             curr_cr,
                             &current_virus_description,
-                        ))),
+                        )),
                     );
                 } else {
                     add_res = self.library.insert(
                         current_virus_name.to_lowercase(),
-                        Arc::new(Box::new(Virus::new(
+                        Arc::new(Virus::new(
                             &current_virus_name,
                             current_virus_element,
                             curr_cr,
                             &current_virus_description,
-                        ))),
+                        )),
                     );
                 }
                 if add_res.is_some() {
@@ -180,18 +180,18 @@ impl VirusLibrary {
                             current_virus_full_name
                         ))));
                     }
-                    let repl_new_virus = Arc::new(Box::new(Virus::new(
+                    let repl_new_virus = Arc::new(Virus::new(
                         format!("{} ({})", new_virus.name, new_virus.element),
                         new_virus.element,
                         new_virus.c_r,
                         new_virus.description.clone(),
-                    )));
-                    let repl_old_virus = Arc::new(Box::new(Virus::new(
+                    ));
+                    let repl_old_virus = Arc::new(Virus::new(
                         format!("{} ({})", old_virus.name, old_virus.element),
                         old_virus.element,
                         old_virus.c_r,
                         old_virus.description.clone(),
-                    )));
+                    ));
                     let new_add_res = self
                         .library
                         .insert(repl_new_virus.name.to_lowercase(), repl_new_virus);

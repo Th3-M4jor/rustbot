@@ -116,7 +116,7 @@ impl BattleChip {
     pub fn from_chip_string(
         first_line: &str,
         second_line: &str,
-    ) -> Result<Box<BattleChip>, SimpleError> {
+    ) -> Result<BattleChip, SimpleError> {
         lazy_static! {
             static ref RE: Regex = Regex::new(r"(.+?)\s-\s(.+?)\s\|\s(.+?)\s\|\s(.+?)\s\|\s(\d+d\d+|--)\s?(?:damage)?\s?\|?\s?(Mega|Giga)?\s\|\s(\d+|\d+-\d+|--)\s?(?:hits?)\.?").expect("could not compile chip regex");
             static ref R_SAVE : Regex = Regex::new(r"an?\s(\w+)\scheck\sof\s\[DC\s\d+\s\+\s(\w+)]").expect("could not compile save regex");
@@ -195,7 +195,7 @@ impl BattleChip {
 
         let chip_all = format!("{}\n{}", first_line, second_line);
 
-        let to_ret = Box::new(BattleChip::new(
+        let to_ret = BattleChip::new(
             chip_name,
             parsed_elements,
             Option::from(parsed_skills),
@@ -207,7 +207,7 @@ impl BattleChip {
             &chip_all,
             Option::from(skill_target),
             Option::from(skill_user),
-        ));
+        );
 
         return Ok(to_ret);
     }

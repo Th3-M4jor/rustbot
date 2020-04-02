@@ -18,7 +18,7 @@ pub trait LibraryObject: std::fmt::Display {
     fn get_name(&self) -> &str;
 }
 
-impl<T: LibraryObject> LibraryObject for Arc<Box<T>> {
+impl<T: LibraryObject> LibraryObject for Arc<T> {
     fn get_name(&self) -> &str {
         return self.deref().get_name();
     }

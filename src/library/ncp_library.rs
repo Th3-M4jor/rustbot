@@ -60,17 +60,17 @@ impl std::fmt::Display for NCP {
 }
 
 pub struct NCPLibrary {
-    library: HashMap<String, Arc<Box<NCP>>>,
+    library: HashMap<String, Arc<NCP>>,
     ncp_url: String,
 }
 
 const COLORS: &[&str] = &["white", "pink", "yellow", "green", "blue", "red", "gray"];
 
 impl Library for NCPLibrary {
-    type LibObj = Arc<Box<NCP>>;
+    type LibObj = Arc<NCP>;
 
     #[inline]
-    fn get_collection(&self) -> &HashMap<String, Arc<Box<NCP>>> {
+    fn get_collection(&self) -> &HashMap<String, Arc<NCP>> {
         return &self.library;
     }
 }
@@ -91,7 +91,7 @@ impl NCPLibrary {
                 Regex::new(r"(.+)\s\((\d+)\sEB\)\s-\s(.+)").expect("Bad NCP regex");
         }
         self.library.clear();
-        let mut ncp_list: Vec<Box<NCP>> = vec![];
+        let mut ncp_list: Vec<NCP> = vec![];
         let ncp_text = reqwest::get(&self.ncp_url)
             .await?
             .text()
@@ -128,13 +128,13 @@ impl NCPLibrary {
                 .as_str()
                 .parse::<u8>()
                 .unwrap_or(u8::max_value());
-            ncp_list.push(Box::new(NCP::new(
+            ncp_list.push(NCP::new(
                 name.unwrap().as_str(),
                 cost_val,
                 &curr_color,
                 ncp,
                 desc.unwrap().as_str(),
-            )));
+            ));
         }
 
         //only write json file if not debug
