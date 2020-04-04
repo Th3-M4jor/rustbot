@@ -20,7 +20,7 @@ rand = "*"
 strsim = "*"
 chrono = "*"
 tokio  = { version = "0.2", features = ["rt-threaded", "time", "sync", "fs", "macros", "rt-util"] }
-serenity = { git = "https://github.com/Lakelezz/serenity.git", branch = "await", features = ["framework", "standard_framework"] }
+serenity = { git = "https://github.com/Lakelezz/serenity.git", branch = "await", features = ["framework", "standard_framework", "collector"] }
 futures = "*"
 
 [profile.release]
