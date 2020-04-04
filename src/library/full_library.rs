@@ -92,7 +92,7 @@ impl Library for FullLibrary {
 }
 
 
-const NUMBERS: &[&str] = &["1️⃣", "2️⃣", "3️⃣", "4️⃣", "5️⃣"];
+const NUMBERS: &[&str] = &["1️⃣", "2️⃣", "3️⃣", "4️⃣", "5️⃣", "6️⃣"];
 
 
 pub(crate) async fn search_full_library(ctx: &Context, msg: &Message, args: &[&str]) {
@@ -171,8 +171,6 @@ pub(crate) async fn search_full_library(ctx: &Context, msg: &Message, args: &[&s
             println!("reaction wait timed out");
             break;
         }
-        #[cfg(debug_assertions)]
-        println!("Did not get a correct reaction, waiting again");
     }
 
     
