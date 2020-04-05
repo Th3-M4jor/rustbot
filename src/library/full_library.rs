@@ -1,8 +1,7 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
-use tokio::sync::RwLock;
-
+use tokio::sync::{RwLock, RwLockReadGuard};
 
 use crate::library::{
     battlechip::BattleChip, ncp_library::NCP, search_lib_obj, virus_library::Virus, Library,
@@ -12,9 +11,11 @@ use crate::library::{
 //use crate::library::search_lib_obj;
 //use crate::library::virus_library::Virus;
 //use crate::library::{Library, LibraryObject};
-use serenity::{model::channel::Message, prelude::*, model::permissions::Permissions};
+use serenity::{model::channel::Message, model::permissions::Permissions, prelude::*};
 use simple_error::SimpleError;
 use std::fmt::Formatter;
+
+use strsim::jaro_winkler;
 
 pub struct FullLibrary {
     library: HashMap<String, FullLibraryType>,
@@ -47,6 +48,16 @@ impl std::fmt::Display for FullLibraryType {
     }
 }
 
+impl FullLibraryType {
+    fn format_name(&self) -> String {
+        match self {
+            FullLibraryType::BattleChip(chip) => format!("{} (Chip)", chip.get_name()),
+            FullLibraryType::NCP(ncp) => format!("{} (NCP)", ncp.get_name()),
+            FullLibraryType::Virus(virus) => format!("{} (Virus)", virus.get_name()),
+        }
+    }
+}
+
 impl FullLibrary {
     pub fn new() -> FullLibrary {
         FullLibrary {
@@ -73,6 +84,72 @@ impl FullLibrary {
         };
     }
 
+    pub fn search_dist<'fl>(
+        &'fl self,
+        to_search: &str,
+        limit: Option<usize>,
+    ) -> Vec<&'fl FullLibraryType> {
+        let limit_val = limit.unwrap_or(9);
+
+        if limit_val == 0 {
+            panic!("Recieved 0 as a limit value");
+        }
+
+        let obj_name = to_search.to_lowercase();
+
+        let mut distances: Vec<(f64, &FullLibraryType)> = vec![];
+
+        for val in &self.library {
+            let dist = jaro_winkler(&obj_name, &val.1.get_name().to_lowercase());
+            distances.push((dist, val.1));
+        }
+
+        distances.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap().reverse());
+
+        distances.truncate(limit_val);
+
+        //distances.into_iter().map()
+
+        let mut to_ret = vec![];
+
+        for val in distances {
+            to_ret.push(val.1);
+        }
+
+        return to_ret;
+    }
+
+    pub fn search_name_contains<'fl>(
+        &'fl self,
+        to_search: &str,
+        limit: Option<usize>,
+    ) -> Option<Vec<&'fl FullLibraryType>> {
+        let limit_val = limit.unwrap_or(9);
+
+        if limit_val == 0 {
+            panic!("Recieved 0 as a limit value");
+        }
+
+        let obj_name = to_search.to_lowercase();
+
+        let mut to_ret = vec![];
+
+        for val in &self.library {
+            if val.0.starts_with(&obj_name) {
+                to_ret.push(val.1);
+                if to_ret.len() == limit_val {
+                    break;
+                }
+            }
+        }
+
+        if to_ret.len() == 0 {
+            return None;
+        } else {
+            return Some(to_ret);
+        }
+    }
+
     pub fn clear(&mut self) {
         self.library.clear();
     }
@@ -91,49 +168,78 @@ impl Library for FullLibrary {
     }
 }
 
-
-const NUMBERS: &[&str] = &["1️⃣", "2️⃣", "3️⃣", "4️⃣", "5️⃣", "6️⃣"];
-
+const NUMBERS: &[&str] = &["1️⃣", "2️⃣", "3️⃣", "4️⃣", "5️⃣", "6️⃣", "7️⃣", "8️⃣", "9️⃣"];
 
 pub(crate) async fn search_full_library(ctx: &Context, msg: &Message, args: &[&str]) {
     let to_search = args.join(" ");
-    let data = ctx.data.read().await;
+    let data: RwLockReadGuard<ShareMap> = ctx.data.read().await;
     let library_lock = data.get::<FullLibrary>().expect("Full library not found");
-    let library = library_lock.read().await;
+    let library: RwLockReadGuard<FullLibrary> = library_lock.read().await;
 
-    //.expect("library was poisoned, panicking");
-    let res : Vec<&str>;
-    match search_lib_obj(&to_search, &library) {
-        Ok(val) => {
-            say!(ctx, msg, val);
+    //let item: Option<&FullLibraryType> = library.get(&to_search);
+
+    if let Some(val) = library.get(&to_search) {
+        say!(ctx, msg, val);
+    }
+    //else nothing directly matching that name
+
+    let channel = match ctx.cache.read().await.guild_channel(msg.channel_id) {
+        Some(channel) => channel,
+        None => {
+            match search_lib_obj(&to_search, &library) {
+                Ok(val) => say!(ctx, msg, val),
+                Err(val) => say!(ctx, msg, format!("Did you mean: {}", val.join(", "))),
+            }
             return;
         }
-        Err(val) => res = val,
-        //say!(ctx, msg, format!("Did you mean: {},", val.join(", ")))
-    }
-    
-    let mut msg_to_await : Message;
+    };
 
-    match msg.channel_id.say(ctx, format!("Did you mean: {}", res.join(", "))).await {
+    let current_user_id = ctx.cache.read().await.user.id;
+    let permissions = channel
+        .read()
+        .await
+        .permissions_for_user(ctx, current_user_id)
+        .await
+        .unwrap();
+
+    if !permissions.contains(Permissions::ADD_REACTIONS | Permissions::MANAGE_MESSAGES) {
+        match search_lib_obj(&to_search, &library) {
+            Ok(val) => say!(ctx, msg, val),
+            Err(val) => say!(ctx, msg, format!("Did you mean: {}", val.join(", "))),
+        }
+        return;
+    }
+
+    let res: Vec<&FullLibraryType>;
+
+    match library.search_name_contains(&to_search, None) {
+        Some(val) => res = val,
+        None => res = library.search_dist(&to_search, None),
+    }
+
+    let mut msg_string = String::from("Did you mean: ");
+    let mut num: isize = 1;
+    for obj in &res {
+        msg_string.push_str(&num.to_string());
+        msg_string.push_str(": ");
+        msg_string.push_str(&(*obj).format_name());
+        msg_string.push_str(", ");
+        num += 1;
+    }
+
+    //remove last ", "
+    msg_string.pop();
+    msg_string.pop();
+
+    let mut msg_to_await: Message;
+
+    match msg.channel_id.say(ctx, msg_string).await {
         Ok(val) => msg_to_await = val,
         Err(why) => {
             println!("Could not send message: {:?}", why);
             return;
         }
     }
-
-    let channel = match ctx.cache.read().await.guild_channel(msg.channel_id) {
-        Some(channel) => channel,
-        None => return,
-    };
-
-    let current_user_id = ctx.cache.read().await.user.id;
-    let permissions =
-        channel.read().await.permissions_for_user(ctx, current_user_id).await.unwrap();
-
-        if !permissions.contains(Permissions::ADD_REACTIONS | Permissions::MANAGE_MESSAGES) {
-            return;
-        }
 
     for num in 0..res.len() {
         if let Err(why) = msg_to_await.react(ctx, NUMBERS[num]).await {
@@ -143,11 +249,24 @@ pub(crate) async fn search_full_library(ctx: &Context, msg: &Message, args: &[&s
     }
     let mut got_proper_rection = false;
     while !got_proper_rection {
-        if let Some(reaction) = &msg_to_await.await_reaction(&ctx).timeout(Duration::from_secs(15)).author_id(msg.author.id).await {
+        if let Some(reaction) = &msg_to_await
+            .await_reaction(&ctx)
+            .timeout(Duration::from_secs(30))
+            .author_id(msg.author.id)
+            .await
+        {
             let emoji = &reaction.as_inner_ref().emoji.as_data();
             let emoji_str = emoji.as_str();
             for num in 0..res.len() {
                 if NUMBERS[num] == emoji_str {
+                    if let Err(why) = msg_to_await.edit(ctx, |m| m.content(format!("{}",res[num]))).await {
+                        println!("Could not edit message: {:?}", why);
+                    }
+                    #[cfg(debug_assertions)]
+                    println!("Got a correct reaction, edited message");
+                    got_proper_rection = true;
+                    break;
+                    /*
                     let to_say = search_lib_obj(res[num], &library);
                     match to_say {
                         Err(_) => {
@@ -164,6 +283,7 @@ pub(crate) async fn search_full_library(ctx: &Context, msg: &Message, args: &[&s
                             break;
                         }
                     }
+                    */
                 }
             }
         } else {
@@ -173,15 +293,10 @@ pub(crate) async fn search_full_library(ctx: &Context, msg: &Message, args: &[&s
         }
     }
 
-    
     if let Err(why) = msg_to_await.delete_reactions(ctx).await {
         println!("Could not delete reactions: {:?}", why);
     }
-
-    
-    //say!(ctx, msg, search_lib_obj(&to_search, library));
 }
-
 impl TypeMapKey for FullLibrary {
     type Value = RwLock<FullLibrary>;
 }
