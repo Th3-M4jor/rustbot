@@ -455,7 +455,7 @@ pub(crate) async fn send_random_encounter(
             msg,
             concat!(
                 "You must send a CR and number of viruses; EX:\n",
-                "```%encounter 2-3 5```",
+                "```%virus encounter 2-3 5```",
                 "This will return 5 random viruses in CR 2 & 3"
             )
         );
