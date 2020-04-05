@@ -273,24 +273,6 @@ pub(crate) async fn search_full_library(ctx: &Context, msg: &Message, args: &[&s
                     println!("Got a correct reaction, edited message");
                     got_proper_rection = true;
                     break;
-                    /*
-                    let to_say = search_lib_obj(res[num], &library);
-                    match to_say {
-                        Err(_) => {
-                            say!(ctx, msg, "An error occurred, inform the owner");
-                            return;
-                        }
-                        Ok(val) => {
-                            if let Err(why) = msg_to_await.edit(ctx, |m| m.content(val)).await {
-                                println!("Could not edit message: {:?}", why);
-                            }
-                            #[cfg(debug_assertions)]
-                            println!("Got a correct reaction, edited message");
-                            got_proper_rection = true;
-                            break;
-                        }
-                    }
-                    */
                 }
             }
         } else {
