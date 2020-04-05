@@ -11,7 +11,13 @@ use serenity::{
         help_commands, macros::*, Args, CheckResult, CommandError, CommandGroup, CommandOptions,
         CommandResult, HelpOptions, StandardFramework,
     },
-    model::{channel::Message, gateway::Activity, gateway::Ready, guild::PartialGuild, id::UserId},
+    model::{
+        channel::Message,
+        event::ResumedEvent,
+        gateway::{Activity, Ready},
+        guild::{Guild, Member, PartialGuild},
+        id::UserId,
+    },
     prelude::*,
 };
 
@@ -54,23 +60,16 @@ impl EventHandler for Handler {
         lazy_static! {
             static ref FIRST_LOGIN: AtomicBool = AtomicBool::new(true);
         }
+        let owner = fetch_owner(&ctx).await.expect("could not fetch owner");
         let data: RwLockReadGuard<ShareMap> = ctx.data.read().await;
         let config = data.get::<BotData>().expect("no bot data, panicking");
-
-        let guild: PartialGuild = serenity::model::guild::Guild::get(&ctx, config.main_server)
-            .await
-            .expect("could not find main server");
-        let owner = guild
-            .member(&ctx, config.owner)
-            .await
-            .expect("could not grab owner");
         let message_to_owner;
         if FIRST_LOGIN.load(Ordering::Relaxed) {
             message_to_owner = "logged in, and ready";
             println!("{} is connected!", ready.user.name);
             FIRST_LOGIN.store(false, Ordering::Relaxed);
         } else {
-            message_to_owner = "an error occurred, reconnected and ready";
+            message_to_owner = "ready event re-emitted";
             println!("{:?}", ready.trace);
         }
         let owner_user = owner.user.read().await;
@@ -84,6 +83,31 @@ impl EventHandler for Handler {
         let action = config.cmd_prefix.clone() + "help for a list of commands";
         ctx.set_activity(Activity::playing(&action)).await;
     }
+
+    async fn resume(&self, ctx: Context, resumed: ResumedEvent) {
+        let owner = fetch_owner(&ctx).await.expect("Could not fetch owner");
+        let owner_user = owner.user.read().await;
+        let message_to_owner = "resume event was emitted";
+        println!("{:?}", resumed.trace);
+        owner_user
+            .dm(&ctx, |m| {
+                m.content(message_to_owner);
+                return m;
+            })
+            .await
+            .expect("could not dm owner");
+    }
+}
+
+async fn fetch_owner(ctx: &Context) -> Result<Member, Box<dyn std::error::Error + Send + Sync>> {
+    let data: RwLockReadGuard<ShareMap> = ctx.data.read().await;
+    let config = data.get::<BotData>().expect("no bot data, panicking");
+
+    let guild: PartialGuild = Guild::get(&ctx, config.main_server).await?;
+
+    let owner = guild.member(ctx, config.owner).await?;
+
+    return Ok(owner);
 }
 
 #[help]
