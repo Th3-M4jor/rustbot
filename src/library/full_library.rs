@@ -180,6 +180,7 @@ pub(crate) async fn search_full_library(ctx: &Context, msg: &Message, args: &[&s
 
     if let Some(val) = library.get(&to_search) {
         say!(ctx, msg, val);
+        return;
     }
     //else nothing directly matching that name
 
