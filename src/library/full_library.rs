@@ -217,6 +217,12 @@ pub(crate) async fn search_full_library(ctx: &Context, msg: &Message, args: &[&s
         None => res = library.search_dist(&to_search, None),
     }
 
+    //only one item was returned, print it
+    if res.len() == 1 {
+        say!(ctx, msg, res[0]);
+        return;
+    }
+
     let mut msg_string = String::from("Did you mean: ");
     let mut num: isize = 1;
     for obj in &res {
