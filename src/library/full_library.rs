@@ -248,8 +248,8 @@ pub(crate) async fn search_full_library(ctx: &Context, msg: &Message, args: &[&s
         }
     }
 
-    for num in 0..res.len() {
-        if let Err(why) = msg_to_await.react(ctx, NUMBERS[num]).await {
+    for ( _ , num_emoji) in res.iter().zip(NUMBERS.iter()) {
+        if let Err(why) = msg_to_await.react(ctx, *num_emoji).await {
             println!("Could not react to message: {:?}", why);
             return;
         }
@@ -263,10 +263,12 @@ pub(crate) async fn search_full_library(ctx: &Context, msg: &Message, args: &[&s
             .await
         {
             let emoji = &reaction.as_inner_ref().emoji.as_data();
-            let emoji_str = emoji.as_str();
-            for num in 0..res.len() {
-                if NUMBERS[num] == emoji_str {
-                    if let Err(why) = msg_to_await.edit(ctx, |m| m.content(format!("{}",res[num]))).await {
+            let reacted_emoji = emoji.as_str();
+
+            //iterate over both at once with .zip()
+            for (response, num_emoji) in res.iter().zip(NUMBERS.iter()) {
+                if *num_emoji == reacted_emoji {
+                    if let Err(why) = msg_to_await.edit(ctx, |m| m.content(format!("{}",response))).await {
                         println!("Could not edit message: {:?}", why);
                     }
                     #[cfg(debug_assertions)]
