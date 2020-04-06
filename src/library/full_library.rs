@@ -11,7 +11,7 @@ use crate::library::{
 //use crate::library::search_lib_obj;
 //use crate::library::virus_library::Virus;
 //use crate::library::{Library, LibraryObject};
-use serenity::{model::channel::Message, model::permissions::Permissions, prelude::*};
+use serenity::{model::channel::{Message}, model::permissions::Permissions, prelude::*};
 use simple_error::SimpleError;
 use std::fmt::Formatter;
 
@@ -184,8 +184,9 @@ pub(crate) async fn search_full_library(ctx: &Context, msg: &Message, args: &[&s
     }
     //else nothing directly matching that name
 
-    let channel = match ctx.cache.read().await.guild_channel(msg.channel_id) {
-        Some(channel) => channel,
+    let channel;
+    match ctx.cache.read().await.guild_channel(msg.channel_id) {
+        Some(chan) => channel = chan,
         None => {
             match search_lib_obj(&to_search, &library) {
                 Ok(val) => say!(ctx, msg, val),
