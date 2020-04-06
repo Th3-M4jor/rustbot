@@ -18,7 +18,7 @@ use tokio::fs;
 
 use regex::Regex;
 
-use crate::library::{elements::Elements, search_lib_obj, Library, LibraryObject};
+use crate::library::{elements::Elements, Library, LibraryObject};
 use simple_error::SimpleError;
 use std::fmt::Formatter;
 
@@ -368,7 +368,7 @@ pub(crate) async fn send_virus(ctx: &mut Context, msg: &Message, args: Args) -> 
     let library = library_lock.read().await;
     //.expect("library was poisoned, panicking");
 
-    match search_lib_obj(to_search, &library) {
+    match library.search_lib_obj(to_search) {
         Ok(val) => say!(ctx, msg, val),
         Err(val) => say!(ctx, msg, format!("Did you mean: {}", val.join(", "))),
     }

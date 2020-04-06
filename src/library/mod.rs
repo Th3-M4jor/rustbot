@@ -1,14 +1,14 @@
 pub(crate) mod battlechip;
+pub(crate) mod blights;
 pub(crate) mod chip_library;
 pub(crate) mod elements;
+pub(crate) mod full_library;
 pub(crate) mod ncp_library;
 pub(crate) mod virus_library;
-pub(crate) mod full_library;
-pub(crate) mod blights;
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use serenity::{prelude::*};
+use serenity::prelude::*;
 
 use strsim::jaro_winkler;
 
@@ -89,13 +89,34 @@ pub trait Library: TypeMapKey {
         to_ret.sort_unstable();
         return Some(to_ret);
     }
+
+    fn search_lib_obj<'a>(&'a self, search: &str) -> Result<String, Vec<&'a str>> {
+        if let Some(item) = self.get(search) {
+            return Ok(format!("{}", item));
+        }
+        let mut item_search;
+
+        match self.name_contains(search, None) {
+            Some(t) => item_search = t,
+            None => item_search = self.distance(search, None),
+        }
+
+        if item_search.len() == 1 {
+            let found_item = self.get(&item_search[0]).unwrap();
+            return Ok(format!("{}", found_item));
+        }
+
+        item_search.dedup();
+        return Err(item_search);
+    }
 }
 
+/*
 pub(crate) fn search_lib_obj<'b, U, T>(search: &str, lib: &'b T) -> Result<String, Vec<&'b str>>
-    where
+where
     U: Library,
-    T: Deref<Target=U>
-    {
+    T: Deref<Target = U>,
+{
     let item = lib.get(search);
     if item.is_some() {
         return Ok(format!("{}", item.unwrap()));
@@ -114,3 +135,4 @@ pub(crate) fn search_lib_obj<'b, U, T>(search: &str, lib: &'b T) -> Result<Strin
     //let to_send: String = item_search.join(", ");
     //return format!("Did you mean: {}", to_send);
 }
+*/

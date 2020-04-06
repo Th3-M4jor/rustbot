@@ -11,7 +11,7 @@ use simple_error::SimpleError;
 use crate::library::battlechip::skills::Skills;
 use crate::library::battlechip::BattleChip;
 use crate::library::elements::Elements;
-use crate::library::{search_lib_obj, Library};
+use crate::library::{Library};
 use std::borrow::BorrowMut;
 
 #[cfg(not(debug_assertions))]
@@ -224,7 +224,7 @@ pub(crate) async fn send_chip(ctx: &mut Context, msg: &Message, args: Args) -> C
     //let library = locked_library.read().expect("library was poisoned");
     //search!(ctx, msg, to_get, library);
 
-    match search_lib_obj(to_get, &library) {
+    match library.search_lib_obj(to_get) {
         Ok(val) => say!(ctx, msg, val),
         Err(val) => say!(ctx, msg, format!("Did you mean: {}", val.join(", "))),
     }

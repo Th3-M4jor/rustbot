@@ -4,7 +4,7 @@ use std::time::Duration;
 use tokio::sync::{RwLock, RwLockReadGuard};
 
 use crate::library::{
-    battlechip::BattleChip, ncp_library::NCP, search_lib_obj, virus_library::Virus, Library,
+    battlechip::BattleChip, ncp_library::NCP, virus_library::Virus, Library,
     LibraryObject,
 };
 //use crate::library::ncp_library::NCP;
@@ -188,13 +188,13 @@ pub(crate) async fn search_full_library(ctx: &Context, msg: &Message, args: &[&s
     match ctx.cache.read().await.guild_channel(msg.channel_id) {
         Some(chan) => channel = chan,
         None => {
-            match search_lib_obj(&to_search, &library) {
+            match library.search_lib_obj(&to_search) {
                 Ok(val) => say!(ctx, msg, val),
                 Err(val) => say!(ctx, msg, format!("Did you mean: {}", val.join(", "))),
             }
             return;
         }
-    };
+    }
 
     let current_user_id = ctx.cache.read().await.user.id;
     let permissions = channel
@@ -205,7 +205,7 @@ pub(crate) async fn search_full_library(ctx: &Context, msg: &Message, args: &[&s
         .unwrap();
 
     if !permissions.contains(Permissions::ADD_REACTIONS | Permissions::MANAGE_MESSAGES) {
-        match search_lib_obj(&to_search, &library) {
+        match library.search_lib_obj(&to_search) {
             Ok(val) => say!(ctx, msg, val),
             Err(val) => say!(ctx, msg, format!("Did you mean: {}", val.join(", "))),
         }

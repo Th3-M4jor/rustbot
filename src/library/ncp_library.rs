@@ -13,7 +13,7 @@ use tokio::fs;
 
 use regex::Regex;
 
-use crate::library::{search_lib_obj, Library, LibraryObject};
+use crate::library::{Library, LibraryObject};
 use std::fmt::Formatter;
 
 use unicode_normalization::UnicodeNormalization;
@@ -183,7 +183,7 @@ pub(crate) async fn send_ncp(ctx: &mut Context, msg: &Message, args: Args) -> Co
     let library_lock = data.get::<NCPLibrary>().expect("NCP library not found");
     let library = library_lock.read().await;
 
-    match search_lib_obj(args.current().unwrap(), &library) {
+    match library.search_lib_obj(args.current().unwrap()) {
         Ok(val) => say!(ctx, msg, val),
         Err(val) => say!(ctx, msg, format!("Did you mean: {}", val.join(", "))),
     }
