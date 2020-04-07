@@ -31,7 +31,7 @@ dependencies = [
 
 [[package]]
 name = "async-trait"
-version = "0.1.29"
+version = "0.1.30"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "proc-macro2 1.0.10 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1032,7 +1032,7 @@ version = "0.8.1"
 source = "git+https://github.com/Lakelezz/serenity.git?branch=await#4298fb8588400745c24bb851dbcee19c3d72a5a1"
 dependencies = [
  "async-tls 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "async-trait 0.1.29 (registry+https://github.com/rust-lang/crates.io-index)",
+ "async-trait 0.1.30 (registry+https://github.com/rust-lang/crates.io-index)",
  "async-tungstenite 0.4.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "base64 0.11.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "bitflags 1.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1519,7 +1519,7 @@ dependencies = [
 "checksum aho-corasick 0.7.10 (registry+https://github.com/rust-lang/crates.io-index)" = "8716408b8bc624ed7f65d223ddb9ac2d044c0547b6fa4b0d554f3a9540496ada"
 "checksum arc-swap 0.4.5 (registry+https://github.com/rust-lang/crates.io-index)" = "d663a8e9a99154b5fb793032533f6328da35e23aac63d5c152279aa8ba356825"
 "checksum async-tls 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)" = "6ce6977f57fa68da77ffe5542950d47e9c23d65f5bc7cb0a9f8700996913eec7"
-"checksum async-trait 0.1.29 (registry+https://github.com/rust-lang/crates.io-index)" = "bab5c215748dc1ad11a145359b1067107ae0f8ca5e99844fa64067ed5bf198e3"
+"checksum async-trait 0.1.30 (registry+https://github.com/rust-lang/crates.io-index)" = "da71fef07bc806586090247e971229289f64c210a278ee5ae419314eb386b31d"
 "checksum async-tungstenite 0.4.2 (registry+https://github.com/rust-lang/crates.io-index)" = "4187bb446c8ecb8849f17cef7553db8bdb09e482e806257130189958fb42dca7"
 "checksum autocfg 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)" = "f8aac770f1885fd7e387acedd76065302551364496e46b3dd00860b2f8359b9d"
 "checksum base64 0.10.1 (registry+https://github.com/rust-lang/crates.io-index)" = "0b25d992356d2eb0ed82172f5248873db5560c4721f564b13cb5193bda5e668e"
