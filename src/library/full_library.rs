@@ -4,10 +4,15 @@ use std::time::Duration;
 use tokio::sync::{RwLock, RwLockReadGuard};
 
 use crate::library::{
-    battlechip::BattleChip, ncp_library::NCP, virus_library::Virus, Library,
-    LibraryObject,
+    battlechip::BattleChip, ncp_library::NCP, virus_library::Virus, Library, LibraryObject,
 };
-use serenity::{model::channel::{Message, ReactionType}, model::permissions::Permissions, prelude::*, builder::EditMessage};
+use crate::util::edit_message_by_id;
+
+use serenity::{
+    model::channel::{Message, ReactionType},
+    model::permissions::Permissions,
+    prelude::*,
+};
 use simple_error::SimpleError;
 use std::fmt::Formatter;
 
@@ -245,17 +250,21 @@ pub(crate) async fn search_full_library(ctx: &Context, msg: &Message, args: &[&s
         }
     }
 
-    //let reactions_added = Arc::new(AtomicBool::new(false));
-    //let reactions_added_clone = Arc::clone(&reactions_added);
-
     let http_clone = Arc::clone(&ctx.http);
     let msg_id = msg_to_await.id.0.clone();
     let channel_id = msg.channel_id.0.clone();
     let res_len = res.len();
 
-    let reacted_to_all = tokio::spawn(async move {
+    let all_reactions_added = tokio::spawn(async move {
         for num in 0..res_len {
-            if let Err(why) = http_clone.create_reaction(channel_id, msg_id, &ReactionType::Unicode(NUMBERS[num].to_string())).await {
+            if let Err(why) = http_clone
+                .create_reaction(
+                    channel_id,
+                    msg_id,
+                    &ReactionType::Unicode(NUMBERS[num].to_string()),
+                )
+                .await
+            {
                 println!("Could not react to message: {:?}", why);
                 return false;
             }
@@ -274,9 +283,11 @@ pub(crate) async fn search_full_library(ctx: &Context, msg: &Message, args: &[&s
         {
             let emoji = &reaction.as_inner_ref().emoji.as_data();
             let reacted_emoji = emoji.as_str();
-            let pos = res.iter().zip(NUMBERS.iter()).position( |( _ , num_emoji )| {
-                *num_emoji == reacted_emoji
-            });
+            //zipping here to constrain length to that of "res"
+            let pos = res
+                .iter()
+                .zip(NUMBERS.iter())
+                .position(|(_, num_emoji)| *num_emoji == reacted_emoji);
 
             if let Some(index) = pos {
                 #[cfg(debug_assertions)]
@@ -293,7 +304,7 @@ pub(crate) async fn search_full_library(ctx: &Context, msg: &Message, args: &[&s
         }
     }
 
-    if let Err(why) = reacted_to_all.await {
+    if let Err(why) = all_reactions_added.await {
         println!("{:?}", why);
     }
 
@@ -301,21 +312,24 @@ pub(crate) async fn search_full_library(ctx: &Context, msg: &Message, args: &[&s
 
     if got_proper_rection {
         //let edit_message = msg_to_await.edit(ctx, |m| m.content(edited_msg));
-        let mut edited_text = EditMessage::default();
-        edited_text.content(edited_msg);
-        let map = serenity::utils::hashmap_to_json_map(edited_text.0);
-        let stringified_map = serde_json::Value::Object(map);
-        let edit_message = ctx.http.edit_message(msg_to_await.channel_id.0, msg_to_await.id.0, &stringified_map);
+
+        let edit_message = edit_message_by_id(
+            ctx,
+            msg_to_await.channel_id.0,
+            msg_to_await.channel_id.0,
+            edited_msg,
+        );
+
         if let Err(why) = tokio::try_join!(edit_message, delete_reactions) {
             println!("Could not delete reactions or edit message: {:?}", why);
         }
     } else {
-
         if let Err(why) = delete_reactions.await {
             println!("Could not delete reactions: {:?}", why);
         }
     }
 }
+
 impl TypeMapKey for FullLibrary {
     type Value = RwLock<FullLibrary>;
 }

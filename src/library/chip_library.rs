@@ -11,7 +11,7 @@ use simple_error::SimpleError;
 use crate::library::battlechip::skills::Skills;
 use crate::library::battlechip::BattleChip;
 use crate::library::elements::Elements;
-use crate::library::{Library};
+use crate::library::Library;
 use std::borrow::BorrowMut;
 
 #[cfg(not(debug_assertions))]
@@ -76,8 +76,15 @@ impl ChipLibrary {
         }
 
         let mut chips: Vec<BattleChip> = vec![];
-        let mut bad_chips: Vec<String> = vec![];
+        //let mut bad_chips: Vec<String> = vec![];
         for i in (0..chip_text_arr.len()).step_by(2) {
+            let chip = BattleChip::from_chip_string(chip_text_arr[i], chip_text_arr[i + 1])
+                .map_err(|_| {
+                    SimpleError::new(format!("Found an invalid chip:\n{}", chip_text_arr[i]))
+                })?;
+            chips.push(chip);
+
+            /*
             let to_add_res = BattleChip::from_chip_string(chip_text_arr[i], chip_text_arr[i + 1]);
             match to_add_res {
                 Ok(chip) => {
@@ -87,6 +94,8 @@ impl ChipLibrary {
                     bad_chips.push(String::from(chip_text_arr[i]));
                 }
             }
+            */
+            tokio::task::yield_now().await;
         }
 
         chips.shrink_to_fit();
@@ -106,19 +115,7 @@ impl ChipLibrary {
             self.chips.insert(chip.name.to_lowercase(), Arc::new(chip));
         }
 
-        if bad_chips.len() > 5 {
-            let bad_str = format!("There were {} bad chips", bad_chips.len());
-            return Err(Box::new(SimpleError::new(bad_str)));
-        } else if bad_chips.len() > 0 {
-            let mut bad_str = format!("There were {} bad chips:\n", bad_chips.len());
-            for bad_chip in bad_chips {
-                bad_str.push_str(&bad_chip);
-                bad_str.push('\n');
-            }
-            return Err(Box::new(SimpleError::new(bad_str)));
-        } else {
-            return Ok(self.chips.len());
-        }
+        return Ok(self.chips.len());
     }
 
     async fn get_chip_text(url: &str) -> Result<String, Box<dyn std::error::Error + Send + Sync>> {

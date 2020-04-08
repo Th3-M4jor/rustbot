@@ -135,6 +135,7 @@ impl NCPLibrary {
                 ncp,
                 desc.unwrap().as_str(),
             ));
+            tokio::task::yield_now().await;
         }
 
         //only write json file if not debug

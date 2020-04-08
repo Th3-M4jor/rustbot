@@ -231,6 +231,7 @@ impl VirusLibrary {
                 current_virus_description.push_str(virus_text_arr[i]);
                 current_virus_description.push('\n');
             }
+            tokio::task::yield_now().await;
         }
         self.highest_cr = curr_cr;
 

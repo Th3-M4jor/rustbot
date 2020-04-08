@@ -50,6 +50,12 @@ lazy_static! {
 
 struct Handler;
 
+struct DmOwner;
+
+impl TypeMapKey for DmOwner {
+    type Value = AtomicBool;
+}
+
 #[async_trait]
 impl EventHandler for Handler {
     // Event handlers are dispatched through a threadpool, and so multiple
@@ -60,17 +66,17 @@ impl EventHandler for Handler {
             static ref FIRST_LOGIN: AtomicBool = AtomicBool::new(true);
         }
         //let owner = fetch_owner(&ctx).await.expect("could not fetch owner");
-        
+
         let message_to_owner;
         if FIRST_LOGIN.load(Ordering::Relaxed) {
             message_to_owner = "logged in, and ready";
-            println!("{} is connected!", ready.user.name);
+            println!("{} : {} is connected!", chrono::Local::now(), ready.user.name);
             FIRST_LOGIN.store(false, Ordering::Relaxed);
         } else {
             message_to_owner = "ready event re-emitted";
-            println!("{:?}", ready.trace);
+            println!("{} : ready event re-emitted:\n{:?}", chrono::Local::now(), ready.trace);
         }
-        
+
         if let Err(why) = dm_owner(&ctx, message_to_owner).await {
             println!("{:?}", why);
         }
@@ -91,18 +97,26 @@ impl EventHandler for Handler {
             println!("{:?}", why);
         }
 
-        println!("{:?}", resumed.trace);
+        println!("{} : resume event emitted:\n{:?}", chrono::Local::now(), resumed.trace);
     }
 }
 
 async fn dm_owner<T>(
     ctx: &Context,
     to_send: T,
-) -> Result<Message, Box<dyn std::error::Error + Send + Sync>>
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>>
 where
     T: std::fmt::Display,
 {
     let data: RwLockReadGuard<ShareMap> = ctx.data.read().await;
+
+
+    let should_dm_owner = data.get::<DmOwner>().expect("No DM Owner setting found");
+
+    if !should_dm_owner.load(Ordering::Relaxed) {
+        return Ok(());
+    }
+    
     let config = data.get::<BotData>().expect("no bot data, panicking");
 
     //let cacheLock = ctx.cache.read().await;
@@ -112,30 +126,13 @@ where
 
     if let Some(owner_lock) = ctx.cache.read().await.users.get(&owner_id) {
         let owner = owner_lock.read().await;
-        let msg = owner.dm(ctx, |m| {
-            m.content(format!("{}", to_send))
-        }).await?;
-        return Ok(msg);
+        let _ = owner.dm(ctx, |m| m.content(format!("{}", to_send))).await?;
+        return Ok(());
     } else {
         let owner = ctx.http.get_user(config.owner).await?;
-        let msg = owner.dm(ctx, |m| {
-            m.content(format!("{}", to_send))
-        }).await?;
-        return Ok(msg);
+        let _ = owner.dm(ctx, |m| m.content(format!("{}", to_send))).await?;
+        return Ok(());
     }
-
-    /*
-    match cacheLock.users.get(&owner_id) {
-        Some(val) => owner = val,
-        None => owner = ctx.http.get_user(owner_id.asas_u64()).await?,
-    }
-    */
-
-    //let guild: PartialGuild = Guild::get(&ctx, config.main_server).await?;
-
-    //let owner = guild.member(ctx, config.owner).await?;
-
-    //return Ok(owner);
 }
 
 #[help]
@@ -161,7 +158,8 @@ async fn help_command(
 
 #[group]
 #[owners_only]
-#[commands(die, audit)]
+#[help_available(false)]
+#[commands(die, audit, shut_up)]
 #[description("Administrative commands for the bot")]
 struct Owner;
 
@@ -171,57 +169,66 @@ struct Owner;
 struct BnbGeneral;
 
 async fn reload_chips(data: Arc<RwLock<ShareMap>>) -> ReloadReturnType {
-    let str_to_ret;
-    let mut vec_to_ret: Vec<FullLibraryType> = vec![];
-    let data_lock = data.read().await;
-    let chip_library_lock = data_lock
-        .get::<ChipLibrary>()
-        .expect("chip library not found");
-    let mut chip_library: RwLockWriteGuard<ChipLibrary> = chip_library_lock.write().await;
-    let chip_reload_str = chip_library.load_chips().await?;
-    str_to_ret = format!("{} chips loaded\n", chip_reload_str);
-    //let str_to_send;
-    vec_to_ret.reserve(chip_library.get_collection().len());
-    for val in chip_library.get_collection().values() {
-        vec_to_ret.push(FullLibraryType::BattleChip(Arc::clone(val)));
-    }
-    return Ok((str_to_ret, vec_to_ret));
+    tokio::spawn(async move {
+        let str_to_ret;
+        let mut vec_to_ret: Vec<FullLibraryType> = vec![];
+        let data_lock = data.read().await;
+        let chip_library_lock = data_lock
+            .get::<ChipLibrary>()
+            .expect("chip library not found");
+        let mut chip_library: RwLockWriteGuard<ChipLibrary> = chip_library_lock.write().await;
+        let chip_reload_str = chip_library.load_chips().await?;
+        str_to_ret = format!("{} chips loaded\n", chip_reload_str);
+        //let str_to_send;
+        vec_to_ret.reserve(chip_library.get_collection().len());
+        for val in chip_library.get_collection().values() {
+            vec_to_ret.push(FullLibraryType::BattleChip(Arc::clone(val)));
+        }
+        return Ok((str_to_ret, vec_to_ret));
+    })
+    .await?
 }
 
 async fn reload_ncps(data: Arc<RwLock<ShareMap>>) -> ReloadReturnType {
-    let str_to_ret: String;
-    let mut vec_to_ret: Vec<FullLibraryType> = vec![];
-    let data_lock = data.read().await;
-    let ncp_library_lock = data_lock
-        .get::<NCPLibrary>()
-        .expect("ncp library not found");
-    let mut ncp_library = ncp_library_lock.write().await;
-    let count = ncp_library.load_programs().await?;
-    str_to_ret = format!("{} NCPs loaded\n", count);
-    vec_to_ret.reserve(count);
-    for val in ncp_library.get_collection().values() {
-        vec_to_ret.push(FullLibraryType::NCP(Arc::clone(val)));
-    }
-    return Ok((str_to_ret, vec_to_ret));
+    tokio::spawn(async move {
+        let str_to_ret: String;
+        let mut vec_to_ret: Vec<FullLibraryType> = vec![];
+        let data_lock = data.read().await;
+        let ncp_library_lock = data_lock
+            .get::<NCPLibrary>()
+            .expect("ncp library not found");
+        let mut ncp_library = ncp_library_lock.write().await;
+        let count = ncp_library.load_programs().await?;
+        str_to_ret = format!("{} NCPs loaded\n", count);
+        vec_to_ret.reserve(count);
+        for val in ncp_library.get_collection().values() {
+            vec_to_ret.push(FullLibraryType::NCP(Arc::clone(val)));
+        }
+        return Ok((str_to_ret, vec_to_ret));
+    })
+    .await?
 }
 
 async fn reload_viruses(data: Arc<RwLock<ShareMap>>) -> ReloadReturnType {
     //let str_to_ret: String;
-    let mut vec_to_ret: Vec<FullLibraryType> = vec![];
-    let data_lock = data.read().await;
-    let virus_library_lock = data_lock
-        .get::<VirusLibrary>()
-        .expect("virus library not found");
-    let mut virus_library: RwLockWriteGuard<VirusLibrary> = virus_library_lock.write().await;
-    //.expect("virus library was poisoned, panicking");
-    let str_to_ret = virus_library.load_viruses().await?;
+    tokio::spawn(async move {
+        let mut vec_to_ret: Vec<FullLibraryType> = vec![];
+        let data_lock = data.read().await;
+        let virus_library_lock = data_lock
+            .get::<VirusLibrary>()
+            .expect("virus library not found");
+        let mut virus_library: RwLockWriteGuard<VirusLibrary> = virus_library_lock.write().await;
+        //.expect("virus library was poisoned, panicking");
+        let str_to_ret = virus_library.load_viruses().await?;
 
-    vec_to_ret.reserve(virus_library.get_collection().len());
-    for val in virus_library.get_collection().values() {
-        vec_to_ret.push(FullLibraryType::Virus(Arc::clone(val)));
-    }
+        vec_to_ret.reserve(virus_library.get_collection().len());
+        for val in virus_library.get_collection().values() {
+            vec_to_ret.push(FullLibraryType::Virus(Arc::clone(val)));
+        }
 
-    return Ok((str_to_ret, vec_to_ret));
+        return Ok((str_to_ret, vec_to_ret));
+    })
+    .await?
 }
 
 #[check]
@@ -243,6 +250,10 @@ async fn admin_check(
 #[checks(Admin)]
 #[description("Reload all Blights, BattleChips, NaviCust Parts, and Viruses")]
 async fn reload(ctx: &mut Context, msg: &Message, _: Args) -> CommandResult {
+    
+    println!("{} : Reload command called by: {}", chrono::Local::now(), msg.author.name);
+    
+    
     if let Err(_) = msg.channel_id.broadcast_typing(&ctx.http).await {
         println!("could not broadcast typing, not reloading");
         return Ok(());
@@ -344,6 +355,22 @@ async fn about_bot(ctx: &mut Context, msg: &Message, _: Args) -> CommandResult {
     if res.is_err() {
         println!("Could not send help message: {:?}", res.unwrap_err());
     }
+    return Ok(());
+}
+
+#[command("shut_up")]
+#[description("Makes the bot stop DMing the owner on certain events")]
+async fn shut_up(ctx: &mut Context, msg: &Message, _: Args) -> CommandResult {
+    {
+        let data = ctx.data.read().await;
+        
+        //fetch and xor means fewer operations whole true ^ true is false, and true ^ false is true;
+        let _res = data.get::<DmOwner>().expect("No DM Owner setting found").fetch_xor(true, Ordering::Relaxed);
+
+        #[cfg(debug_assertions)]
+        println!("DMing owner set to: {}", !_res);
+    }
+    msg.react(ctx, "👍").await?;
     return Ok(());
 }
 
@@ -510,6 +537,7 @@ async fn main() {
         data.insert::<FullLibrary>(full_library_mutex);
         data.insert::<Blights>(blight_mutex);
         data.insert::<ShardManagerContainer>(Arc::clone(&client.shard_manager));
+        data.insert::<DmOwner>(AtomicBool::new(true));
     }
     // Finally, start a single shard, and start listening to events.
     //

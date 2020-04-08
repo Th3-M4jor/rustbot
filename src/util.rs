@@ -1,5 +1,5 @@
 use serenity::framework::standard::{macros::command, Args, CommandResult};
-use serenity::{client::bridge::gateway::ShardManager, model::channel::Message, prelude::*};
+use serenity::{client::bridge::gateway::ShardManager, model::channel::Message, prelude::*, http::CacheHttp, builder::EditMessage,};
 
 use std::sync::Arc;
 
@@ -76,6 +76,16 @@ pub(crate) fn build_time_rem(now: i64, end: i64) -> String {
         format!("{}h:{:02}m:{:02}s", hours_rem, min_rem, sec_rem)
     };
 }
+
+
+pub(crate) async fn edit_message_by_id<T: ToString>(cache_http: impl CacheHttp, channel_id: u64, message_id: u64, new_msg: T) -> Result<Message, serenity::Error> {
+    let mut edited_text = EditMessage::default();
+    edited_text.content(new_msg.to_string());
+    let map = serenity::utils::hashmap_to_json_map(edited_text.0);
+    let stringified_map = serde_json::Value::Object(map);
+    cache_http.http().edit_message(channel_id, message_id, &stringified_map).await
+}
+
 
 #[command]
 #[description("Get the last few lines of the server log file")]
