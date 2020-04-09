@@ -3,7 +3,7 @@ use crate::library::battlechip::ranges::Ranges;
 use crate::library::battlechip::skills::Skills;
 use crate::library::elements::Elements;
 use regex::{Captures, Regex};
-use serde::{Serialize};
+use serde::Serialize;
 use std::cmp::{Ord, Ordering};
 use std::str::FromStr;
 use unicode_normalization::UnicodeNormalization;
@@ -70,28 +70,28 @@ impl BattleChip {
     pub fn new<T: Into<String>>(
         name: T,
         elements: Vec<Elements>,
-        skills: Option<Vec<Skills>>,
+        skills: Vec<Skills>,
         range: Ranges,
         damage: T,
-        class: Option<ChipType>,
+        class: ChipType,
         hits: T,
         description: T,
         all: T,
-        skill_target: Option<Skills>,
-        skill_user: Option<Skills>,
+        skill_target: Skills,
+        skill_user: Skills,
     ) -> BattleChip {
         BattleChip {
             name: name.into().nfc().collect::<String>(),
             element: elements,
-            skills: skills.unwrap_or(std::vec![Skills::None]),
+            skills,
             range,
             damage: damage.into().nfc().collect::<String>(),
-            class: class.unwrap_or(ChipType::Standard),
+            class,
             hits: hits.into().nfc().collect::<String>(),
             description: description.into().nfc().collect::<String>(),
             all: all.into().nfc().collect::<String>(),
-            skill_target: skill_target.unwrap_or(Skills::None),
-            skill_user: skill_user.unwrap_or(Skills::None),
+            skill_target,
+            skill_user,
         }
     }
 
@@ -126,35 +126,31 @@ impl BattleChip {
         //let R_SAVE : Regex = Regex::new(r"an?\s(\w+)\scheck\sof\s\[DC\s\d+\s\+\s(\w+)]").unwrap();
         let chip_val: Captures = RE
             .captures(first_line)
-            .ok_or(SimpleError::new("Failed at capture stage"))?;
+            .ok_or_else(|| SimpleError::new("Failed at capture stage"))?;
 
         let chip_name = chip_val
             .get(1)
-            .ok_or(SimpleError::new("Could not get name"))?
+            .ok_or_else(|| SimpleError::new("Could not get name"))?
             .as_str()
             .trim();
         let chip_range = Ranges::from_str(
             chip_val
                 .get(4)
-                .ok_or(SimpleError::new("Failed to convert range"))?
+                .ok_or_else(|| SimpleError::new("Failed to convert range"))?
                 .as_str(),
         )?;
         let chip_damage = chip_val
             .get(5)
-            .ok_or(SimpleError::new("failed to get damage"))?
+            .ok_or_else(|| SimpleError::new("failed to get damage"))?
             .as_str();
         let chip_hits = chip_val
             .get(7)
-            .ok_or(SimpleError::new("failed to get hits"))?
+            .ok_or_else(|| SimpleError::new("failed to get hits"))?
             .as_str();
         let chip_type: ChipType;
-        if chip_val.get(6).is_some() {
-            chip_type = ChipType::from_str(
-                chip_val
-                    .get(6)
-                    .ok_or(SimpleError::new("failed to get type"))?
-                    .as_str(),
-            )?;
+
+        if let Some(chip_type_str) = chip_val.get(6) {
+            chip_type = ChipType::from_str(chip_type_str.as_str())?;
         } else {
             chip_type = ChipType::Standard;
         }
@@ -162,35 +158,34 @@ impl BattleChip {
         let parsed_elements = BattleChip::parse_elements(
             chip_val
                 .get(2)
-                .ok_or(SimpleError::new("failed to parse element"))?
+                .ok_or_else(|| SimpleError::new("failed to parse element"))?
                 .as_str(),
         )?;
         //let skills : Vec<&str> = chip_val.get(3).unwrap().as_str().split(", ").collect();
         let parsed_skills = BattleChip::parse_skills(
             chip_val
                 .get(3)
-                .ok_or(SimpleError::new("failed to parse skills"))?
+                .ok_or_else(|| SimpleError::new("failed to parse skills"))?
                 .as_str(),
         )?;
 
         let skill_user: Skills;
         let skill_target: Skills;
-        let skill_res = R_SAVE.captures(second_line);
-        if skill_res.is_none() {
+        //let skill_res = R_SAVE.captures(second_line);
+        if let Some(skill_res) = R_SAVE.captures(second_line) {
+            let skill_user_res = skill_res
+                .get(2)
+                .ok_or_else(|| SimpleError::new("failed to get skill user"))?
+                .as_str();
+            let skill_target_res = skill_res
+                .get(1)
+                .ok_or_else(|| SimpleError::new("failed to get skill target"))?
+                .as_str();
+            skill_user = Skills::from_str(skill_user_res).unwrap_or_default();
+            skill_target = Skills::from_str(skill_target_res).unwrap_or_default();
+        } else {
             skill_user = Skills::None;
             skill_target = Skills::None;
-        } else {
-            let skill_res_unwrapped = skill_res.expect("Something went wrong");
-            let skill_user_res = skill_res_unwrapped
-                .get(2)
-                .ok_or(SimpleError::new("failed to get skill user"))?
-                .as_str();
-            let skill_target_res = skill_res_unwrapped
-                .get(1)
-                .ok_or(SimpleError::new("failed to get skill target"))?
-                .as_str();
-            skill_user = Skills::from_str(skill_user_res).unwrap_or(Skills::None);
-            skill_target = Skills::from_str(skill_target_res).unwrap_or(Skills::None);
         }
 
         let chip_all = format!("{}\n{}", first_line, second_line);
@@ -198,15 +193,15 @@ impl BattleChip {
         let to_ret = BattleChip::new(
             chip_name,
             parsed_elements,
-            Option::from(parsed_skills),
+            parsed_skills,
             chip_range,
             chip_damage,
-            Option::from(chip_type),
+            chip_type,
             chip_hits,
             second_line,
             &chip_all,
-            Option::from(skill_target),
-            Option::from(skill_user),
+            skill_target,
+            skill_user,
         );
 
         return Ok(to_ret);

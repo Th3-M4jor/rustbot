@@ -70,11 +70,19 @@ impl EventHandler for Handler {
         let message_to_owner;
         if FIRST_LOGIN.load(Ordering::Relaxed) {
             message_to_owner = "logged in, and ready";
-            println!("{} : {} is connected!", chrono::Local::now(), ready.user.name);
+            println!(
+                "{} : {} is connected!",
+                chrono::Local::now(),
+                ready.user.name
+            );
             FIRST_LOGIN.store(false, Ordering::Relaxed);
         } else {
             message_to_owner = "ready event re-emitted";
-            println!("{} : ready event re-emitted:\n{:?}", chrono::Local::now(), ready.trace);
+            println!(
+                "{} : ready event re-emitted:\n{:?}",
+                chrono::Local::now(),
+                ready.trace
+            );
         }
 
         if let Err(why) = dm_owner(&ctx, message_to_owner).await {
@@ -97,7 +105,11 @@ impl EventHandler for Handler {
             println!("{:?}", why);
         }
 
-        println!("{} : resume event emitted:\n{:?}", chrono::Local::now(), resumed.trace);
+        println!(
+            "{} : resume event emitted:\n{:?}",
+            chrono::Local::now(),
+            resumed.trace
+        );
     }
 }
 
@@ -110,13 +122,12 @@ where
 {
     let data: RwLockReadGuard<ShareMap> = ctx.data.read().await;
 
-
     let should_dm_owner = data.get::<DmOwner>().expect("No DM Owner setting found");
 
     if !should_dm_owner.load(Ordering::Relaxed) {
         return Ok(());
     }
-    
+
     let config = data.get::<BotData>().expect("no bot data, panicking");
 
     //let cacheLock = ctx.cache.read().await;
@@ -169,66 +180,55 @@ struct Owner;
 struct BnbGeneral;
 
 async fn reload_chips(data: Arc<RwLock<ShareMap>>) -> ReloadReturnType {
-    tokio::spawn(async move {
-        let str_to_ret;
-        let mut vec_to_ret: Vec<FullLibraryType> = vec![];
-        let data_lock = data.read().await;
-        let chip_library_lock = data_lock
-            .get::<ChipLibrary>()
-            .expect("chip library not found");
-        let mut chip_library: RwLockWriteGuard<ChipLibrary> = chip_library_lock.write().await;
-        let chip_reload_str = chip_library.load_chips().await?;
-        str_to_ret = format!("{} chips loaded\n", chip_reload_str);
-        //let str_to_send;
-        vec_to_ret.reserve(chip_library.get_collection().len());
-        for val in chip_library.get_collection().values() {
-            vec_to_ret.push(FullLibraryType::BattleChip(Arc::clone(val)));
-        }
-        return Ok((str_to_ret, vec_to_ret));
-    })
-    .await?
+    let str_to_ret;
+    let mut vec_to_ret: Vec<FullLibraryType> = vec![];
+    let data_lock = data.read().await;
+    let chip_library_lock = data_lock
+        .get::<ChipLibrary>()
+        .expect("chip library not found");
+    let mut chip_library: RwLockWriteGuard<ChipLibrary> = chip_library_lock.write().await;
+    let chip_reload_str = chip_library.load_chips().await?;
+    str_to_ret = format!("{} chips loaded\n", chip_reload_str);
+    //let str_to_send;
+    vec_to_ret.reserve(chip_library.get_collection().len());
+    for val in chip_library.get_collection().values() {
+        vec_to_ret.push(FullLibraryType::BattleChip(Arc::clone(val)));
+    }
+    return Ok((str_to_ret, vec_to_ret));
 }
 
 async fn reload_ncps(data: Arc<RwLock<ShareMap>>) -> ReloadReturnType {
-    tokio::spawn(async move {
-        let str_to_ret: String;
-        let mut vec_to_ret: Vec<FullLibraryType> = vec![];
-        let data_lock = data.read().await;
-        let ncp_library_lock = data_lock
-            .get::<NCPLibrary>()
-            .expect("ncp library not found");
-        let mut ncp_library = ncp_library_lock.write().await;
-        let count = ncp_library.load_programs().await?;
-        str_to_ret = format!("{} NCPs loaded\n", count);
-        vec_to_ret.reserve(count);
-        for val in ncp_library.get_collection().values() {
-            vec_to_ret.push(FullLibraryType::NCP(Arc::clone(val)));
-        }
-        return Ok((str_to_ret, vec_to_ret));
-    })
-    .await?
+    let str_to_ret: String;
+    let mut vec_to_ret: Vec<FullLibraryType> = vec![];
+    let data_lock = data.read().await;
+    let ncp_library_lock = data_lock
+        .get::<NCPLibrary>()
+        .expect("ncp library not found");
+    let mut ncp_library = ncp_library_lock.write().await;
+    let count = ncp_library.load_programs().await?;
+    str_to_ret = format!("{} NCPs loaded\n", count);
+    vec_to_ret.reserve(count);
+    for val in ncp_library.get_collection().values() {
+        vec_to_ret.push(FullLibraryType::NCP(Arc::clone(val)));
+    }
+    return Ok((str_to_ret, vec_to_ret));
 }
 
 async fn reload_viruses(data: Arc<RwLock<ShareMap>>) -> ReloadReturnType {
-    //let str_to_ret: String;
-    tokio::spawn(async move {
-        let mut vec_to_ret: Vec<FullLibraryType> = vec![];
-        let data_lock = data.read().await;
-        let virus_library_lock = data_lock
-            .get::<VirusLibrary>()
-            .expect("virus library not found");
-        let mut virus_library: RwLockWriteGuard<VirusLibrary> = virus_library_lock.write().await;
-        //.expect("virus library was poisoned, panicking");
-        let str_to_ret = virus_library.load_viruses().await?;
+    let mut vec_to_ret: Vec<FullLibraryType> = vec![];
+    let data_lock = data.read().await;
+    let virus_library_lock = data_lock
+        .get::<VirusLibrary>()
+        .expect("virus library not found");
+    let mut virus_library: RwLockWriteGuard<VirusLibrary> = virus_library_lock.write().await;
+    let str_to_ret = virus_library.load_viruses().await?;
 
-        vec_to_ret.reserve(virus_library.get_collection().len());
-        for val in virus_library.get_collection().values() {
-            vec_to_ret.push(FullLibraryType::Virus(Arc::clone(val)));
-        }
+    vec_to_ret.reserve(virus_library.get_collection().len());
+    for val in virus_library.get_collection().values() {
+        vec_to_ret.push(FullLibraryType::Virus(Arc::clone(val)));
+    }
 
-        return Ok((str_to_ret, vec_to_ret));
-    })
-    .await?
+    return Ok((str_to_ret, vec_to_ret));
 }
 
 #[check]
@@ -250,10 +250,12 @@ async fn admin_check(
 #[checks(Admin)]
 #[description("Reload all Blights, BattleChips, NaviCust Parts, and Viruses")]
 async fn reload(ctx: &mut Context, msg: &Message, _: Args) -> CommandResult {
-    
-    println!("{} : Reload command called by: {}", chrono::Local::now(), msg.author.name);
-    
-    
+    println!(
+        "{} : Reload command called by: {}",
+        chrono::Local::now(),
+        msg.author.name
+    );
+
     if let Err(_) = msg.channel_id.broadcast_typing(&ctx.http).await {
         println!("could not broadcast typing, not reloading");
         return Ok(());
@@ -271,8 +273,6 @@ async fn reload(ctx: &mut Context, msg: &Message, _: Args) -> CommandResult {
     let chip_res;
     let ncp_res;
     let virus_res;
-
-    //let (chip_res, ncp_res, virus_res) = tokio::try_join!(chip_future, ncp_future, virus_future);
 
     let res: Result<
         (ReloadOkType, ReloadOkType, ReloadOkType),
@@ -300,7 +300,7 @@ async fn reload(ctx: &mut Context, msg: &Message, _: Args) -> CommandResult {
     let blight_string;
     {
         let blight_lock = data.get::<Blights>().expect("Blights not found");
-        let mut blights = blight_lock.write().await; //.expect("blights poisoned, panicking");
+        let mut blights = blight_lock.write().await;
         match blights.load().await {
             Ok(()) => blight_string = String::from("blights reloaded successfully\n"),
             Err(e) => blight_string = format!("{}\n", e.to_string()),
@@ -363,9 +363,12 @@ async fn about_bot(ctx: &mut Context, msg: &Message, _: Args) -> CommandResult {
 async fn shut_up(ctx: &mut Context, msg: &Message, _: Args) -> CommandResult {
     {
         let data = ctx.data.read().await;
-        
+
         //fetch and xor means fewer operations whole true ^ true is false, and true ^ false is true;
-        let _res = data.get::<DmOwner>().expect("No DM Owner setting found").fetch_xor(true, Ordering::Relaxed);
+        let _res = data
+            .get::<DmOwner>()
+            .expect("No DM Owner setting found")
+            .fetch_xor(true, Ordering::Relaxed);
 
         #[cfg(debug_assertions)]
         println!("DMing owner set to: {}", !_res);

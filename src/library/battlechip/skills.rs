@@ -54,3 +54,9 @@ impl std::fmt::Display for Skills {
         }
     }
 }
+
+impl std::default::Default for Skills {
+    fn default() -> Self {
+        Skills::None
+    }
+}

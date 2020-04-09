@@ -84,17 +84,7 @@ impl ChipLibrary {
                 })?;
             chips.push(chip);
 
-            /*
-            let to_add_res = BattleChip::from_chip_string(chip_text_arr[i], chip_text_arr[i + 1]);
-            match to_add_res {
-                Ok(chip) => {
-                    chips.push(chip);
-                }
-                Err(_) => {
-                    bad_chips.push(String::from(chip_text_arr[i]));
-                }
-            }
-            */
+            //yield after each chip parsed to avoid blocking
             tokio::task::yield_now().await;
         }
 

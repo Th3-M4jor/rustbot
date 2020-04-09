@@ -33,13 +33,3 @@ impl std::fmt::Display for Ranges {
         }
     }
 }
-/*
-impl Serialize for Ranges {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-        where
-            S: Serializer,
-    {
-        serializer.serialize_str(format!("{}", self).as_str())
-    }
-}
-*/

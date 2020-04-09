@@ -32,3 +32,9 @@ impl std::fmt::Display for ChipType {
         }
     }
 }
+
+impl std::default::Default for ChipType {
+    fn default() -> Self {
+        ChipType::Standard
+    }
+}
