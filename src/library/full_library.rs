@@ -305,7 +305,7 @@ pub(crate) async fn search_full_library(ctx: &Context, msg: &Message, args: &[&s
         let edit_message = edit_message_by_id(
             ctx,
             msg_to_await.channel_id.0,
-            msg_to_await.channel_id.0,
+            msg_to_await.id.0,
             edited_msg,
         );
 

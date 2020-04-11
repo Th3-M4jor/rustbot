@@ -2,6 +2,7 @@ use crate::library::battlechip::chip_type::ChipType;
 use crate::library::battlechip::ranges::Ranges;
 use crate::library::battlechip::skills::Skills;
 use crate::library::elements::Elements;
+use lazy_static::lazy_static;
 use regex::{Captures, Regex};
 use serde::Serialize;
 use std::cmp::{Ord, Ordering};

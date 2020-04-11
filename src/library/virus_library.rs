@@ -18,6 +18,7 @@ use serde_json;
 use tokio::fs;
 
 use regex::Regex;
+use lazy_static::lazy_static;
 
 use crate::library::{elements::Elements, Library, LibraryObject};
 use simple_error::SimpleError;
