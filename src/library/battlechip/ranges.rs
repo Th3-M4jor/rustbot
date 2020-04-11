@@ -26,10 +26,10 @@ impl std::str::FromStr for Ranges {
 impl std::fmt::Display for Ranges {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Ranges::Itself => write!(f, "{}", "Self"),
-            Ranges::Close => write!(f, "{}", "Close"),
-            Ranges::Near => write!(f, "{}", "Near"),
-            Ranges::Far => write!(f, "{}", "Far"),
+            Ranges::Itself => write!(f, "Self"),
+            Ranges::Close => write!(f, "Close"),
+            Ranges::Near => write!(f, "Near"),
+            Ranges::Far => write!(f, "Far"),
         }
     }
 }

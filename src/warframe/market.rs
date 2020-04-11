@@ -19,7 +19,7 @@ async fn make_request(name: &str) -> Result<Vec<String>, SimpleError> {
     let mut json: serde_json::Value = serde_json::from_str(&text).map_err(|_| SimpleError::new("Could not parse market json data"))?;
     let orders = json["payload"]["orders"]
         .as_array_mut()
-        .ok_or(SimpleError::new("could not convert to array"))?;
+        .ok_or_else(|| SimpleError::new("could not convert to array"))?;
     let mut res: Vec<&Value> = orders
         .iter()
         .filter(|val| {
@@ -40,7 +40,7 @@ async fn make_request(name: &str) -> Result<Vec<String>, SimpleError> {
         to_ret.push(format!("{} is selling for {:.0} platinum", poster, price));
     }
 
-    return Ok(to_ret);
+    Ok(to_ret)
 }
 
 #[command]
@@ -49,19 +49,16 @@ async fn make_request(name: &str) -> Result<Vec<String>, SimpleError> {
 #[example = "wukong prime"]
 pub(crate) async fn market(ctx: &mut Context, msg: &Message, args: Args) -> CommandResult {
 
-    let new_args_res = args.remains();
-    let new_args: Vec<&str>;
-    match new_args_res {
-        Some(val) => new_args = val.split(' ').collect(),
-        None => {
-            say!(
-                ctx,
-                msg,
-                "you must provide an item to search the market for"
-            );
-            return Ok(());
-        }
+    if args.is_empty() {
+        say!(
+            ctx,
+            msg,
+            "you must provide an item to search the market for"
+        );
+        return Ok(());
     }
+
+    let new_args = args.rest().split(' ').collect::<Vec<&str>>();
 
     let last_word = new_args[new_args.len() - 1].to_lowercase();
 

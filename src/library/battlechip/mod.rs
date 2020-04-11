@@ -62,46 +62,18 @@ impl std::fmt::Display for BattleChip {
 impl LibraryObject for BattleChip {
     #[inline]
     fn get_name(&self) -> &str {
-        return &self.name;
+        &self.name
     }
 }
 
 impl BattleChip {
-    pub fn new<T: Into<String>>(
-        name: T,
-        elements: Vec<Elements>,
-        skills: Vec<Skills>,
-        range: Ranges,
-        damage: T,
-        class: ChipType,
-        hits: T,
-        description: T,
-        all: T,
-        skill_target: Skills,
-        skill_user: Skills,
-    ) -> BattleChip {
-        BattleChip {
-            name: name.into().nfc().collect::<String>(),
-            element: elements,
-            skills,
-            range,
-            damage: damage.into().nfc().collect::<String>(),
-            class,
-            hits: hits.into().nfc().collect::<String>(),
-            description: description.into().nfc().collect::<String>(),
-            all: all.into().nfc().collect::<String>(),
-            skill_target,
-            skill_user,
-        }
-    }
-
     fn parse_elements(elem_str: &str) -> Result<Vec<Elements>, SimpleError> {
         let mut to_ret = vec![];
         for elem in elem_str.split(", ") {
             to_ret.push(Elements::from_str(elem)?);
         }
         to_ret.shrink_to_fit();
-        return Ok(to_ret);
+        Ok(to_ret)
     }
 
     fn parse_skills(skills_str: &str) -> Result<Vec<Skills>, SimpleError> {
@@ -110,7 +82,7 @@ impl BattleChip {
             to_ret.push(Skills::from_str(skill)?);
         }
         to_ret.shrink_to_fit();
-        return Ok(to_ret);
+        Ok(to_ret)
     }
 
     pub fn from_chip_string(
@@ -190,20 +162,20 @@ impl BattleChip {
 
         let chip_all = format!("{}\n{}", first_line, second_line);
 
-        let to_ret = BattleChip::new(
-            chip_name,
-            parsed_elements,
-            parsed_skills,
-            chip_range,
-            chip_damage,
-            chip_type,
-            chip_hits,
-            second_line,
-            &chip_all,
+        let to_ret = BattleChip {
+            name: chip_name.nfc().collect::<String>(),
+            element: parsed_elements,
+            skills: parsed_skills,
+            range: chip_range,
+            damage: chip_damage.nfc().collect::<String>(),
+            class: chip_type,
+            hits: chip_hits.nfc().collect::<String>(),
+            description: second_line.nfc().collect::<String>(),
+            all: chip_all.nfc().collect::<String>(),
             skill_target,
             skill_user,
-        );
+        };
 
-        return Ok(to_ret);
+        Ok(to_ret)
     }
 }

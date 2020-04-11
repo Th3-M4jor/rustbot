@@ -32,7 +32,7 @@ impl Library for ChipLibrary {
 
     #[inline]
     fn get_collection(&self) -> &HashMap<String, Arc<BattleChip>> {
-        return &self.chips;
+        &self.chips
     }
 }
 
@@ -59,7 +59,7 @@ impl ChipLibrary {
         //get chip text and replace necessary characters for compatibility
         //let chip_text = ChipLibrary::get_chip_text(&self.chip_url).await;
         let mut chip_text_arr: Vec<&str> = chip_text
-            .split("\n")
+            .split('\n')
             .filter(|&i| !i.trim().is_empty())
             .collect();
 
@@ -69,7 +69,7 @@ impl ChipLibrary {
         if special_chips_res.is_some() {
             special_chip_text = special_chips_res.unwrap();
             let mut special_chip_arr: Vec<&str> = special_chip_text
-                .split("\n")
+                .split('\n')
                 .filter(|&i| !i.trim().is_empty())
                 .collect();
             chip_text_arr.append(special_chip_arr.borrow_mut());
@@ -105,7 +105,7 @@ impl ChipLibrary {
             self.chips.insert(chip.name.to_lowercase(), Arc::new(chip));
         }
 
-        return Ok(self.chips.len());
+        Ok(self.chips.len())
     }
 
     async fn get_chip_text(url: &str) -> Result<String, Box<dyn std::error::Error + Send + Sync>> {
@@ -113,10 +113,10 @@ impl ChipLibrary {
             .await?
             .text()
             .await?
-            .replace("â€™", "'")
+            .replace("\u{e2}\u{20ac}\u{2122}", "'")
             .replace("\u{FEFF}", "")
             .replace("\r", "");
-        return Ok(res);
+        Ok(res)
     }
 
     async fn get_custom_chip_text(url: &str) -> Option<String> {
@@ -125,10 +125,10 @@ impl ChipLibrary {
             .text()
             .await
             .ok()?
-            .replace("â€™", "'")
+            .replace("\u{e2}\u{20ac}\u{2122}", "'")
             .replace("\u{FEFF}", "")
             .replace("\r", "");
-        return Some(res);
+        Some(res)
     }
 
     pub fn search_element(&self, to_get: &str) -> Option<Vec<&str>> {
@@ -136,7 +136,7 @@ impl ChipLibrary {
 
         let elem_to_get = Elements::from_str(to_get).ok()?;
 
-        return self.search_any(elem_to_get, |a, b| a.element.contains(&b));
+        self.search_any(elem_to_get, |a, b| a.element.contains(&b))
     }
 
     pub fn search_skill(&self, to_get: &str) -> Option<Vec<&str>> {
@@ -144,31 +144,31 @@ impl ChipLibrary {
 
         //special case for where you want chips with more than one possible skill
         if skill_to_get == Skills::Varies {
-            return self.search_any(skill_to_get, |a, _| a.skills.len() > 1);
+            self.search_any(skill_to_get, |a, _| a.skills.len() > 1)
         } else {
-            return self.search_any(skill_to_get, |a, b| a.skills.contains(&b));
+            self.search_any(skill_to_get, |a, b| a.skills.contains(&b))
         }
     }
 
     pub fn search_skill_target(&self, to_get: &str) -> Option<Vec<&str>> {
         let skill_to_get = Skills::from_str(to_get).ok()?;
 
-        return self.search_any(skill_to_get, |a, b| a.skill_target == b);
+        self.search_any(skill_to_get, |a, b| a.skill_target == b)
     }
 
     pub fn search_skill_user(&self, to_get: &str) -> Option<Vec<&str>> {
         let skill_to_get = Skills::from_str(to_get).ok()?;
 
-        return self.search_any(skill_to_get, |a, b| a.skill_user == b);
+        self.search_any(skill_to_get, |a, b| a.skill_user == b)
     }
 
     pub fn search_skill_check(&self, to_get: &str) -> Option<Vec<&str>> {
         //return search_skill_spec!(val.SkillTarget == skill_to_get || val.SkillUser == skill_to_get);
         let skill_to_get = Skills::from_str(to_get).ok()?;
 
-        return self.search_any(skill_to_get, |a, b| {
+        self.search_any(skill_to_get, |a, b| {
             a.skill_target == b || a.skill_user == b
-        });
+        })
     }
 }
 
@@ -199,7 +199,7 @@ struct BnBSkills;
 #[description("get the description of a chip with the specified name, or suggestions if there is not a chip with that name")]
 #[example = "Airshot"]
 pub(crate) async fn send_chip(ctx: &mut Context, msg: &Message, args: Args) -> CommandResult {
-    if args.len() == 0 {
+    if args.is_empty() {
         say!(ctx, msg, "you must provide a name");
         return Ok(());
     };
@@ -223,7 +223,7 @@ pub(crate) async fn send_chip(ctx: &mut Context, msg: &Message, args: Args) -> C
 #[description("get a list of chips that use the specified skill in it's attack roll")]
 #[example = "Sense"]
 async fn send_chip_skill(ctx: &mut Context, msg: &Message, mut args: Args) -> CommandResult {
-    if args.len() < 1 {
+    if args.is_empty() {
         say!(ctx, msg, "you must provide a skill");
         return Ok(());
     }
@@ -244,7 +244,7 @@ async fn send_chip_skill(ctx: &mut Context, msg: &Message, mut args: Args) -> Co
 )]
 #[example = "Strength"]
 async fn send_chip_skill_user(ctx: &mut Context, msg: &Message, mut args: Args) -> CommandResult {
-    if args.len() < 1 {
+    if args.is_empty() {
         say!(ctx, msg, "you must provide a skill");
         return Ok(());
     }
@@ -265,7 +265,7 @@ async fn send_chip_skill_user(ctx: &mut Context, msg: &Message, mut args: Args) 
 )]
 #[example = "Speed"]
 async fn send_chip_skill_target(ctx: &mut Context, msg: &Message, mut args: Args) -> CommandResult {
-    if args.len() < 1 {
+    if args.is_empty() {
         say!(ctx, msg, "you must provide a skill");
         return Ok(());
     }
@@ -284,7 +284,7 @@ async fn send_chip_skill_target(ctx: &mut Context, msg: &Message, mut args: Args
 #[description("get a list of chips where the specified skill is used either to determine the save DC or to make the save")]
 #[example = "Bravery"]
 async fn send_chip_skill_check(ctx: &mut Context, msg: &Message, mut args: Args) -> CommandResult {
-    if args.len() < 1 {
+    if args.is_empty() {
         say!(ctx, msg, "you must provide a skill");
         return Ok(());
     }
@@ -307,7 +307,7 @@ pub(crate) async fn send_chip_element(
     msg: &Message,
     args: Args,
 ) -> CommandResult {
-    if args.len() < 1 {
+    if args.is_empty() {
         say!(ctx, msg, "you must provide an element");
         return Ok(());
     }

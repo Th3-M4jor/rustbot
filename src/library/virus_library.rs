@@ -1,3 +1,4 @@
+use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::{RwLock, RwLockReadGuard};
@@ -50,7 +51,7 @@ impl Virus {
 impl LibraryObject for Virus {
     #[inline]
     fn get_name(&self) -> &str {
-        return &self.name;
+        &self.name
     }
 }
 
@@ -80,7 +81,7 @@ impl Library for VirusLibrary {
 
     #[inline]
     fn get_collection(&self) -> &HashMap<String, Arc<Virus>> {
-        return &self.library;
+        &self.library
     }
 }
 
@@ -114,11 +115,11 @@ impl VirusLibrary {
             .await?
             .text()
             .await?
-            .replace("â€™", "'")
+            .replace("\u{e2}\u{20ac}\u{2122}", "'")
             .replace("\u{FEFF}", "")
             .replace("\r", "");
         let virus_text_arr: Vec<&str> = virus_text
-            .split("\n")
+            .split('\n')
             .filter(|&i| !i.trim().is_empty())
             .collect();
         let mut curr_cr: u8 = 0;
@@ -138,9 +139,8 @@ impl VirusLibrary {
                     current_virus_description.push_str(virus_text_arr[i]);
                 }
 
-                let add_res;
-                if self.duplicates.contains(&current_virus_name.to_lowercase()) {
-                    add_res = self.library.insert(
+                let add_res = if self.duplicates.contains(&current_virus_name.to_lowercase()) {
+                    self.library.insert(
                         current_virus_full_name.to_lowercase(),
                         Arc::new(Virus::new(
                             &current_virus_full_name,
@@ -148,9 +148,9 @@ impl VirusLibrary {
                             curr_cr,
                             &current_virus_description,
                         )),
-                    );
+                    )
                 } else {
-                    add_res = self.library.insert(
+                    self.library.insert(
                         current_virus_name.to_lowercase(),
                         Arc::new(Virus::new(
                             &current_virus_name,
@@ -158,8 +158,8 @@ impl VirusLibrary {
                             curr_cr,
                             &current_virus_description,
                         )),
-                    );
-                }
+                    )
+                };
                 if add_res.is_some() {
                     //println!("{} , {} , {}\n{}", current_virus_name, current_virus_full_name, current_virus_element, current_virus_description);
                     //found a duplicate, fixing
@@ -168,10 +168,12 @@ impl VirusLibrary {
                     let new_virus = self
                         .library
                         .remove(&current_virus_name.to_lowercase())
-                        .ok_or(SimpleError::new(format!(
-                            "found an unrecoverable duplicate, {} 119 {:?}",
-                            current_virus_full_name, self.duplicates
-                        )))?;
+                        .ok_or_else(|| {
+                            SimpleError::new(format!(
+                                "found an unrecoverable duplicate, {} 119 {:?}",
+                                current_virus_full_name, self.duplicates
+                            ))
+                        })?;
                     //let new_virus = new_virus_res.unwrap();
 
                     if new_virus.element == old_virus.element {
@@ -255,9 +257,9 @@ impl VirusLibrary {
                 self.duplicates.len(),
                 self.duplicates
             );
-            return Ok(res);
+            Ok(res)
         } else {
-            return Ok(format!("{} viruses were loaded\n", self.library.len()));
+            Ok(format!("{} viruses were loaded\n", self.library.len()))
         }
     }
 
@@ -265,17 +267,17 @@ impl VirusLibrary {
         if cr_to_get > self.highest_cr {
             return None;
         }
-        return self.search_any(cr_to_get, |a, b| a.c_r == b);
+        self.search_any(cr_to_get, |a, b| a.c_r == b)
     }
 
     pub fn search_element(&self, elem: &str) -> Option<Vec<&str>> {
         let elem_to_get = Elements::from_str(elem).ok()?;
 
-        return self.search_any(elem_to_get, |a, b| a.element == b);
+        self.search_any(elem_to_get, |a, b| a.element == b)
     }
 
     pub fn get_highest_cr(&self) -> u8 {
-        return self.highest_cr;
+        self.highest_cr
     }
 
     pub fn single_cr_random_encounter(
@@ -285,7 +287,7 @@ impl VirusLibrary {
     ) -> Option<Vec<&str>> {
         let viruses = self.get_cr(cr_to_get)?;
 
-        return Some(VirusLibrary::build_encounter(&viruses, num_viruses));
+        Some(VirusLibrary::build_encounter(&viruses, num_viruses))
     }
 
     pub fn multi_cr_random_encounter(
@@ -299,14 +301,14 @@ impl VirusLibrary {
             let mut to_append = self.get_cr(i)?;
             viruses.append(&mut to_append);
         }
-        if viruses.len() == 0 {
+        if viruses.is_empty() {
             return None;
         }
-        return Some(VirusLibrary::build_encounter(&viruses, num_viruses));
+        Some(VirusLibrary::build_encounter(&viruses, num_viruses))
     }
 
     #[inline]
-    fn build_encounter<'a>(viruses: &Vec<&'a str>, num_viruses: usize) -> Vec<&'a str> {
+    fn build_encounter<'a>(viruses: &[&'a str], num_viruses: usize) -> Vec<&'a str> {
         let mut rng = ThreadRng::default();
         let mut to_ret: Vec<&str> = vec![];
         let vir_size = viruses.len();
@@ -315,7 +317,7 @@ impl VirusLibrary {
             let index = distribution.sample(&mut rng);
             to_ret.push(viruses[index]);
         }
-        return to_ret;
+        to_ret
     }
 
     fn get_family(&self, name: &str) -> Option<Vec<&str>> {
@@ -331,12 +333,12 @@ impl VirusLibrary {
         viruses.sort_unstable_by(move |a, b| {
             let a_val = self.get(&a.to_lowercase()).unwrap();
             let b_val = self.get(&b.to_lowercase()).unwrap();
-            return a_val
+            a_val
                 .c_r
                 .cmp(&b_val.c_r)
-                .then(a_val.element.cmp(&b_val.element));
+                .then(a_val.element.cmp(&b_val.element))
         });
-        return Some(viruses);
+        Some(viruses)
     }
 }
 
@@ -359,7 +361,7 @@ struct BnbViruses;
 #[description("Get the description of the virus with that name, or suggestions if a virus with that name does not exist")]
 #[example = "Mettaur"]
 pub(crate) async fn send_virus(ctx: &mut Context, msg: &Message, args: Args) -> CommandResult {
-    if args.len() < 1 {
+    if args.is_empty() {
         say!(ctx, msg, "you must provide a name");
         return Ok(());
     }
@@ -385,7 +387,7 @@ pub(crate) async fn send_virus_element(
     msg: &Message,
     args: Args,
 ) -> CommandResult {
-    if args.len() < 1 {
+    if args.is_empty() {
         say!(ctx, msg, "you must provide an element");
         return Ok(());
     }
@@ -415,7 +417,7 @@ pub(crate) async fn send_virus_cr(
     msg: &Message,
     mut args: Args,
 ) -> CommandResult {
-    if args.len() < 1 {
+    if args.is_empty() {
         say!(ctx, msg, "you must provide a CR to search for");
         return Ok(());
     }
@@ -479,9 +481,8 @@ pub(crate) async fn send_random_encounter(
     let to_send: Vec<&str>;
 
     //was it a single CR or a range?
-    if single_cr_res.is_ok() {
+    if let Ok(single_cr) = single_cr_res {
         //a single CR
-        let single_cr = single_cr_res.unwrap();
         if single_cr <= 0 || single_cr > library.get_highest_cr() as isize {
             say!(ctx, msg, "an invalid single CR was given");
             return Ok(());
@@ -503,21 +504,18 @@ pub(crate) async fn send_random_encounter(
         }
         let first_cr_num = first_cr_res.unwrap();
         let second_cr_num = second_cr_res.unwrap();
-        if first_cr_num == second_cr_num {
-            to_send = library
+
+        to_send = match first_cr_num.cmp(&second_cr_num) {
+            Ordering::Equal => library
                 .single_cr_random_encounter(first_cr_num, virus_count as usize)
-                .expect("failed to get viruses");
-        } else if first_cr_num > second_cr_num {
-            to_send = library
+                .expect("failed to get viruses"),
+            Ordering::Greater => library
                 .multi_cr_random_encounter(second_cr_num, first_cr_num, virus_count as usize)
-                .expect("failed to get viruses");
-        } else
-        /* second_cr_num > first_cr_num */
-        {
-            to_send = library
+                .expect("failed to get viruses"),
+            Ordering::Less => library
                 .multi_cr_random_encounter(first_cr_num, second_cr_num, virus_count as usize)
-                .expect("failed to get viruses");
-        }
+                .expect("failed to get viruses"),
+        };
     }
     long_say!(ctx, msg, to_send, ", ");
     return Ok(());
@@ -527,7 +525,7 @@ pub(crate) async fn send_random_encounter(
 #[description("Lists all viruses who are determined to be of a particular family, given the name of the first virus in it\nNote: Only guaranteed to work if they follow the 2 3 EX scheme")]
 #[example = "Swordy"]
 pub(crate) async fn send_family(ctx: &mut Context, msg: &Message, args: Args) -> CommandResult {
-    if args.len() < 1 {
+    if args.is_empty() {
         say!(ctx, msg, "you must provide a name");
         return Ok(());
     }

@@ -20,7 +20,7 @@ pub trait LibraryObject: std::fmt::Display {
 
 impl<T: LibraryObject> LibraryObject for Arc<T> {
     fn get_name(&self) -> &str {
-        return self.deref().get_name();
+        self.deref().get_name()
     }
 }
 
@@ -47,7 +47,7 @@ pub trait Library: TypeMapKey {
             return None;
         }
         to_ret.sort_unstable();
-        return Some(to_ret);
+        Some(to_ret)
     }
 
     fn distance(&self, to_get: &str, limit: Option<usize>) -> Vec<&str> {
@@ -65,11 +65,11 @@ pub trait Library: TypeMapKey {
         for val in distances {
             to_ret.push(val.1);
         }
-        return to_ret;
+        to_ret
     }
 
     fn get(&self, to_get: &str) -> Option<&Self::LibObj> {
-        return self.get_collection().get(&to_get.to_lowercase());
+        self.get_collection().get(&to_get.to_lowercase())
     }
 
     fn search_any<F, T>(&self, to_search: T, cond: F) -> Option<Vec<&str>>
@@ -87,7 +87,7 @@ pub trait Library: TypeMapKey {
             return None;
         }
         to_ret.sort_unstable();
-        return Some(to_ret);
+        Some(to_ret)
     }
 
     fn search_lib_obj<'a>(&'a self, search: &str) -> Result<String, Vec<&'a str>> {
@@ -107,7 +107,7 @@ pub trait Library: TypeMapKey {
         }
 
         item_search.dedup();
-        return Err(item_search);
+        Err(item_search)
     }
 }
 

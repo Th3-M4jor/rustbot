@@ -33,7 +33,7 @@ pub struct NCP {
 impl LibraryObject for NCP {
     #[inline]
     fn get_name(&self) -> &str {
-        return &self.name;
+        &self.name
     }
 }
 
@@ -71,7 +71,7 @@ impl Library for NCPLibrary {
 
     #[inline]
     fn get_collection(&self) -> &HashMap<String, Arc<NCP>> {
-        return &self.library;
+        &self.library
     }
 }
 
@@ -96,11 +96,11 @@ impl NCPLibrary {
             .await?
             .text()
             .await?
-            .replace("â€™", "'")
+            .replace("\u{e2}\u{20ac}\u{2122}", "'")
             .replace("\u{FEFF}", "")
             .replace("\r", "");
         let ncp_text_arr: Vec<&str> = ncp_text
-            .split("\n")
+            .split('\n')
             .filter(|&i| !i.trim().is_empty())
             .collect();
         let mut curr_color: String = String::new();
@@ -150,14 +150,14 @@ impl NCPLibrary {
             let ncp = ncp_list.pop().unwrap();
             self.library.insert(ncp.name.to_lowercase(), Arc::new(ncp));
         }
-        return Ok(self.library.len());
+        Ok(self.library.len())
     }
 
     pub fn search_color(&self, color: &str) -> Option<Vec<&str>> {
         if !COLORS.contains(&color.to_lowercase().as_str()) {
             return None;
         }
-        return self.search_any(color, |a, b| a.color.to_lowercase() == b.to_lowercase());
+        self.search_any(color, |a, b| a.color.to_lowercase() == b.to_lowercase())
     }
 }
 
@@ -176,7 +176,7 @@ struct BnbNcps;
 #[description("get the description of an NCP with the specified name, or suggestions if there is not an NCP with that name")]
 #[example = "Undershirt"]
 pub(crate) async fn send_ncp(ctx: &mut Context, msg: &Message, args: Args) -> CommandResult {
-    if args.len() < 1 {
+    if args.is_empty() {
         say!(ctx, msg, "you must provide a name");
         return Ok(());
     }
@@ -196,7 +196,7 @@ pub(crate) async fn send_ncp(ctx: &mut Context, msg: &Message, args: Args) -> Co
 #[description("get a list of NCPs which are of the specified color, valid colors are\n: white, pink, yellow, green, blue, red, gray")]
 #[example = "pink"]
 pub(crate) async fn send_ncp_color(ctx: &mut Context, msg: &Message, args: Args) -> CommandResult {
-    if args.len() < 1 {
+    if args.is_empty() {
         say!(
             ctx,
             msg,

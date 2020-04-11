@@ -45,7 +45,7 @@ type ReloadReturnType = Result<ReloadOkType, Box<dyn std::error::Error + Send + 
 
 lazy_static! {
     static ref ABOUT_BOT: String = fs::read_to_string("./about.txt")
-        .unwrap_or("about text is missing, bug the owner".to_string());
+        .unwrap_or_else(|_| "about text is missing, bug the owner".to_string());
 }
 
 struct Handler;
@@ -138,12 +138,11 @@ where
     if let Some(owner_lock) = ctx.cache.read().await.users.get(&owner_id) {
         let owner = owner_lock.read().await;
         let _ = owner.dm(ctx, |m| m.content(format!("{}", to_send))).await?;
-        return Ok(());
     } else {
         let owner = ctx.http.get_user(config.owner).await?;
         let _ = owner.dm(ctx, |m| m.content(format!("{}", to_send))).await?;
-        return Ok(());
     }
+    Ok(())
 }
 
 #[help]
@@ -194,7 +193,7 @@ async fn reload_chips(data: Arc<RwLock<ShareMap>>) -> ReloadReturnType {
     for val in chip_library.get_collection().values() {
         vec_to_ret.push(FullLibraryType::BattleChip(Arc::clone(val)));
     }
-    return Ok((str_to_ret, vec_to_ret));
+    Ok((str_to_ret, vec_to_ret))
 }
 
 async fn reload_ncps(data: Arc<RwLock<ShareMap>>) -> ReloadReturnType {
@@ -211,7 +210,7 @@ async fn reload_ncps(data: Arc<RwLock<ShareMap>>) -> ReloadReturnType {
     for val in ncp_library.get_collection().values() {
         vec_to_ret.push(FullLibraryType::NCP(Arc::clone(val)));
     }
-    return Ok((str_to_ret, vec_to_ret));
+    Ok((str_to_ret, vec_to_ret))
 }
 
 async fn reload_viruses(data: Arc<RwLock<ShareMap>>) -> ReloadReturnType {
@@ -228,7 +227,7 @@ async fn reload_viruses(data: Arc<RwLock<ShareMap>>) -> ReloadReturnType {
         vec_to_ret.push(FullLibraryType::Virus(Arc::clone(val)));
     }
 
-    return Ok((str_to_ret, vec_to_ret));
+    Ok((str_to_ret, vec_to_ret))
 }
 
 #[check]
@@ -348,14 +347,13 @@ async fn about_bot(ctx: &mut Context, msg: &Message, _: Args) -> CommandResult {
     let res = msg
         .author
         .dm(ctx, |m| {
-            m.content(format!("```{}```", *ABOUT_BOT));
-            return m;
+            m.content(format!("```{}```", *ABOUT_BOT))
         })
         .await;
     if res.is_err() {
         println!("Could not send help message: {:?}", res.unwrap_err());
     }
-    return Ok(());
+    Ok(())
 }
 
 #[command("shut_up")]
@@ -373,7 +371,7 @@ async fn shut_up(ctx: &mut Context, msg: &Message, _: Args) -> CommandResult {
         #[cfg(debug_assertions)]
         println!("DMing owner set to: {}", !_res);
     }
-    msg.react(ctx, "👍").await?;
+    msg.react(ctx, "\u{1f44d}").await?;
     return Ok(());
 }
 
@@ -412,7 +410,7 @@ async fn default_message(ctx: &mut Context, msg: &Message) {
         }
         #[cfg(debug_assertions)]
         println!("Default message called");
-        args = msg.content.split(" ").collect();
+        args = msg.content.split(' ').collect();
         new_first = args[0].replacen(&config.cmd_prefix, "", 1);
         args[0] = new_first.as_str();
     }

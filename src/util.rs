@@ -1,5 +1,15 @@
-use serenity::framework::standard::{macros::command, Args, CommandResult};
-use serenity::{client::bridge::gateway::ShardManager, model::channel::Message, prelude::*, http::CacheHttp, builder::EditMessage,};
+use serenity::{
+    builder::EditMessage,
+    client::bridge::gateway::ShardManager,
+    framework::standard::{macros::command, Args, CommandResult},
+    http::CacheHttp,
+    model::{
+        channel::{GuildChannel, Message},
+        id::ChannelId,
+        permissions::Permissions,
+    },
+    prelude::*,
+};
 
 use std::sync::Arc;
 
@@ -45,7 +55,7 @@ where
 {
     let mut reply = String::new();
     let sep = separator.into();
-    for val in to_send.into_iter() {
+    for val in to_send {
         let to_push = format!("{}", val);
         //a single message cannot be greater than 2000 chars
         if reply.len() + to_push.len() > 1950 {
@@ -59,7 +69,7 @@ where
     for _ in 0..sep.len() {
         reply.pop();
     }
-    return msg.channel_id.say(&ctx.http, &reply).await;
+    msg.channel_id.say(&ctx.http, &reply).await
 }
 
 pub(crate) fn build_time_rem(now: i64, end: i64) -> String {
@@ -70,22 +80,53 @@ pub(crate) fn build_time_rem(now: i64, end: i64) -> String {
     let hours_rem = time_rem / (60 * 60);
     let min_rem = (time_rem % (60 * 60)) / 60;
     let sec_rem = (time_rem % (60 * 60)) % 60;
-    return if hours_rem == 0 {
+    if hours_rem == 0 {
         format!("{:02}m:{:02}s", min_rem, sec_rem)
     } else {
         format!("{}h:{:02}m:{:02}s", hours_rem, min_rem, sec_rem)
-    };
+    }
 }
 
-
-pub(crate) async fn edit_message_by_id<T: ToString>(cache_http: impl CacheHttp, channel_id: u64, message_id: u64, new_msg: T) -> Result<Message, serenity::Error> {
+pub(crate) async fn edit_message_by_id<T: ToString>(
+    cache_http: impl CacheHttp,
+    channel_id: u64,
+    message_id: u64,
+    new_msg: T,
+) -> Result<Message, serenity::Error> {
     let mut edited_text = EditMessage::default();
     edited_text.content(new_msg.to_string());
     let map = serenity::utils::hashmap_to_json_map(edited_text.0);
     let stringified_map = serde_json::Value::Object(map);
-    cache_http.http().edit_message(channel_id, message_id, &stringified_map).await
+    cache_http
+        .http()
+        .edit_message(channel_id, message_id, &stringified_map)
+        .await
 }
 
+pub(crate) async fn has_reaction_perm(ctx: &Context, channel_id: ChannelId) -> bool {
+    let channel_res = channel_id.to_channel(ctx).await;
+    if channel_res.is_err() {
+        return false;
+    }
+
+    let channel = channel_res.unwrap();
+    let guild_channel_lock: Arc<RwLock<GuildChannel>>;
+    match channel.guild() {
+        Some(chan) => guild_channel_lock = chan,
+        None => return false,
+    }
+
+    let current_user_id = ctx.cache.read().await.user.id;
+
+    let permissions = guild_channel_lock
+        .read()
+        .await
+        .permissions_for_user(ctx, current_user_id)
+        .await
+        .unwrap();
+
+    permissions.contains(Permissions::ADD_REACTIONS | Permissions::MANAGE_MESSAGES)
+}
 
 #[command]
 #[description("Get the last few lines of the server log file")]
@@ -100,7 +141,7 @@ pub(crate) async fn audit(ctx: &mut Context, msg: &Message, _: Args) -> CommandR
     let res = fs::read_to_string("./nohup.out").await;
     match res {
         Ok(val) => {
-            let lines: Vec<&str> = val.split("\n").filter(|&i| !i.trim().is_empty()).collect();
+            let lines: Vec<&str> = val.split('\n').filter(|&i| !i.trim().is_empty()).collect();
             let len = lines.len() - 11;
             long_say!(ctx, msg, &lines[len..], "\n");
         }

@@ -7,14 +7,12 @@ use serenity::framework::standard::{
 };
 use tokio::sync::{RwLock, RwLockReadGuard, RwLockWriteGuard};
 use std::sync::Arc;
-
-use serde_json;
 use std::time::Duration;
 use market::*;
 
 pub(crate) mod market;
 
-const WARFRAME_URL: &'static str = "https://api.warframestat.us/pc";
+const WARFRAME_URL: &str = "https://api.warframestat.us/pc";
 
 //static WARFRAME_PC_DATA: RwLock<serde_json::Value> = RwLock::new(serde_json::Value::Null);
 
@@ -44,7 +42,7 @@ impl WarframeData {
     async fn load(&self) -> Result<(), Box<dyn std::error::Error>> {
         let mut dat : RwLockWriteGuard<serde_json::Value> = self.data.write().await;
         let response = reqwest::get(WARFRAME_URL).await?; //client.get(WARFRAME_URL).send()?;
-        let text = response.text().await?.replace("â€™", "'").replace("\u{FEFF}", "");
+        let text = response.text().await?.replace("\u{e2}\u{20ac}\u{2122}", "'").replace("\u{FEFF}", "");
         *dat = serde_json::from_str(&text)?;
         drop(dat);
         let dat_lock_clone = Arc::clone(&self.data);
@@ -57,7 +55,7 @@ impl WarframeData {
             let mut dat : RwLockWriteGuard<serde_json::Value> = dat_lock_clone.write().await;
             *dat = serde_json::Value::Null;
         });
-        return Ok(());
+        Ok(())
     }
 
     async fn try_reload(&self) -> Result<bool, Box<dyn std::error::Error>> {
@@ -69,7 +67,7 @@ impl WarframeData {
         
         drop(data);
         self.load().await?;
-        return Ok(true);
+        Ok(true)
     }
 
     pub async fn sortie(&self) -> Option<String> {
@@ -95,7 +93,7 @@ impl WarframeData {
         to_ret.pop();
         to_ret.pop();
         //pop off last ", "
-        return Some(to_ret);
+        Some(to_ret)
     }
 
     pub async fn fissures(&self) -> Option<Vec<String>> {
@@ -128,10 +126,10 @@ impl WarframeData {
             );
             to_ret.push(to_add);
         }
-        if to_ret.len() > 0 {
-            return Some(to_ret);
+        if to_ret.is_empty() {
+            None
         } else {
-            return None;
+            Some(to_ret)
         }
     }
 }
@@ -146,8 +144,8 @@ struct Warframe;
 #[command("fissures")]
 #[description = "Get info about the current Warframe fissures (PC)"]
 pub(crate) async fn get_fissures(ctx: &mut Context, msg: &Message, _: Args) -> CommandResult {
-    if let Err(_) = msg.channel_id.broadcast_typing(&ctx.http).await {
-        println!("could not broadcast typing, not reloading");
+    if msg.channel_id.broadcast_typing(&ctx.http).await.is_err() {
+        println!("could not broadcast typing, not sending");
         return Ok(());
     }
     let data = ctx.data.read().await;
@@ -167,8 +165,8 @@ pub(crate) async fn get_fissures(ctx: &mut Context, msg: &Message, _: Args) -> C
 #[command("sortie")]
 #[description = "Get info about the current Warframe sortie (PC)"]
 pub(crate) async fn get_sortie(ctx: &mut Context, msg: &Message, _: Args) -> CommandResult {
-    if let Err(_) = msg.channel_id.broadcast_typing(&ctx.http).await {
-        println!("could not broadcast typing, not reloading");
+    if msg.channel_id.broadcast_typing(&ctx.http).await.is_err() {
+        println!("could not broadcast typing, not sending");
         return Ok(());
     }
     let data = ctx.data.read().await;

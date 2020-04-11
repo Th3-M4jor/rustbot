@@ -25,10 +25,10 @@ impl std::str::FromStr for ChipType {
 impl std::fmt::Display for ChipType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            ChipType::Standard => write!(f, "{}", ""),
-            ChipType::Mega => write!(f, "{}", "Mega"),
-            ChipType::Giga => write!(f, "{}", "Giga"),
-            ChipType::Dark => write!(f, "{}", "Dark"),
+            ChipType::Standard => write!(f, ""),
+            ChipType::Mega => write!(f, "Mega"),
+            ChipType::Giga => write!(f, "Giga"),
+            ChipType::Dark => write!(f, "Dark"),
         }
     }
 }

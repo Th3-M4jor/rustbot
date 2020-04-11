@@ -6,11 +6,10 @@ use tokio::sync::{RwLock, RwLockReadGuard};
 use crate::library::{
     battlechip::BattleChip, ncp_library::NCP, virus_library::Virus, Library, LibraryObject,
 };
-use crate::util::edit_message_by_id;
+use crate::util::{edit_message_by_id, has_reaction_perm};
 
 use serenity::{
     model::channel::{Message, ReactionType},
-    model::permissions::Permissions,
     prelude::*,
 };
 use simple_error::SimpleError;
@@ -41,11 +40,11 @@ impl LibraryObject for FullLibraryType {
 
 impl std::fmt::Display for FullLibraryType {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
-        return match self {
+        match self {
             FullLibraryType::BattleChip(chip) => write!(f, "{}", chip),
             FullLibraryType::NCP(ncp) => write!(f, "{}", ncp),
             FullLibraryType::Virus(virus) => write!(f, "{}", virus),
-        };
+        }
     }
 }
 
@@ -67,22 +66,22 @@ impl FullLibrary {
     }
 
     pub fn insert(&mut self, obj: FullLibraryType) -> Result<(), SimpleError> {
-        let res;
-        if self.library.contains_key(&obj.get_name().to_lowercase()) {
+        let res = if self.library.contains_key(&obj.get_name().to_lowercase()) {
             let dup = match obj {
                 FullLibraryType::NCP(_) => "_n",
                 FullLibraryType::BattleChip(_) => "_c",
                 FullLibraryType::Virus(_) => "_v",
             };
             let name = obj.get_name().to_lowercase() + dup;
-            res = self.library.insert(name, obj);
+            self.library.insert(name, obj)
         } else {
-            res = self.library.insert(obj.get_name().to_lowercase(), obj);
-        }
-        return match res {
-            Some(t) => Err(SimpleError::new(format!("{}", t.get_name()))),
-            None => Ok(()),
+            self.library.insert(obj.get_name().to_lowercase(), obj)
         };
+
+        match res {
+            Some(t) => Err(SimpleError::new(t.get_name().to_string())),
+            None => Ok(()),
+        }
     }
 
     pub fn search_dist<'fl>(
@@ -117,7 +116,7 @@ impl FullLibrary {
             to_ret.push(val.1);
         }
 
-        return to_ret;
+        to_ret
     }
 
     pub fn search_name_contains<'fl>(
@@ -144,10 +143,10 @@ impl FullLibrary {
             }
         }
 
-        if to_ret.len() == 0 {
-            return None;
+        if to_ret.is_empty() {
+            None
         } else {
-            return Some(to_ret);
+            Some(to_ret)
         }
     }
 
@@ -156,7 +155,7 @@ impl FullLibrary {
     }
 
     pub fn len(&self) -> usize {
-        return self.library.len();
+        self.library.len()
     }
 }
 
@@ -165,11 +164,21 @@ impl Library for FullLibrary {
 
     #[inline]
     fn get_collection(&self) -> &HashMap<String, FullLibraryType> {
-        return &self.library;
+        &self.library
     }
 }
 
-const NUMBERS: &[&str] = &["1️⃣", "2️⃣", "3️⃣", "4️⃣", "5️⃣", "6️⃣", "7️⃣", "8️⃣", "9️⃣"];
+const NUMBERS: &[&str] = &[
+    "\u{31}\u{fe0f}\u{20e3}", //1
+    "\u{32}\u{fe0f}\u{20e3}", //2
+    "\u{33}\u{fe0f}\u{20e3}", //3
+    "\u{34}\u{fe0f}\u{20e3}", //4
+    "\u{35}\u{fe0f}\u{20e3}", //5
+    "\u{36}\u{fe0f}\u{20e3}", //6
+    "\u{37}\u{fe0f}\u{20e3}", //7
+    "\u{38}\u{fe0f}\u{20e3}", //8
+    "\u{39}\u{fe0f}\u{20e3}", //9
+];
 
 pub(crate) async fn search_full_library(ctx: &Context, msg: &Message, args: &[&str]) {
     let to_search = args.join(" ");
@@ -185,27 +194,7 @@ pub(crate) async fn search_full_library(ctx: &Context, msg: &Message, args: &[&s
     }
     //else nothing directly matching that name
 
-    let channel;
-    match ctx.cache.read().await.guild_channel(msg.channel_id) {
-        Some(chan) => channel = chan,
-        None => {
-            match library.search_lib_obj(&to_search) {
-                Ok(val) => say!(ctx, msg, val),
-                Err(val) => say!(ctx, msg, format!("Did you mean: {}", val.join(", "))),
-            }
-            return;
-        }
-    }
-
-    let current_user_id = ctx.cache.read().await.user.id;
-    let permissions = channel
-        .read()
-        .await
-        .permissions_for_user(ctx, current_user_id)
-        .await
-        .unwrap();
-
-    if !permissions.contains(Permissions::ADD_REACTIONS | Permissions::MANAGE_MESSAGES) {
+    if !has_reaction_perm(ctx, msg.channel_id).await {
         match library.search_lib_obj(&to_search) {
             Ok(val) => say!(ctx, msg, val),
             Err(val) => say!(ctx, msg, format!("Did you mean: {}", val.join(", "))),
@@ -251,17 +240,17 @@ pub(crate) async fn search_full_library(ctx: &Context, msg: &Message, args: &[&s
     }
 
     let http_clone = Arc::clone(&ctx.http);
-    let msg_id = msg_to_await.id.0.clone();
-    let channel_id = msg.channel_id.0.clone();
+    let msg_id = msg_to_await.id.0;
+    let channel_id = msg.channel_id.0;
     let res_len = res.len();
 
     let all_reactions_added = tokio::spawn(async move {
-        for num in 0..res_len {
+        for number in NUMBERS.iter().take(res_len) {
             if let Err(why) = http_clone
                 .create_reaction(
                     channel_id,
                     msg_id,
-                    &ReactionType::Unicode(NUMBERS[num].to_string()),
+                    &ReactionType::Unicode((*number).to_string()),
                 )
                 .await
             {
@@ -323,10 +312,8 @@ pub(crate) async fn search_full_library(ctx: &Context, msg: &Message, args: &[&s
         if let Err(why) = tokio::try_join!(edit_message, delete_reactions) {
             println!("Could not delete reactions or edit message: {:?}", why);
         }
-    } else {
-        if let Err(why) = delete_reactions.await {
-            println!("Could not delete reactions: {:?}", why);
-        }
+    } else if let Err(why) = delete_reactions.await {
+        println!("Could not delete reactions: {:?}", why);
     }
 }
 

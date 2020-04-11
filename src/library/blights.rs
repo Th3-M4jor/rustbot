@@ -1,7 +1,6 @@
 use serenity::{model::channel::Message, prelude::*};
 use serenity::framework::standard::{macros::command, Args, CommandResult};
 use tokio::sync::RwLock;
-use serde_json;
 use std::error::Error;
 
 pub struct Blights {
@@ -18,11 +17,11 @@ impl Blights {
     pub async fn load(&mut self) -> Result<(), Box<dyn Error>> {
         let blights = tokio::fs::read_to_string("./blights.json").await?;
         self.values = serde_json::from_str(&blights)?;
-        return Ok(());
+        Ok(())
     }
 
     pub fn get(&self, elem: &str) -> Option<&str> {
-        return self.values.as_object()?.get(&elem.to_lowercase())?.as_str();
+        self.values.as_object()?.get(&elem.to_lowercase())?.as_str()
     }
 
 }
@@ -35,7 +34,7 @@ impl TypeMapKey for Blights {
 #[description("Get info on what a blight from an element does")]
 #[example = "Fire"]
 pub(crate) async fn get_blight(ctx: &mut Context, msg: &Message, args: Args) -> CommandResult{
-    if args.len() < 1 {
+    if args.is_empty() {
         say!(ctx, msg, "you must provide an element");
         return Ok(());
     }

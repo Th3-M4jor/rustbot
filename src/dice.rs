@@ -1,14 +1,14 @@
 use rand::distributions::{Distribution, Uniform};
 use rand::rngs::ThreadRng;
-use serenity::{model::channel::Message, prelude::*};
 use serenity::framework::standard::{macros::*, Args, CommandResult};
+use serenity::{model::channel::Message, prelude::*};
 
 pub struct DieRoll;
 
 impl DieRoll {
     pub fn roll_dice(to_roll: &str, reroll: bool) -> (i64, Vec<i64>) {
         let mut to_ret: i64 = 0;
-        let mut rolls : Vec<i64> = vec![];
+        let mut rolls: Vec<i64> = vec![];
         let a: Vec<&str> = to_roll.split('+').collect();
         if a.len() > 1 {
             for b in a {
@@ -21,14 +21,11 @@ impl DieRoll {
             if d.len() == 1 {
                 let res = d[0].trim().parse::<i64>();
 
-                match res {
-                    Ok(val) => {
-                        rolls.push(val);
-                        return (val, rolls);
-                    }
-                    Err(_) => {
-                        return (-1, vec![]);
-                    }
+                if let Ok(val) = res {
+                    rolls.push(val);
+                    return (val, rolls);
+                } else {
+                    return (-1, vec![]);
                 }
             }
             let amt_to_roll: i64;
@@ -38,9 +35,9 @@ impl DieRoll {
                 Err(_) => amt_to_roll = 1,
             }
             let mut rng = ThreadRng::default();
-            for i in 1..d.len() {
+            for i in d.iter().skip(1) {
                 let f: i64;
-                let res = d[i].trim().parse::<i64>();
+                let res = i.trim().parse::<i64>();
                 match res {
                     Ok(val) => {
                         if val <= 1 {
@@ -57,7 +54,9 @@ impl DieRoll {
                     let mut to_add = die.sample(&mut rng);
                     if reroll && to_add < 2 {
                         let new_to_add = die.sample(&mut rng);
-                        if new_to_add > to_add {to_add = new_to_add;}
+                        if new_to_add > to_add {
+                            to_add = new_to_add;
+                        }
                     }
                     rolls.push(to_add);
                     u += to_add;
@@ -66,46 +65,40 @@ impl DieRoll {
             }
         }
 
-        return (to_ret, rolls);
+        (to_ret, rolls)
     }
 }
 
 #[group]
-#[commands(
-    roll, reroll, roll_stats
-)]
+#[commands(roll, reroll, roll_stats)]
 #[description("A group of commands related to rolling dice")]
 struct Dice;
 
 async fn perform_roll(ctx: &mut Context, msg: &Message, to_roll: &str, reroll: bool) {
-
     //let mut results: Vec<i64> = vec![];
     let (amt, results) = DieRoll::roll_dice(&to_roll, reroll);
     let repl_str = format!("{:?}", results);
-    let reply;
-    if repl_str.len() > 1850 {
-        reply = format!(
+    let reply = if repl_str.len() > 1850 {
+        format!(
             "{}, you rolled: {}\n[There were too many die rolls to show the result of each one]",
             msg.author.mention().await,
             amt
-        );
+        )
     } else {
-        reply = format!(
+        format!(
             "{}, you rolled: {}\n{}",
             msg.author.mention().await,
             amt,
             repl_str
-        );
-    }
+        )
+    };
     say!(ctx, msg, reply);
-
 }
 
 #[command]
 #[description("Same as the roll command, except 1's and 2's will be re-rolled once, keeping the higher result")]
 async fn reroll(ctx: &mut Context, msg: &Message, args: Args) -> CommandResult {
-    
-    if args.len() < 1 {
+    if args.is_empty() {
         say!(
             ctx,
             msg,
@@ -120,13 +113,12 @@ async fn reroll(ctx: &mut Context, msg: &Message, args: Args) -> CommandResult {
     return Ok(());
 }
 
-
 #[command]
 #[description("Roll a number of dice, using the format XdY where X is the number of dice, and Y is the number of sides on the die to roll")]
 #[example = "1d20"]
 #[example = "4d27"]
 pub(crate) async fn roll(ctx: &mut Context, msg: &Message, args: Args) -> CommandResult {
-    if args.len() < 1 {
+    if args.is_empty() {
         say!(
             ctx,
             msg,
@@ -154,7 +146,7 @@ pub(crate) async fn roll_stats(ctx: &mut Context, msg: &Message, _: Args) -> Com
         rolls.sort_unstable_by(|a, b| b.cmp(a));
         rolls.pop();
 
-        *i = rolls.iter().fold(0, |acc, val| acc + val);
+        *i = rolls.iter().sum();
     }
 
     say!(
