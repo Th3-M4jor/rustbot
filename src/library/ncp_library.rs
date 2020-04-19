@@ -35,6 +35,11 @@ impl LibraryObject for NCP {
     fn get_name(&self) -> &str {
         &self.name
     }
+
+    fn get_kind(&self) -> &str {
+        "NCP"
+    }
+
 }
 
 impl NCP {
@@ -164,6 +169,12 @@ impl NCPLibrary {
 impl TypeMapKey for NCPLibrary {
     type Value = RwLock<NCPLibrary>;
 }
+
+
+pub(crate) fn ncp_as_lib_obj(obj: Arc<NCP>) -> Arc<dyn LibraryObject> {
+    obj
+}
+
 
 #[group]
 #[prefixes("n", "ncp")]

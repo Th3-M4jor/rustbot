@@ -14,14 +14,21 @@ use strsim::jaro_winkler;
 
 use std::ops::Deref;
 
-pub trait LibraryObject: std::fmt::Display {
+pub trait LibraryObject: std::fmt::Display + Send + Sync {
     fn get_name(&self) -> &str;
+
+    fn get_kind(&self) -> &str;
 }
 
-impl<T: LibraryObject> LibraryObject for Arc<T> {
+impl<T: LibraryObject + ?Sized> LibraryObject for Arc<T> {
     fn get_name(&self) -> &str {
         self.deref().get_name()
     }
+
+    fn get_kind(&self) -> &str {
+        self.deref().get_kind()
+    }
+
 }
 
 pub trait Library: TypeMapKey {

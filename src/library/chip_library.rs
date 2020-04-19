@@ -12,6 +12,7 @@ use crate::library::battlechip::skills::Skills;
 use crate::library::battlechip::BattleChip;
 use crate::library::elements::Elements;
 use crate::library::Library;
+use crate::LibraryObject;
 use std::borrow::BorrowMut;
 
 #[cfg(not(debug_assertions))]
@@ -174,6 +175,10 @@ impl ChipLibrary {
 
 impl TypeMapKey for ChipLibrary {
     type Value = RwLock<ChipLibrary>;
+}
+
+pub(crate) fn battlechip_as_lib_obj(obj: Arc<BattleChip>) -> Arc<dyn LibraryObject> {
+    obj
 }
 
 #[group]

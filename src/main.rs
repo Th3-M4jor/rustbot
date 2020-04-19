@@ -21,7 +21,7 @@ use serenity::{
 
 use crate::bot_data::BotData;
 use crate::library::{
-    blights::*, chip_library::*, full_library::*, ncp_library::*, virus_library::*, Library,
+    blights::*, chip_library::*, full_library::*, ncp_library::*, virus_library::*, Library, LibraryObject,
 };
 use crate::warframe::*;
 
@@ -39,7 +39,7 @@ mod warframe;
 
 //type BotCommand = fn(Context, &Message, &[&str]) -> ();
 
-type ReloadOkType = (String, Vec<FullLibraryType>);
+type ReloadOkType = (String, Vec<Arc<dyn LibraryObject>>);
 type ReloadReturnType = Result<ReloadOkType, Box<dyn std::error::Error + Send + Sync>>;
 
 lazy_static! {
@@ -179,7 +179,7 @@ struct BnbGeneral;
 
 async fn reload_chips(data: Arc<RwLock<ShareMap>>) -> ReloadReturnType {
     let str_to_ret;
-    let mut vec_to_ret: Vec<FullLibraryType> = vec![];
+    let mut vec_to_ret: Vec<Arc<dyn LibraryObject>> = vec![];
     let data_lock = data.read().await;
     let chip_library_lock = data_lock
         .get::<ChipLibrary>()
@@ -190,14 +190,16 @@ async fn reload_chips(data: Arc<RwLock<ShareMap>>) -> ReloadReturnType {
     //let str_to_send;
     vec_to_ret.reserve(chip_library.get_collection().len());
     for val in chip_library.get_collection().values() {
-        vec_to_ret.push(FullLibraryType::BattleChip(Arc::clone(val)));
+        let trait_obj = battlechip_as_lib_obj(Arc::clone(val));
+
+        vec_to_ret.push(trait_obj);
     }
     Ok((str_to_ret, vec_to_ret))
 }
 
 async fn reload_ncps(data: Arc<RwLock<ShareMap>>) -> ReloadReturnType {
     let str_to_ret: String;
-    let mut vec_to_ret: Vec<FullLibraryType> = vec![];
+    let mut vec_to_ret: Vec<Arc<dyn LibraryObject>> = vec![];
     let data_lock = data.read().await;
     let ncp_library_lock = data_lock
         .get::<NCPLibrary>()
@@ -207,13 +209,13 @@ async fn reload_ncps(data: Arc<RwLock<ShareMap>>) -> ReloadReturnType {
     str_to_ret = format!("{} NCPs loaded\n", count);
     vec_to_ret.reserve(count);
     for val in ncp_library.get_collection().values() {
-        vec_to_ret.push(FullLibraryType::NCP(Arc::clone(val)));
+        vec_to_ret.push(ncp_as_lib_obj(Arc::clone(val)));
     }
     Ok((str_to_ret, vec_to_ret))
 }
 
 async fn reload_viruses(data: Arc<RwLock<ShareMap>>) -> ReloadReturnType {
-    let mut vec_to_ret: Vec<FullLibraryType> = vec![];
+    let mut vec_to_ret: Vec<Arc<dyn LibraryObject>> = vec![];
     let data_lock = data.read().await;
     let virus_library_lock = data_lock
         .get::<VirusLibrary>()
@@ -223,7 +225,7 @@ async fn reload_viruses(data: Arc<RwLock<ShareMap>>) -> ReloadReturnType {
 
     vec_to_ret.reserve(virus_library.get_collection().len());
     for val in virus_library.get_collection().values() {
-        vec_to_ret.push(FullLibraryType::Virus(Arc::clone(val)));
+        vec_to_ret.push(virus_as_lib_obj(Arc::clone(val)));
     }
 
     Ok((str_to_ret, vec_to_ret))
@@ -478,19 +480,19 @@ async fn main() {
 
         let mut full_library = full_library_mutex.write().await;
         for val in chip_library.get_collection().values() {
-            let obj = FullLibraryType::BattleChip(Arc::clone(val));
+            let obj = battlechip_as_lib_obj(Arc::clone(val));
             if let Err(e) = full_library.insert(obj) {
                 println!("Found duplicate name in full library: {}", e.as_str());
             }
         }
         for val in virus_library.get_collection().values() {
-            let obj = FullLibraryType::Virus(Arc::clone(val));
+            let obj = virus_as_lib_obj(Arc::clone(val));
             if let Err(e) = full_library.insert(obj) {
                 println!("Found duplicate name in full library: {}", e.as_str());
             }
         }
         for val in ncp_library.get_collection().values() {
-            let obj = FullLibraryType::NCP(Arc::clone(val));
+            let obj = ncp_as_lib_obj(Arc::clone(val));
             if let Err(e) = full_library.insert(obj) {
                 println!("Found duplicate name in full library: {}", e.as_str());
             }

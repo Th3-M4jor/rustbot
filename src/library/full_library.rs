@@ -4,7 +4,7 @@ use std::time::Duration;
 use tokio::sync::{RwLock, RwLockReadGuard};
 
 use crate::library::{
-    battlechip::BattleChip, ncp_library::NCP, virus_library::Virus, Library, LibraryObject,
+    Library, LibraryObject,
 };
 use crate::util::{edit_message_by_id, has_reaction_perm};
 
@@ -13,49 +13,11 @@ use serenity::{
     prelude::*,
 };
 use simple_error::SimpleError;
-use std::fmt::Formatter;
 
 use strsim::jaro_winkler;
 
 pub struct FullLibrary {
-    library: HashMap<String, FullLibraryType>,
-}
-
-pub enum FullLibraryType {
-    #[non_exhaustive]
-    BattleChip(Arc<BattleChip>),
-    NCP(Arc<NCP>),
-    Virus(Arc<Virus>),
-}
-
-impl LibraryObject for FullLibraryType {
-    fn get_name(&self) -> &str {
-        match self {
-            FullLibraryType::BattleChip(chip) => chip.get_name(),
-            FullLibraryType::NCP(ncp) => ncp.get_name(),
-            FullLibraryType::Virus(virus) => virus.get_name(),
-        }
-    }
-}
-
-impl std::fmt::Display for FullLibraryType {
-    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
-        match self {
-            FullLibraryType::BattleChip(chip) => write!(f, "{}", chip),
-            FullLibraryType::NCP(ncp) => write!(f, "{}", ncp),
-            FullLibraryType::Virus(virus) => write!(f, "{}", virus),
-        }
-    }
-}
-
-impl FullLibraryType {
-    fn format_name(&self) -> String {
-        match self {
-            FullLibraryType::BattleChip(chip) => format!("{} (Chip)", chip.get_name()),
-            FullLibraryType::NCP(ncp) => format!("{} (NCP)", ncp.get_name()),
-            FullLibraryType::Virus(virus) => format!("{} (Virus)", virus.get_name()),
-        }
-    }
+    library: HashMap<String, Arc<dyn LibraryObject>>,
 }
 
 impl FullLibrary {
@@ -65,12 +27,13 @@ impl FullLibrary {
         }
     }
 
-    pub fn insert(&mut self, obj: FullLibraryType) -> Result<(), SimpleError> {
+    pub fn insert(&mut self, obj: Arc<dyn LibraryObject>) -> Result<(), SimpleError> {
         let res = if self.library.contains_key(&obj.get_name().to_lowercase()) {
-            let dup = match obj {
-                FullLibraryType::NCP(_) => "_n",
-                FullLibraryType::BattleChip(_) => "_c",
-                FullLibraryType::Virus(_) => "_v",
+            let dup = match obj.get_kind() {
+                "NCP" => "_n",
+                "Chip" => "_c",
+                "Virus" => "_v",
+                _ => unreachable!(),
             };
             let name = obj.get_name().to_lowercase() + dup;
             self.library.insert(name, obj)
@@ -88,7 +51,7 @@ impl FullLibrary {
         &'fl self,
         to_search: &str,
         limit: Option<usize>,
-    ) -> Vec<&'fl FullLibraryType> {
+    ) -> Vec<&'fl Arc<dyn LibraryObject>> {
         let limit_val = limit.unwrap_or(9);
 
         if limit_val == 0 {
@@ -97,7 +60,7 @@ impl FullLibrary {
 
         let obj_name = to_search.to_lowercase();
 
-        let mut distances: Vec<(f64, &FullLibraryType)> = vec![];
+        let mut distances: Vec<(f64, &Arc<dyn LibraryObject>)> = vec![];
 
         for val in &self.library {
             let dist = jaro_winkler(&obj_name, &val.1.get_name().to_lowercase());
@@ -123,7 +86,7 @@ impl FullLibrary {
         &'fl self,
         to_search: &str,
         limit: Option<usize>,
-    ) -> Option<Vec<&'fl FullLibraryType>> {
+    ) -> Option<Vec<&'fl Arc<dyn LibraryObject>>> {
         let limit_val = limit.unwrap_or(9);
 
         if limit_val == 0 {
@@ -160,10 +123,10 @@ impl FullLibrary {
 }
 
 impl Library for FullLibrary {
-    type LibObj = FullLibraryType;
+    type LibObj = Arc<dyn LibraryObject>;
 
     #[inline]
-    fn get_collection(&self) -> &HashMap<String, FullLibraryType> {
+    fn get_collection(&self) -> &HashMap<String, Arc<dyn LibraryObject>> {
         &self.library
     }
 }
@@ -202,7 +165,7 @@ pub(crate) async fn search_full_library(ctx: &Context, msg: &Message, args: &[&s
         return;
     }
 
-    let res: Vec<&FullLibraryType>;
+    let res;
 
     match library.search_name_contains(&to_search, None) {
         Some(val) => res = val,
@@ -220,7 +183,8 @@ pub(crate) async fn search_full_library(ctx: &Context, msg: &Message, args: &[&s
     for obj in &res {
         msg_string.push_str(&num.to_string());
         msg_string.push_str(": ");
-        msg_string.push_str(&(*obj).format_name());
+        //msg_string.push_str(&(*obj).format_name());
+        msg_string.push_str(&format!("{} ({})",(*obj).get_name(), (*obj).get_kind()));
         msg_string.push_str(", ");
         num += 1;
     }

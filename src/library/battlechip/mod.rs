@@ -65,6 +65,11 @@ impl LibraryObject for BattleChip {
     fn get_name(&self) -> &str {
         &self.name
     }
+
+    fn get_kind(&self) -> &str {
+        "Chip"
+    }
+
 }
 
 impl BattleChip {

@@ -54,6 +54,11 @@ impl LibraryObject for Virus {
     fn get_name(&self) -> &str {
         &self.name
     }
+
+    fn get_kind(&self) -> &str {
+        "Virus"
+    }
+
 }
 
 impl std::fmt::Display for Virus {
@@ -520,6 +525,10 @@ pub(crate) async fn send_random_encounter(
     }
     long_say!(ctx, msg, to_send, ", ");
     return Ok(());
+}
+
+pub(crate) fn virus_as_lib_obj(obj: Arc<Virus>) -> Arc<dyn LibraryObject> {
+    obj
 }
 
 #[command("family")]
