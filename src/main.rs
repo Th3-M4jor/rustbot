@@ -67,7 +67,6 @@ impl EventHandler for Handler {
         lazy_static! {
             static ref FIRST_LOGIN: AtomicBool = AtomicBool::new(true);
         }
-        //let owner = fetch_owner(&ctx).await.expect("could not fetch owner");
 
         let message_to_owner;
         if FIRST_LOGIN.load(Ordering::Relaxed) {
@@ -87,7 +86,7 @@ impl EventHandler for Handler {
             );
         }
 
-        tokio::time::delay_for(std::time::Duration::from_secs(3)).await;
+        //tokio::time::delay_for(std::time::Duration::from_secs(3)).await;
 
         if let Err(why) = dm_owner(&ctx, message_to_owner).await {
             println!("{:?}", why);

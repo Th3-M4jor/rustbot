@@ -9,7 +9,6 @@ pub struct BotData {
     pub owner: u64,
     #[serde(default)]
     pub admins: Vec<u64>,
-    pub main_server: u64,
     #[serde(default="no_prefix")]
     pub cmd_prefix: String,
     #[serde(default)]
