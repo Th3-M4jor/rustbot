@@ -133,10 +133,7 @@ where
 
     let config = data.get::<BotData>().expect("no bot data, panicking");
 
-    //let cacheLock = ctx.cache.read().await;
-
     let owner_id = UserId::from(config.owner);
-    //let owner;
 
     if let Some(owner_lock) = ctx.cache.read().await.users.get(&owner_id) {
         let owner = owner_lock.read().await;
