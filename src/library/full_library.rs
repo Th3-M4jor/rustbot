@@ -145,7 +145,7 @@ const NUMBERS: &[&str] = &[
 
 pub(crate) async fn search_full_library(ctx: &Context, msg: &Message, args: &[&str]) {
     let to_search = args.join(" ");
-    let data: RwLockReadGuard<ShareMap> = ctx.data.read().await;
+    let data = ctx.data.read().await;
     let library_lock = data.get::<FullLibrary>().expect("Full library not found");
     let library: RwLockReadGuard<FullLibrary> = library_lock.read().await;
 

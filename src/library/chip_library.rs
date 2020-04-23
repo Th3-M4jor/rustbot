@@ -233,7 +233,7 @@ async fn send_chip_skill(ctx: &mut Context, msg: &Message, mut args: Args) -> Co
         return Ok(());
     }
     let skill = args.single::<String>()?;
-    let data: RwLockReadGuard<ShareMap> = ctx.data.read().await;
+    let data = ctx.data.read().await;
     let library_lock = data.get::<ChipLibrary>().expect("chip library not found");
     let library: RwLockReadGuard<ChipLibrary> = library_lock.read().await;
     match library.search_skill(&skill) {
@@ -254,7 +254,7 @@ async fn send_chip_skill_user(ctx: &mut Context, msg: &Message, mut args: Args) 
         return Ok(());
     }
     let skill = args.single::<String>()?;
-    let data: RwLockReadGuard<ShareMap> = ctx.data.read().await;
+    let data = ctx.data.read().await;
     let library_lock = data.get::<ChipLibrary>().expect("chip library not found");
     let library: RwLockReadGuard<ChipLibrary> = library_lock.read().await;
     match library.search_skill_user(&skill) {
@@ -275,7 +275,7 @@ async fn send_chip_skill_target(ctx: &mut Context, msg: &Message, mut args: Args
         return Ok(());
     }
     let skill = args.single::<String>()?;
-    let data: RwLockReadGuard<ShareMap> = ctx.data.read().await;
+    let data = ctx.data.read().await;
     let library_lock = data.get::<ChipLibrary>().expect("chip library not found");
     let library: RwLockReadGuard<ChipLibrary> = library_lock.read().await;
     match library.search_skill_target(&skill) {
@@ -294,7 +294,7 @@ async fn send_chip_skill_check(ctx: &mut Context, msg: &Message, mut args: Args)
         return Ok(());
     }
     let skill = args.single::<String>()?;
-    let data: RwLockReadGuard<ShareMap> = ctx.data.read().await;
+    let data = ctx.data.read().await;
     let library_lock = data.get::<ChipLibrary>().expect("chip library not found");
     let library: RwLockReadGuard<ChipLibrary> = library_lock.read().await;
     match library.search_skill_check(&skill) {

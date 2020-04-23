@@ -13,8 +13,6 @@ use serenity::{
 
 use std::sync::Arc;
 
-use tokio::sync::RwLockReadGuard;
-
 use crate::bot_data::BotData;
 use tokio::fs;
 
@@ -155,7 +153,7 @@ pub(crate) async fn audit(ctx: &mut Context, msg: &Message, _: Args) -> CommandR
 #[command]
 #[description("Get a link to the BnB Battlechip manager website")]
 async fn manager(ctx: &mut Context, msg: &Message, _: Args) -> CommandResult {
-    let data: RwLockReadGuard<ShareMap> = ctx.data.read().await;
+    let data  = ctx.data.read().await;
     let config = data.get::<BotData>().expect("could not get config");
     say!(ctx, msg, &config.manager);
     return Ok(());
@@ -164,7 +162,7 @@ async fn manager(ctx: &mut Context, msg: &Message, _: Args) -> CommandResult {
 #[command]
 #[description("Get a link to the BnB Players Handbook")]
 async fn phb(ctx: &mut Context, msg: &Message, _: Args) -> CommandResult {
-    let data: RwLockReadGuard<ShareMap> = ctx.data.read().await;
+    let data = ctx.data.read().await;
     let config = data.get::<BotData>().expect("could not get config");
     say!(ctx, msg, &config.phb);
     return Ok(());
@@ -173,7 +171,7 @@ async fn phb(ctx: &mut Context, msg: &Message, _: Args) -> CommandResult {
 #[command]
 #[description("Tells the bot to \"die\" and it will try to shutdown gracefully")]
 async fn die(ctx: &mut Context, msg: &Message, _: Args) -> CommandResult {
-    let data: RwLockReadGuard<ShareMap> = ctx.data.read().await;
+    let data = ctx.data.read().await;
 
     ctx.invisible().await;
     if let Some(manager) = data.get::<ShardManagerContainer>() {

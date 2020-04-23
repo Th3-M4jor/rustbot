@@ -2,10 +2,11 @@ use lazy_static::lazy_static;
 
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
-use tokio::sync::{RwLock, RwLockReadGuard, RwLockWriteGuard};
+use tokio::sync::{RwLock, RwLockWriteGuard};
 
 use serenity::{
     async_trait,
+    client::bridge::gateway::GatewayIntents,
     framework::standard::{
         help_commands, macros::*, Args, CheckResult, CommandError, CommandGroup, CommandOptions,
         CommandResult, HelpOptions, StandardFramework,
@@ -17,11 +18,13 @@ use serenity::{
         id::UserId,
     },
     prelude::*,
+    utils::TypeMap,
 };
 
 use crate::bot_data::BotData;
 use crate::library::{
-    blights::*, chip_library::*, full_library::*, ncp_library::*, virus_library::*, Library, LibraryObject,
+    blights::*, chip_library::*, full_library::*, ncp_library::*, virus_library::*, Library,
+    LibraryObject,
 };
 use crate::warframe::*;
 
@@ -84,11 +87,13 @@ impl EventHandler for Handler {
             );
         }
 
+        tokio::time::delay_for(std::time::Duration::from_secs(3)).await;
+
         if let Err(why) = dm_owner(&ctx, message_to_owner).await {
             println!("{:?}", why);
         }
 
-        let data: RwLockReadGuard<ShareMap> = ctx.data.read().await;
+        let data = ctx.data.read().await;
         let config = data.get::<BotData>().expect("no bot data, panicking");
 
         let action = config.cmd_prefix.clone() + "help for a list of commands";
@@ -119,7 +124,7 @@ async fn dm_owner<T>(
 where
     T: std::fmt::Display,
 {
-    let data: RwLockReadGuard<ShareMap> = ctx.data.read().await;
+    let data = ctx.data.read().await;
 
     let should_dm_owner = data.get::<DmOwner>().expect("No DM Owner setting found");
 
@@ -177,7 +182,7 @@ struct Owner;
 #[description("Misc. commands related to BnB")]
 struct BnbGeneral;
 
-async fn reload_chips(data: Arc<RwLock<ShareMap>>) -> ReloadReturnType {
+async fn reload_chips(data: Arc<RwLock<TypeMap>>) -> ReloadReturnType {
     let str_to_ret;
     let mut vec_to_ret: Vec<Arc<dyn LibraryObject>> = vec![];
     let data_lock = data.read().await;
@@ -197,7 +202,7 @@ async fn reload_chips(data: Arc<RwLock<ShareMap>>) -> ReloadReturnType {
     Ok((str_to_ret, vec_to_ret))
 }
 
-async fn reload_ncps(data: Arc<RwLock<ShareMap>>) -> ReloadReturnType {
+async fn reload_ncps(data: Arc<RwLock<TypeMap>>) -> ReloadReturnType {
     let str_to_ret: String;
     let mut vec_to_ret: Vec<Arc<dyn LibraryObject>> = vec![];
     let data_lock = data.read().await;
@@ -214,7 +219,7 @@ async fn reload_ncps(data: Arc<RwLock<ShareMap>>) -> ReloadReturnType {
     Ok((str_to_ret, vec_to_ret))
 }
 
-async fn reload_viruses(data: Arc<RwLock<ShareMap>>) -> ReloadReturnType {
+async fn reload_viruses(data: Arc<RwLock<TypeMap>>) -> ReloadReturnType {
     let mut vec_to_ret: Vec<Arc<dyn LibraryObject>> = vec![];
     let data_lock = data.read().await;
     let virus_library_lock = data_lock
@@ -239,7 +244,7 @@ async fn admin_check(
     _: &mut Args,
     _: &CommandOptions,
 ) -> CheckResult {
-    let data: RwLockReadGuard<ShareMap> = ctx.data.read().await;
+    let data = ctx.data.read().await;
     let config = data.get::<BotData>().expect("could not get config");
 
     return (msg.author.id == config.owner || config.admins.contains(msg.author.id.as_u64()))
@@ -296,7 +301,7 @@ async fn reload(ctx: &mut Context, msg: &Message, _: Args) -> CommandResult {
             return Err(CommandError(e.to_string()));
         }
     }
-    let data: RwLockReadGuard<ShareMap> = ctx.data.read().await;
+    let data = ctx.data.read().await;
     let blight_string;
     {
         let blight_lock = data.get::<Blights>().expect("Blights not found");
@@ -347,9 +352,7 @@ async fn reload(ctx: &mut Context, msg: &Message, _: Args) -> CommandResult {
 async fn about_bot(ctx: &mut Context, msg: &Message, _: Args) -> CommandResult {
     let res = msg
         .author
-        .dm(ctx, |m| {
-            m.content(format!("```{}```", *ABOUT_BOT))
-        })
+        .dm(ctx, |m| m.content(format!("```{}```", *ABOUT_BOT)))
         .await;
     if res.is_err() {
         println!("Could not send help message: {:?}", res.unwrap_err());
@@ -432,6 +435,7 @@ async fn prefix_only_message(ctx: &mut Context, msg: &Message) {
 
 #[tokio::main]
 async fn main() {
+    pretty_env_logger::init();
     let config = BotData::new();
     let chip_library_mutex =
         RwLock::new(ChipLibrary::new(&config.chip_url, &config.custom_chip_url));
@@ -525,9 +529,23 @@ async fn main() {
         .group(&BNBVIRUSES_GROUP)
         .group(&BNBNCPS_GROUP);
 
-    let mut client = Client::new_with_framework(&config.token, Handler, framework)
-        .await
-        .expect("Err creating client");
+    /*
+        let mut client = Client::new_with_framework(&config.token, Handler, framework)
+            .await
+            .expect("Err creating client");
+    */
+    let mut client = Client::new_with_extras(&config.token, move |f| {
+        f.framework(framework)
+            .intents(
+                GatewayIntents::GUILD_MESSAGE_REACTIONS
+                    | GatewayIntents::DIRECT_MESSAGES
+                    | GatewayIntents::GUILD_MESSAGES
+                    | GatewayIntents::GUILDS,
+            )
+            .event_handler(Handler)
+    })
+    .await
+    .expect("Err creating client");
     // set scope to ensure that lock is released immediately
     {
         let mut data = client.data.write().await;
