@@ -4,7 +4,7 @@ use serenity::{
     framework::standard::{macros::command, Args, CommandResult},
     http::CacheHttp,
     model::{
-        channel::{GuildChannel, Message},
+        channel::Message,
         id::ChannelId,
         permissions::Permissions,
     },
@@ -108,17 +108,15 @@ pub(crate) async fn has_reaction_perm(ctx: &Context, channel_id: ChannelId) -> b
     }
 
     let channel = channel_res.unwrap();
-    let guild_channel_lock: Arc<RwLock<GuildChannel>>;
+    let guild_channel;
     match channel.guild() {
-        Some(chan) => guild_channel_lock = chan,
+        Some(chan) => guild_channel = chan,
         None => return false,
     }
 
     let current_user_id = ctx.cache.read().await.user.id;
 
-    let permissions = guild_channel_lock
-        .read()
-        .await
+    let permissions = guild_channel
         .permissions_for_user(ctx, current_user_id)
         .await
         .unwrap();

@@ -81,13 +81,13 @@ async fn perform_roll(ctx: &mut Context, msg: &Message, to_roll: &str, reroll: b
     let reply = if repl_str.len() > 1850 {
         format!(
             "{}, you rolled: {}\n[There were too many die rolls to show the result of each one]",
-            msg.author.mention().await,
+            msg.author.mention(),
             amt
         )
     } else {
         format!(
             "{}, you rolled: {}\n{}",
-            msg.author.mention().await,
+            msg.author.mention(),
             amt,
             repl_str
         )
@@ -104,7 +104,7 @@ async fn reroll(ctx: &mut Context, msg: &Message, args: Args) -> CommandResult {
             msg,
             format!(
                 "{}, you must supply a number of dice to roll",
-                msg.author.mention().await
+                msg.author.mention()
             )
         );
         return Ok(());
@@ -124,7 +124,7 @@ pub(crate) async fn roll(ctx: &mut Context, msg: &Message, args: Args) -> Comman
             msg,
             format!(
                 "{}, you must supply a number of dice to roll",
-                msg.author.mention().await
+                msg.author.mention()
             )
         );
         return Ok(());
@@ -154,7 +154,7 @@ pub(crate) async fn roll_stats(ctx: &mut Context, msg: &Message, _: Args) -> Com
         msg,
         format!(
             "{}, 4d6 drop the lowest:\n{:?}",
-            msg.author.mention().await,
+            msg.author.mention(),
             stats
         )
     );
