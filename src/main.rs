@@ -86,7 +86,7 @@ impl EventHandler for Handler {
             );
         }
 
-        //tokio::time::delay_for(std::time::Duration::from_secs(3)).await;
+        tokio::time::delay_for(std::time::Duration::from_secs(3)).await;
 
         if let Err(why) = dm_owner(&ctx, message_to_owner).await {
             println!("{:?}", why);
