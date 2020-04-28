@@ -16,6 +16,7 @@ use serenity::{
         event::ResumedEvent,
         gateway::{Activity, Ready},
         id::UserId,
+        id::GuildId,
     },
     prelude::*,
     utils::TypeMap,
@@ -58,25 +59,39 @@ impl TypeMapKey for DmOwner {
     type Value = AtomicBool;
 }
 
+lazy_static! {
+    static ref FIRST_LOGIN: AtomicBool = AtomicBool::new(true);
+    static ref FIRST_CACHE_READY: AtomicBool = AtomicBool::new(false);
+}
+
 #[async_trait]
 impl EventHandler for Handler {
-    // Event handlers are dispatched through a threadpool, and so multiple
-    // events can be dispatched simultaneously.
 
-    async fn ready(&self, ctx: Context, ready: Ready) {
-        lazy_static! {
-            static ref FIRST_LOGIN: AtomicBool = AtomicBool::new(true);
+    async fn cache_ready(&self, ctx: Context, _guilds: Vec<GuildId>) {
+
+        if FIRST_CACHE_READY.compare_and_swap(false, true, Ordering::AcqRel) {
+           //previous value was already true, return
+            return; 
         }
 
+        println!("{} : Cache Ready", chrono::Local::now());
+
+        if let Err(why) = dm_owner(&ctx, "logged in, and cache ready").await {
+            println!("{:?}", why);
+        }
+
+    }
+
+    async fn ready(&self, ctx: Context, ready: Ready) {
+        
         let message_to_owner;
-        if FIRST_LOGIN.load(Ordering::Relaxed) {
-            message_to_owner = "logged in, and ready";
+        if FIRST_LOGIN.compare_and_swap(true, false, Ordering::AcqRel) {
             println!(
                 "{} : {} is connected!",
                 chrono::Local::now(),
                 ready.user.name
             );
-            FIRST_LOGIN.store(false, Ordering::Relaxed);
+            return;
         } else {
             message_to_owner = "ready event re-emitted";
             println!(
@@ -86,17 +101,20 @@ impl EventHandler for Handler {
             );
         }
 
-        tokio::time::delay_for(std::time::Duration::from_secs(3)).await;
+        //tokio::time::delay_for(std::time::Duration::from_secs(3)).await;
+
+        {
+            let data = ctx.data.read().await;
+            let config = data.get::<BotData>().expect("no bot data, panicking");
+
+            let action = config.cmd_prefix.clone() + "help for a list of commands";
+            ctx.set_activity(Activity::playing(&action)).await;
+        }
 
         if let Err(why) = dm_owner(&ctx, message_to_owner).await {
             println!("{:?}", why);
         }
 
-        let data = ctx.data.read().await;
-        let config = data.get::<BotData>().expect("no bot data, panicking");
-
-        let action = config.cmd_prefix.clone() + "help for a list of commands";
-        ctx.set_activity(Activity::playing(&action)).await;
     }
 
     async fn resume(&self, ctx: Context, resumed: ResumedEvent) {
