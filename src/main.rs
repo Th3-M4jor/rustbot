@@ -76,6 +76,14 @@ impl EventHandler for Handler {
 
         println!("{} : Cache Ready", chrono::Local::now());
 
+        {
+            let data = ctx.data.read().await;
+            let config = data.get::<BotData>().expect("no bot data, panicking");
+
+            let action = config.cmd_prefix.clone() + "help for a list of commands";
+            ctx.set_activity(Activity::playing(&action)).await;
+        }
+
         if let Err(why) = dm_owner(&ctx, "logged in, and cache ready").await {
             println!("{:?}", why);
         }
