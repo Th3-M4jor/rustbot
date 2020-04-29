@@ -28,7 +28,6 @@ impl<T: LibraryObject + ?Sized> LibraryObject for Arc<T> {
     fn get_kind(&self) -> &str {
         self.deref().get_kind()
     }
-
 }
 
 pub trait Library: TypeMapKey {

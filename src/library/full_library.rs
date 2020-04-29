@@ -3,9 +3,7 @@ use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::{RwLock, RwLockReadGuard};
 
-use crate::library::{
-    Library, LibraryObject,
-};
+use crate::library::{Library, LibraryObject};
 use crate::util::{edit_message_by_id, has_reaction_perm};
 
 use serenity::{
@@ -184,7 +182,7 @@ pub(crate) async fn search_full_library(ctx: &Context, msg: &Message, args: &[&s
         msg_string.push_str(&num.to_string());
         msg_string.push_str(": ");
         //msg_string.push_str(&(*obj).format_name());
-        msg_string.push_str(&format!("{} ({})",(*obj).get_name(), (*obj).get_kind()));
+        msg_string.push_str(&format!("{} ({})", (*obj).get_name(), (*obj).get_kind()));
         msg_string.push_str(", ");
         num += 1;
     }

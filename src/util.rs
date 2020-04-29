@@ -3,11 +3,7 @@ use serenity::{
     client::bridge::gateway::ShardManager,
     framework::standard::{macros::command, Args, CommandResult},
     http::CacheHttp,
-    model::{
-        channel::Message,
-        id::ChannelId,
-        permissions::Permissions,
-    },
+    model::{channel::Message, id::ChannelId, permissions::Permissions},
     prelude::*,
 };
 
@@ -151,7 +147,7 @@ pub(crate) async fn audit(ctx: &mut Context, msg: &Message, _: Args) -> CommandR
 #[command]
 #[description("Get a link to the BnB Battlechip manager website")]
 async fn manager(ctx: &mut Context, msg: &Message, _: Args) -> CommandResult {
-    let data  = ctx.data.read().await;
+    let data = ctx.data.read().await;
     let config = data.get::<BotData>().expect("could not get config");
     say!(ctx, msg, &config.manager);
     return Ok(());

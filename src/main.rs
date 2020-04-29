@@ -15,8 +15,8 @@ use serenity::{
         channel::Message,
         event::ResumedEvent,
         gateway::{Activity, Ready},
-        id::UserId,
         id::GuildId,
+        id::UserId,
     },
     prelude::*,
     utils::TypeMap,
@@ -66,12 +66,10 @@ lazy_static! {
 
 #[async_trait]
 impl EventHandler for Handler {
-
     async fn cache_ready(&self, ctx: Context, _guilds: Vec<GuildId>) {
-
         if FIRST_CACHE_READY.compare_and_swap(false, true, Ordering::AcqRel) {
-           //previous value was already true, return
-            return; 
+            //previous value was already true, return
+            return;
         }
 
         println!("{} : Cache Ready", chrono::Local::now());
@@ -87,11 +85,9 @@ impl EventHandler for Handler {
         if let Err(why) = dm_owner(&ctx, "logged in, and cache ready").await {
             println!("{:?}", why);
         }
-
     }
 
     async fn ready(&self, ctx: Context, ready: Ready) {
-        
         let message_to_owner;
         if FIRST_LOGIN.compare_and_swap(true, false, Ordering::AcqRel) {
             println!(
@@ -122,7 +118,6 @@ impl EventHandler for Handler {
         if let Err(why) = dm_owner(&ctx, message_to_owner).await {
             println!("{:?}", why);
         }
-
     }
 
     async fn resume(&self, ctx: Context, resumed: ResumedEvent) {

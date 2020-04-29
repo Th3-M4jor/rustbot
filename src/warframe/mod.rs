@@ -1,14 +1,11 @@
 use crate::util::*;
 use chrono::prelude::*;
+use market::*;
+use serenity::framework::standard::{macros::*, Args, CommandResult};
 use serenity::{model::channel::Message, prelude::*};
-use serenity::framework::standard::{
-    Args, CommandResult,
-    macros::*,
-};
-use tokio::sync::{RwLock, RwLockReadGuard, RwLockWriteGuard};
 use std::sync::Arc;
 use std::time::Duration;
-use market::*;
+use tokio::sync::{RwLock, RwLockReadGuard, RwLockWriteGuard};
 
 pub(crate) mod market;
 
@@ -30,19 +27,19 @@ pub struct WarframeData {
 }
 
 impl WarframeData {
-    
     pub fn new() -> WarframeData {
         let data = Arc::new(RwLock::new(serde_json::Value::Null));
-        WarframeData {
-            data,
-        }
+        WarframeData { data }
     }
-    
 
     async fn load(&self) -> Result<(), Box<dyn std::error::Error>> {
-        let mut dat : RwLockWriteGuard<serde_json::Value> = self.data.write().await;
+        let mut dat: RwLockWriteGuard<serde_json::Value> = self.data.write().await;
         let response = reqwest::get(WARFRAME_URL).await?; //client.get(WARFRAME_URL).send()?;
-        let text = response.text().await?.replace("\u{e2}\u{20ac}\u{2122}", "'").replace("\u{FEFF}", "");
+        let text = response
+            .text()
+            .await?
+            .replace("\u{e2}\u{20ac}\u{2122}", "'")
+            .replace("\u{FEFF}", "");
         *dat = serde_json::from_str(&text)?;
         drop(dat);
         let dat_lock_clone = Arc::clone(&self.data);
@@ -52,19 +49,18 @@ impl WarframeData {
             {
                 println!("Removing cached Warframe data");
             }
-            let mut dat : RwLockWriteGuard<serde_json::Value> = dat_lock_clone.write().await;
+            let mut dat: RwLockWriteGuard<serde_json::Value> = dat_lock_clone.write().await;
             *dat = serde_json::Value::Null;
         });
         Ok(())
     }
 
     async fn try_reload(&self) -> Result<bool, Box<dyn std::error::Error>> {
-        
-        let data : RwLockReadGuard<serde_json::Value> = self.data.read().await;
+        let data: RwLockReadGuard<serde_json::Value> = self.data.read().await;
         if !data.is_null() {
             return Ok(false);
         }
-        
+
         drop(data);
         self.load().await?;
         Ok(true)
@@ -72,7 +68,7 @@ impl WarframeData {
 
     pub async fn sortie(&self) -> Option<String> {
         self.try_reload().await.ok()?;
-        let dat : RwLockReadGuard<serde_json::Value> = self.data.read().await;
+        let dat: RwLockReadGuard<serde_json::Value> = self.data.read().await;
         let mut to_ret = String::from("faction: ");
         let sortie = &dat["sortie"];
         let faction = sortie["faction"].as_str()?;
@@ -98,7 +94,7 @@ impl WarframeData {
 
     pub async fn fissures(&self) -> Option<Vec<String>> {
         self.try_reload().await.ok()?;
-        let dat : RwLockReadGuard<serde_json::Value> = self.data.read().await;
+        let dat: RwLockReadGuard<serde_json::Value> = self.data.read().await;
         let mut fissures = dat["fissures"].as_array()?.clone();
         fissures.sort_unstable_by(|a, b| {
             a["tierNum"]
@@ -133,7 +129,6 @@ impl WarframeData {
         }
     }
 }
-
 
 #[group]
 #[prefixes("w", "warframe")]

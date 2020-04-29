@@ -17,8 +17,8 @@ use serde_json;
 #[cfg(not(debug_assertions))]
 use tokio::fs;
 
-use regex::Regex;
 use lazy_static::lazy_static;
+use regex::Regex;
 
 use crate::library::{elements::Elements, Library, LibraryObject};
 use simple_error::SimpleError;
@@ -58,7 +58,6 @@ impl LibraryObject for Virus {
     fn get_kind(&self) -> &str {
         "Virus"
     }
-
 }
 
 impl std::fmt::Display for Virus {

@@ -1,8 +1,5 @@
+use serenity::framework::standard::{macros::*, Args, CommandResult};
 use serenity::{model::channel::Message, prelude::*};
-use serenity::framework::standard::{
-    Args, CommandResult,
-    macros::*,
-};
 
 use serde_json::Value;
 use simple_error::SimpleError;
@@ -14,9 +11,15 @@ use std::f64::NAN;
 async fn make_request(name: &str) -> Result<Vec<String>, SimpleError> {
     let url = format!("https://api.warframe.market/v1/items/{}/orders", name);
 
-    let text = reqwest::get(&url).await.map_err(|_| SimpleError::new("Could not make market request"))?.text().await.map_err(|_| SimpleError::new("Could not parse response of market request"))?;
+    let text = reqwest::get(&url)
+        .await
+        .map_err(|_| SimpleError::new("Could not make market request"))?
+        .text()
+        .await
+        .map_err(|_| SimpleError::new("Could not parse response of market request"))?;
 
-    let mut json: serde_json::Value = serde_json::from_str(&text).map_err(|_| SimpleError::new("Could not parse market json data"))?;
+    let mut json: serde_json::Value = serde_json::from_str(&text)
+        .map_err(|_| SimpleError::new("Could not parse market json data"))?;
     let orders = json["payload"]["orders"]
         .as_array_mut()
         .ok_or_else(|| SimpleError::new("could not convert to array"))?;
@@ -48,7 +51,6 @@ async fn make_request(name: &str) -> Result<Vec<String>, SimpleError> {
 #[description = "Search warframe.market for people selling a given item"]
 #[example = "wukong prime"]
 pub(crate) async fn market(ctx: &mut Context, msg: &Message, args: Args) -> CommandResult {
-
     if args.is_empty() {
         say!(
             ctx,

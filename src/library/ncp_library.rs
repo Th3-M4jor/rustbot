@@ -11,9 +11,9 @@ use serde_json;
 #[cfg(not(debug_assertions))]
 use tokio::fs;
 
-use regex::Regex;
-use lazy_static::lazy_static;
 use crate::library::{Library, LibraryObject};
+use lazy_static::lazy_static;
+use regex::Regex;
 use std::fmt::Formatter;
 
 use unicode_normalization::UnicodeNormalization;
@@ -39,7 +39,6 @@ impl LibraryObject for NCP {
     fn get_kind(&self) -> &str {
         "NCP"
     }
-
 }
 
 impl NCP {
@@ -170,11 +169,9 @@ impl TypeMapKey for NCPLibrary {
     type Value = RwLock<NCPLibrary>;
 }
 
-
 pub(crate) fn ncp_as_lib_obj(obj: Arc<NCP>) -> Arc<dyn LibraryObject> {
     obj
 }
-
 
 #[group]
 #[prefixes("n", "ncp")]
