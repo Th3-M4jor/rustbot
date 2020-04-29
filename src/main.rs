@@ -195,12 +195,12 @@ async fn help_command(
 #[owners_only]
 #[help_available(false)]
 #[commands(die, audit, shut_up)]
-#[description("Administrative commands for the bot")]
+/// Administrative commands for the bot
 struct Owner;
 
 #[group]
 #[commands(manager, phb, reload, get_blight, about_bot)]
-#[description("Misc. commands related to BnB")]
+/// Misc. commands related to BnB
 struct BnbGeneral;
 
 async fn reload_chips(data: Arc<RwLock<TypeMap>>) -> ReloadReturnType {
@@ -213,7 +213,6 @@ async fn reload_chips(data: Arc<RwLock<TypeMap>>) -> ReloadReturnType {
     let mut chip_library: RwLockWriteGuard<ChipLibrary> = chip_library_lock.write().await;
     let chip_reload_str = chip_library.load_chips().await?;
     str_to_ret = format!("{} chips loaded\n", chip_reload_str);
-    // let str_to_send;
     vec_to_ret.reserve(chip_library.get_collection().len());
     for val in chip_library.get_collection().values() {
         let trait_obj = battlechip_as_lib_obj(Arc::clone(val));
@@ -274,7 +273,7 @@ async fn admin_check(
 
 #[command]
 #[checks(Admin)]
-#[description("Reload all Blights, BattleChips, NaviCust Parts, and Viruses")]
+/// Reload all Blights, BattleChips, NaviCust Parts, and Viruses
 async fn reload(ctx: &mut Context, msg: &Message, _: Args) -> CommandResult {
     println!(
         "{} : Reload command called by: {}",
@@ -369,20 +368,20 @@ async fn reload(ctx: &mut Context, msg: &Message, _: Args) -> CommandResult {
 }
 
 #[command("about")]
-#[description("get some information about the bot itself")]
+/// Get some more information about the bot itself
 async fn about_bot(ctx: &mut Context, msg: &Message, _: Args) -> CommandResult {
     let res = msg
         .author
         .dm(ctx, |m| m.content(format!("```{}```", *ABOUT_BOT)))
         .await;
     if res.is_err() {
-        println!("Could not send help message: {:?}", res.unwrap_err());
+        println!("Could not send about message: {:?}", res.unwrap_err());
     }
     Ok(())
 }
 
 #[command("shut_up")]
-#[description("Makes the bot stop DMing the owner on certain events")]
+/// Makes the bot stop DMing the owner on certain events
 async fn shut_up(ctx: &mut Context, msg: &Message, _: Args) -> CommandResult {
     {
         let data = ctx.data.read().await;

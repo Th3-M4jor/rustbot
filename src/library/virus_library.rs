@@ -358,16 +358,11 @@ impl VirusLibrary {
     send_random_encounter,
     send_family
 )]
-#[description(
-    "A group of commands related to viruses, see `v virus` for the get virus command help"
-)]
+/// A group of commands related to viruses, see `v virus` for the get virus command help
 struct BnbViruses;
 
 #[command("virus")]
-#[description(
-    "Get the description of the virus with that name, or suggestions if a virus with that name \
-     does not exist"
-)]
+/// Get the description of the virus with that name, or suggestions if a virus with that name does not exist
 #[example = "Mettaur"]
 pub(crate) async fn send_virus(ctx: &mut Context, msg: &Message, args: Args) -> CommandResult {
     if args.is_empty() {
@@ -389,7 +384,7 @@ pub(crate) async fn send_virus(ctx: &mut Context, msg: &Message, args: Args) -> 
 }
 
 #[command("element")]
-#[description("Get a list of all viruses which are of the given element")]
+/// Get a list of all viruses which are of the given element
 #[example = "Elec"]
 pub(crate) async fn send_virus_element(
     ctx: &mut Context,
@@ -419,7 +414,7 @@ pub(crate) async fn send_virus_element(
 }
 
 #[command("cr")]
-#[description("Get a list of all viruses which are of the given CR")]
+/// Get a list of all viruses which are of the given CR
 #[example = "4"]
 pub(crate) async fn send_virus_cr(
     ctx: &mut Context,
@@ -451,9 +446,7 @@ pub(crate) async fn send_virus_cr(
 }
 
 #[command("encounter")]
-#[description(
-    "Builds a random encounter with a given number of viruses and within a given CR or CR range"
-)]
+/// Builds a random encounter with a given number of viruses and within a given CR or CR range
 #[example = "2-3 5"]
 #[example = "4 6"]
 pub(crate) async fn send_random_encounter(
@@ -535,10 +528,8 @@ pub(crate) fn virus_as_lib_obj(obj: Arc<Virus>) -> Arc<dyn LibraryObject> {
 }
 
 #[command("family")]
-#[description(
-    "Lists all viruses who are determined to be of a particular family, given the name of the \
-     first virus in it\nNote: Only guaranteed to work if they follow the 2 3 EX scheme"
-)]
+/// Lists all viruses who are determined to be of a particular family, given the name of the
+/// first virus in it\nNote: Only guaranteed to work if they follow the 2 3 EX scheme
 #[example = "Swordy"]
 pub(crate) async fn send_family(ctx: &mut Context, msg: &Message, args: Args) -> CommandResult {
     if args.is_empty() {

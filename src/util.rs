@@ -121,7 +121,7 @@ pub(crate) async fn has_reaction_perm(ctx: &Context, channel_id: ChannelId) -> b
 }
 
 #[command]
-#[description("Get the last few lines of the server log file")]
+/// Get the last few lines of the server log file
 pub(crate) async fn audit(ctx: &mut Context, msg: &Message, _: Args) -> CommandResult {
     let data = ctx.data.read().await;
     let config = data.get::<BotData>().expect("config not found");
@@ -145,7 +145,7 @@ pub(crate) async fn audit(ctx: &mut Context, msg: &Message, _: Args) -> CommandR
 }
 
 #[command]
-#[description("Get a link to the BnB Battlechip manager website")]
+/// Get a link to the BnB Battlechip manager website
 async fn manager(ctx: &mut Context, msg: &Message, _: Args) -> CommandResult {
     let data = ctx.data.read().await;
     let config = data.get::<BotData>().expect("could not get config");
@@ -154,7 +154,7 @@ async fn manager(ctx: &mut Context, msg: &Message, _: Args) -> CommandResult {
 }
 
 #[command]
-#[description("Get a link to the BnB Players Handbook")]
+/// Get a link to the BnB Players Handbook
 async fn phb(ctx: &mut Context, msg: &Message, _: Args) -> CommandResult {
     let data = ctx.data.read().await;
     let config = data.get::<BotData>().expect("could not get config");
@@ -163,7 +163,7 @@ async fn phb(ctx: &mut Context, msg: &Message, _: Args) -> CommandResult {
 }
 
 #[command]
-#[description("Tells the bot to \"die\" and it will try to shutdown gracefully")]
+/// Tells the bot to "die" and it will try to shutdown gracefully
 async fn die(ctx: &mut Context, msg: &Message, _: Args) -> CommandResult {
     let data = ctx.data.read().await;
 

@@ -51,7 +51,7 @@ async fn make_request(name: &str) -> Result<Vec<String>, SimpleError> {
 
 #[command]
 #[bucket = "Warframe_Market"]
-#[description = "Search warframe.market for people selling a given item"]
+/// Search warframe.market for people selling a given item
 #[example = "wukong prime"]
 pub(crate) async fn market(ctx: &mut Context, msg: &Message, args: Args) -> CommandResult {
     if args.is_empty() {

@@ -179,17 +179,12 @@ pub(crate) fn ncp_as_lib_obj(obj: Arc<NCP>) -> Arc<dyn LibraryObject> {
 #[prefixes("n", "ncp")]
 #[default_command(send_ncp)]
 #[commands(send_ncp, send_ncp_color)]
-#[description(
-    "A group of commands related to Navi-Customizer Parts, see `n ncp` for the get NCP command \
-     help"
-)]
+/// A group of commands related to Navi-Customizer Parts, see `n ncp` for the get NCP command help
 struct BnbNcps;
 
 #[command("ncp")]
-#[description(
-    "get the description of an NCP with the specified name, or suggestions if there is not an NCP \
-     with that name"
-)]
+/// get the description of an NCP with the specified name, or suggestions if there is not an NCP with that name
+
 #[example = "Undershirt"]
 pub(crate) async fn send_ncp(ctx: &mut Context, msg: &Message, args: Args) -> CommandResult {
     if args.is_empty() {
@@ -209,10 +204,8 @@ pub(crate) async fn send_ncp(ctx: &mut Context, msg: &Message, args: Args) -> Co
 }
 
 #[command("color")]
-#[description(
-    "get a list of NCPs which are of the specified color, valid colors are\n: white, pink, \
-     yellow, green, blue, red, gray"
-)]
+/// get a list of NCPs which are of the specified color, valid colors are:
+/// white, pink, yellow, green, blue, red, gray
 #[example = "pink"]
 pub(crate) async fn send_ncp_color(ctx: &mut Context, msg: &Message, args: Args) -> CommandResult {
     if args.is_empty() {
