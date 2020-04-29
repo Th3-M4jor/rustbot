@@ -1,12 +1,14 @@
-use crate::library::battlechip::chip_type::ChipType;
-use crate::library::battlechip::ranges::Ranges;
-use crate::library::battlechip::skills::Skills;
-use crate::library::elements::Elements;
+use crate::library::{
+    battlechip::{chip_type::ChipType, ranges::Ranges, skills::Skills},
+    elements::Elements,
+};
 use lazy_static::lazy_static;
 use regex::{Captures, Regex};
 use serde::Serialize;
-use std::cmp::{Ord, Ordering};
-use std::str::FromStr;
+use std::{
+    cmp::{Ord, Ordering},
+    str::FromStr,
+};
 use unicode_normalization::UnicodeNormalization;
 
 use crate::library::LibraryObject;
@@ -99,8 +101,8 @@ impl BattleChip {
             static ref R_SAVE : Regex = Regex::new(r"an?\s(\w+)\scheck\sof\s\[DC\s\d+\s\+\s(\w+)]").expect("could not compile save regex");
         }
 
-        //let RE : Regex = Regex::new(r"(.+?)\s-\s(.+?)\s\|\s(.+?)\s\|\s(.+?)\s\|\s(\d+d\d+|--)\s?(?:damage)?\s?\|?\s?(Mega|Giga)?\s\|\s(\d+|\d+-\d+|--)\s?(?:hits?)\.?").unwrap();
-        //let R_SAVE : Regex = Regex::new(r"an?\s(\w+)\scheck\sof\s\[DC\s\d+\s\+\s(\w+)]").unwrap();
+        // let RE : Regex = Regex::new(r"(.+?)\s-\s(.+?)\s\|\s(.+?)\s\|\s(.+?)\s\|\s(\d+d\d+|--)\s?(?:damage)?\s?\|?\s?(Mega|Giga)?\s\|\s(\d+|\d+-\d+|--)\s?(?:hits?)\.?").unwrap();
+        // let R_SAVE : Regex = Regex::new(r"an?\s(\w+)\scheck\sof\s\[DC\s\d+\s\+\s(\w+)]").unwrap();
         let chip_val: Captures = RE
             .captures(first_line)
             .ok_or_else(|| SimpleError::new("Failed at capture stage"))?;
@@ -138,7 +140,7 @@ impl BattleChip {
                 .ok_or_else(|| SimpleError::new("failed to parse element"))?
                 .as_str(),
         )?;
-        //let skills : Vec<&str> = chip_val.get(3).unwrap().as_str().split(", ").collect();
+        // let skills : Vec<&str> = chip_val.get(3).unwrap().as_str().split(", ").collect();
         let parsed_skills = BattleChip::parse_skills(
             chip_val
                 .get(3)
@@ -148,7 +150,7 @@ impl BattleChip {
 
         let skill_user: Skills;
         let skill_target: Skills;
-        //let skill_res = R_SAVE.captures(second_line);
+        // let skill_res = R_SAVE.captures(second_line);
         if let Some(skill_res) = R_SAVE.captures(second_line) {
             let skill_user_res = skill_res
                 .get(2)

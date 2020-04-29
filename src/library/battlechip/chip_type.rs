@@ -11,6 +11,7 @@ pub enum ChipType {
 
 impl std::str::FromStr for ChipType {
     type Err = SimpleError;
+
     fn from_str(s: &str) -> Result<ChipType, SimpleError> {
         match s.to_ascii_lowercase().as_str() {
             "standard" => Ok(ChipType::Standard),

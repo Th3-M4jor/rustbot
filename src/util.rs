@@ -12,7 +12,7 @@ use std::sync::Arc;
 use crate::bot_data::BotData;
 use tokio::fs;
 
-///fn say(ctx: Context, msg: Message, say: an expression returning a string)
+/// fn say(ctx: Context, msg: Message, say: an expression returning a string)
 
 pub struct ShardManagerContainer;
 
@@ -51,7 +51,7 @@ where
     let sep = separator.into();
     for val in to_send {
         let to_push = format!("{}", val);
-        //a single message cannot be greater than 2000 chars
+        // a single message cannot be greater than 2000 chars
         if reply.len() + to_push.len() > 1950 {
             msg.channel_id.say(&ctx.http, &reply).await?;
             reply.clear();
@@ -59,7 +59,7 @@ where
         reply.push_str(&to_push);
         reply.push_str(&sep);
     }
-    //remove last seperator
+    // remove last seperator
     for _ in 0..sep.len() {
         reply.pop();
     }

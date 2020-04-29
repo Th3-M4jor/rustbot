@@ -1,5 +1,8 @@
-use serenity::framework::standard::{macros::command, Args, CommandResult};
-use serenity::{model::channel::Message, prelude::*};
+use serenity::{
+    framework::standard::{macros::command, Args, CommandResult},
+    model::channel::Message,
+    prelude::*,
+};
 use std::error::Error;
 use tokio::sync::RwLock;
 

@@ -1,26 +1,20 @@
 use crate::util::*;
 use chrono::prelude::*;
 use market::*;
-use serenity::framework::standard::{macros::*, Args, CommandResult};
-use serenity::{model::channel::Message, prelude::*};
-use std::sync::Arc;
-use std::time::Duration;
+use serenity::{
+    framework::standard::{macros::*, Args, CommandResult},
+    model::channel::Message,
+    prelude::*,
+};
+use std::{sync::Arc, time::Duration};
 use tokio::sync::{RwLock, RwLockReadGuard, RwLockWriteGuard};
 
 pub(crate) mod market;
 
 const WARFRAME_URL: &str = "https://api.warframestat.us/pc";
 
-//static WARFRAME_PC_DATA: RwLock<serde_json::Value> = RwLock::new(serde_json::Value::Null);
-
-/*
-lazy_static! {
-    static ref WARFRAME_PC_DATA: RwLock<serde_json::Value> = RwLock::new(serde_json::Value::Null);
-}
-*/
-
-//https://docs.google.com/document/d/1121cjBNN4BeZdMBGil6Qbuqse-sWpEXPpitQH5fb_Fo/edit#heading=h.yi84u2lickud
-//URL for warframe market API
+// https://docs.google.com/document/d/1121cjBNN4BeZdMBGil6Qbuqse-sWpEXPpitQH5fb_Fo/edit#heading=h.yi84u2lickud
+// URL for warframe market API
 
 pub struct WarframeData {
     data: Arc<RwLock<serde_json::Value>>,
@@ -34,7 +28,7 @@ impl WarframeData {
 
     async fn load(&self) -> Result<(), Box<dyn std::error::Error>> {
         let mut dat: RwLockWriteGuard<serde_json::Value> = self.data.write().await;
-        let response = reqwest::get(WARFRAME_URL).await?; //client.get(WARFRAME_URL).send()?;
+        let response = reqwest::get(WARFRAME_URL).await?; // client.get(WARFRAME_URL).send()?;
         let text = response
             .text()
             .await?
@@ -88,7 +82,7 @@ impl WarframeData {
         }
         to_ret.pop();
         to_ret.pop();
-        //pop off last ", "
+        // pop off last ", "
         Some(to_ret)
     }
 

@@ -1,12 +1,15 @@
-use serenity::framework::standard::{macros::*, Args, CommandResult};
-use serenity::{model::channel::Message, prelude::*};
+use serenity::{
+    framework::standard::{macros::*, Args, CommandResult},
+    model::channel::Message,
+    prelude::*,
+};
 
 use serde_json::Value;
 use simple_error::SimpleError;
 use std::f64::NAN;
 
-//https://docs.google.com/document/d/1121cjBNN4BeZdMBGil6Qbuqse-sWpEXPpitQH5fb_Fo/edit#heading=h.yi84u2lickud
-//URL for warframe market API
+// https://docs.google.com/document/d/1121cjBNN4BeZdMBGil6Qbuqse-sWpEXPpitQH5fb_Fo/edit#heading=h.yi84u2lickud
+// URL for warframe market API
 
 async fn make_request(name: &str) -> Result<Vec<String>, SimpleError> {
     let url = format!("https://api.warframe.market/v1/items/{}/orders", name);

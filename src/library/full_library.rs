@@ -1,10 +1,10 @@
-use std::collections::HashMap;
-use std::sync::Arc;
-use std::time::Duration;
+use std::{collections::HashMap, sync::Arc, time::Duration};
 use tokio::sync::{RwLock, RwLockReadGuard};
 
-use crate::library::{Library, LibraryObject};
-use crate::util::{edit_message_by_id, has_reaction_perm};
+use crate::{
+    library::{Library, LibraryObject},
+    util::{edit_message_by_id, has_reaction_perm},
+};
 
 use serenity::{
     model::channel::{Message, ReactionType},
@@ -69,7 +69,7 @@ impl FullLibrary {
 
         distances.truncate(limit_val);
 
-        //distances.into_iter().map()
+        // distances.into_iter().map()
 
         let mut to_ret = vec![];
 
@@ -130,15 +130,15 @@ impl Library for FullLibrary {
 }
 
 const NUMBERS: &[&str] = &[
-    "\u{31}\u{fe0f}\u{20e3}", //1
-    "\u{32}\u{fe0f}\u{20e3}", //2
-    "\u{33}\u{fe0f}\u{20e3}", //3
-    "\u{34}\u{fe0f}\u{20e3}", //4
-    "\u{35}\u{fe0f}\u{20e3}", //5
-    "\u{36}\u{fe0f}\u{20e3}", //6
-    "\u{37}\u{fe0f}\u{20e3}", //7
-    "\u{38}\u{fe0f}\u{20e3}", //8
-    "\u{39}\u{fe0f}\u{20e3}", //9
+    "\u{31}\u{fe0f}\u{20e3}", // 1
+    "\u{32}\u{fe0f}\u{20e3}", // 2
+    "\u{33}\u{fe0f}\u{20e3}", // 3
+    "\u{34}\u{fe0f}\u{20e3}", // 4
+    "\u{35}\u{fe0f}\u{20e3}", // 5
+    "\u{36}\u{fe0f}\u{20e3}", // 6
+    "\u{37}\u{fe0f}\u{20e3}", // 7
+    "\u{38}\u{fe0f}\u{20e3}", // 8
+    "\u{39}\u{fe0f}\u{20e3}", // 9
 ];
 
 pub(crate) async fn search_full_library(ctx: &Context, msg: &Message, args: &[&str]) {
@@ -147,13 +147,13 @@ pub(crate) async fn search_full_library(ctx: &Context, msg: &Message, args: &[&s
     let library_lock = data.get::<FullLibrary>().expect("Full library not found");
     let library: RwLockReadGuard<FullLibrary> = library_lock.read().await;
 
-    //let item: Option<&FullLibraryType> = library.get(&to_search);
+    // let item: Option<&FullLibraryType> = library.get(&to_search);
 
     if let Some(val) = library.get(&to_search) {
         say!(ctx, msg, val);
         return;
     }
-    //else nothing directly matching that name
+    // else nothing directly matching that name
 
     if !has_reaction_perm(ctx, msg.channel_id).await {
         match library.search_lib_obj(&to_search) {
@@ -170,7 +170,7 @@ pub(crate) async fn search_full_library(ctx: &Context, msg: &Message, args: &[&s
         None => res = library.search_dist(&to_search, None),
     }
 
-    //only one item was returned, print it
+    // only one item was returned, print it
     if res.len() == 1 {
         say!(ctx, msg, res[0]);
         return;
@@ -181,13 +181,13 @@ pub(crate) async fn search_full_library(ctx: &Context, msg: &Message, args: &[&s
     for obj in &res {
         msg_string.push_str(&num.to_string());
         msg_string.push_str(": ");
-        //msg_string.push_str(&(*obj).format_name());
+        // msg_string.push_str(&(*obj).format_name());
         msg_string.push_str(&format!("{} ({})", (*obj).get_name(), (*obj).get_kind()));
         msg_string.push_str(", ");
         num += 1;
     }
 
-    //remove last ", "
+    // remove last ", "
     msg_string.pop();
     msg_string.pop();
 
@@ -234,7 +234,7 @@ pub(crate) async fn search_full_library(ctx: &Context, msg: &Message, args: &[&s
         {
             let emoji = &reaction.as_inner_ref().emoji.as_data();
             let reacted_emoji = emoji.as_str();
-            //zipping here to constrain length to that of "res"
+            // zipping here to constrain length to that of "res"
             let pos = res
                 .iter()
                 .zip(NUMBERS.iter())
@@ -262,7 +262,7 @@ pub(crate) async fn search_full_library(ctx: &Context, msg: &Message, args: &[&s
     let delete_reactions = msg_to_await.delete_reactions(ctx);
 
     if got_proper_rection {
-        //let edit_message = msg_to_await.edit(ctx, |m| m.content(edited_msg));
+        // let edit_message = msg_to_await.edit(ctx, |m| m.content(edited_msg));
 
         let edit_message = edit_message_by_id(
             ctx,

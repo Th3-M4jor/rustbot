@@ -1,10 +1,12 @@
-use std::collections::HashMap;
-use std::sync::Arc;
+use std::{collections::HashMap, sync::Arc};
 use tokio::sync::RwLock;
 
 use serde::Serialize;
-use serenity::framework::standard::{macros::*, Args, CommandResult};
-use serenity::{model::channel::Message, prelude::*};
+use serenity::{
+    framework::standard::{macros::*, Args, CommandResult},
+    model::channel::Message,
+    prelude::*,
+};
 
 #[cfg(not(debug_assertions))]
 use serde_json;
@@ -18,7 +20,7 @@ use std::fmt::Formatter;
 
 use unicode_normalization::UnicodeNormalization;
 
-//const NCP_URL: &'static str = "https://docs.google.com/feeds/download/documents/export/Export?id=1VhZSnjvwSTMxKKfJvKcwqaJDqxD_dXarmAlAYRmlV2k&exportFormat=txt";
+// const NCP_URL: &'static str = "https://docs.google.com/feeds/download/documents/export/Export?id=1VhZSnjvwSTMxKKfJvKcwqaJDqxD_dXarmAlAYRmlV2k&exportFormat=txt";
 
 #[derive(Serialize)]
 #[serde(rename_all(serialize = "PascalCase"))]
@@ -108,7 +110,7 @@ impl NCPLibrary {
             .filter(|&i| !i.trim().is_empty())
             .collect();
         let mut curr_color: String = String::new();
-        //let mut new_color : String;
+        // let mut new_color : String;
         for ncp in ncp_text_arr {
             if COLORS.contains(&ncp.trim().to_lowercase().as_str()) {
                 curr_color = String::from(ncp.trim());
@@ -142,7 +144,7 @@ impl NCPLibrary {
             tokio::task::yield_now().await;
         }
 
-        //only write json file if not debug
+        // only write json file if not debug
         #[cfg(not(debug_assertions))]
         {
             let j = serde_json::to_string_pretty(&ncp_list).expect("could not serialize to json");
@@ -177,11 +179,17 @@ pub(crate) fn ncp_as_lib_obj(obj: Arc<NCP>) -> Arc<dyn LibraryObject> {
 #[prefixes("n", "ncp")]
 #[default_command(send_ncp)]
 #[commands(send_ncp, send_ncp_color)]
-#[description("A group of commands related to Navi-Customizer Parts, see `n ncp` for the get NCP command help")]
+#[description(
+    "A group of commands related to Navi-Customizer Parts, see `n ncp` for the get NCP command \
+     help"
+)]
 struct BnbNcps;
 
 #[command("ncp")]
-#[description("get the description of an NCP with the specified name, or suggestions if there is not an NCP with that name")]
+#[description(
+    "get the description of an NCP with the specified name, or suggestions if there is not an NCP \
+     with that name"
+)]
 #[example = "Undershirt"]
 pub(crate) async fn send_ncp(ctx: &mut Context, msg: &Message, args: Args) -> CommandResult {
     if args.is_empty() {
@@ -196,12 +204,15 @@ pub(crate) async fn send_ncp(ctx: &mut Context, msg: &Message, args: Args) -> Co
         Ok(val) => say!(ctx, msg, val),
         Err(val) => say!(ctx, msg, format!("Did you mean: {}", val.join(", "))),
     }
-    //say!(ctx, msg, search_lib_obj(args.current().unwrap(), library));
+    // say!(ctx, msg, search_lib_obj(args.current().unwrap(), library));
     return Ok(());
 }
 
 #[command("color")]
-#[description("get a list of NCPs which are of the specified color, valid colors are\n: white, pink, yellow, green, blue, red, gray")]
+#[description(
+    "get a list of NCPs which are of the specified color, valid colors are\n: white, pink, \
+     yellow, green, blue, red, gray"
+)]
 #[example = "pink"]
 pub(crate) async fn send_ncp_color(ctx: &mut Context, msg: &Message, args: Args) -> CommandResult {
     if args.is_empty() {

@@ -1,7 +1,9 @@
 use lazy_static::lazy_static;
 
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::Arc;
+use std::sync::{
+    atomic::{AtomicBool, Ordering},
+    Arc,
+};
 use tokio::sync::{RwLock, RwLockWriteGuard};
 
 use serenity::{
@@ -15,25 +17,25 @@ use serenity::{
         channel::Message,
         event::ResumedEvent,
         gateway::{Activity, Ready},
-        id::GuildId,
-        id::UserId,
+        id::{GuildId, UserId},
     },
     prelude::*,
     utils::TypeMap,
 };
 
-use crate::bot_data::BotData;
-use crate::library::{
-    blights::*, chip_library::*, full_library::*, ncp_library::*, virus_library::*, Library,
-    LibraryObject,
+use crate::{
+    bot_data::BotData,
+    library::{
+        blights::*, chip_library::*, full_library::*, ncp_library::*, virus_library::*, Library,
+        LibraryObject,
+    },
+    warframe::*,
 };
-use crate::warframe::*;
 
-use crate::dice::*;
-use crate::util::*;
+use crate::{dice::*, util::*};
 use std::fs;
 
-//use regex::Replacer;
+// use regex::Replacer;
 #[macro_use]
 mod util;
 mod bot_data;
@@ -41,7 +43,7 @@ mod dice;
 mod library;
 mod warframe;
 
-//type BotCommand = fn(Context, &Message, &[&str]) -> ();
+// type BotCommand = fn(Context, &Message, &[&str]) -> ();
 
 type ReloadOkType = (String, Vec<Arc<dyn LibraryObject>>);
 type ReloadReturnType = Result<ReloadOkType, Box<dyn std::error::Error + Send + Sync>>;
@@ -68,7 +70,7 @@ lazy_static! {
 impl EventHandler for Handler {
     async fn cache_ready(&self, ctx: Context, _guilds: Vec<GuildId>) {
         if FIRST_CACHE_READY.compare_and_swap(false, true, Ordering::AcqRel) {
-            //previous value was already true, return
+            // previous value was already true, return
             return;
         }
 
@@ -105,7 +107,7 @@ impl EventHandler for Handler {
             );
         }
 
-        //tokio::time::delay_for(std::time::Duration::from_secs(3)).await;
+        // tokio::time::delay_for(std::time::Duration::from_secs(3)).await;
 
         {
             let data = ctx.data.read().await;
@@ -121,8 +123,8 @@ impl EventHandler for Handler {
     }
 
     async fn resume(&self, ctx: Context, resumed: ResumedEvent) {
-        //let owner = fetch_owner(&ctx).await.expect("Could not fetch owner");
-        //let owner_user = owner.user.read().await;
+        // let owner = fetch_owner(&ctx).await.expect("Could not fetch owner");
+        // let owner_user = owner.user.read().await;
         let message_to_owner = "resume event was emitted";
 
         if let Err(why) = dm_owner(&ctx, message_to_owner).await {
@@ -173,9 +175,11 @@ where
 #[command_not_found_text = "Could not find: `{}`."]
 #[strikethrough_commands_tip_in_dm(" ")]
 #[strikethrough_commands_tip_in_guild(" ")]
-#[individual_command_tip = "If you want more information about a specific command, just pass the command as an argument.\n\
-If an unknown command name is given, all Battlechips, Navi-Customizer Parts, and Viruses are searched for that name with \
-battlechips being prioritized. (NCP's and Viruses may have a _n or _v appended to their name if there is a chip with that name)"]
+#[individual_command_tip = "If you want more information about a specific command, just pass the \
+                            command as an argument.\nIf an unknown command name is given, all \
+                            Battlechips, Navi-Customizer Parts, and Viruses are searched for that \
+                            name with battlechips being prioritized. (NCP's and Viruses may have a \
+                            _n or _v appended to their name if there is a chip with that name)"]
 async fn help_command(
     context: &mut Context,
     msg: &Message,
@@ -209,7 +213,7 @@ async fn reload_chips(data: Arc<RwLock<TypeMap>>) -> ReloadReturnType {
     let mut chip_library: RwLockWriteGuard<ChipLibrary> = chip_library_lock.write().await;
     let chip_reload_str = chip_library.load_chips().await?;
     str_to_ret = format!("{} chips loaded\n", chip_reload_str);
-    //let str_to_send;
+    // let str_to_send;
     vec_to_ret.reserve(chip_library.get_collection().len());
     for val in chip_library.get_collection().values() {
         let trait_obj = battlechip_as_lib_obj(Arc::clone(val));
@@ -383,7 +387,7 @@ async fn shut_up(ctx: &mut Context, msg: &Message, _: Args) -> CommandResult {
     {
         let data = ctx.data.read().await;
 
-        //fetch and xor means fewer operations whole true ^ true is false, and true ^ false is true;
+        // fetch and xor means fewer operations whole true ^ true is false, and true ^ false is true;
         let _res = data
             .get::<DmOwner>()
             .expect("No DM Owner setting found")
@@ -396,28 +400,26 @@ async fn shut_up(ctx: &mut Context, msg: &Message, _: Args) -> CommandResult {
     return Ok(());
 }
 
-/*
-#[hook]
-async fn search_everything_command(ctx: &mut Context, msg: &Message, _: &str) {
-    let mut args: Vec<&str>;
-    let new_first;
-
-    {
-        let data = ctx.data.read().await;
-        let config = data.get::<BotData>().expect("no config found");
-        if !msg.content.starts_with(&config.cmd_prefix) {
-            return;
-        }
-        #[cfg(debug_assertions)]
-        println!("unrecognized command called");
-        args = msg.content.split(" ").collect();
-        new_first = args[0].replacen(&config.cmd_prefix, "", 1);
-        args[0] = new_first.as_str();
-    }
-
-    search_full_library(ctx, msg, &args).await;
-}
-*/
+// #[hook]
+// async fn search_everything_command(ctx: &mut Context, msg: &Message, _: &str) {
+// let mut args: Vec<&str>;
+// let new_first;
+//
+// {
+// let data = ctx.data.read().await;
+// let config = data.get::<BotData>().expect("no config found");
+// if !msg.content.starts_with(&config.cmd_prefix) {
+// return;
+// }
+// #[cfg(debug_assertions)]
+// println!("unrecognized command called");
+// args = msg.content.split(" ").collect();
+// new_first = args[0].replacen(&config.cmd_prefix, "", 1);
+// args[0] = new_first.as_str();
+// }
+//
+// search_full_library(ctx, msg, &args).await;
+// }
 
 #[hook]
 async fn default_message(ctx: &mut Context, msg: &Message) {
@@ -492,7 +494,7 @@ async fn main() {
             }
         }
 
-        //println!("{} programs loaded", ncp_count);
+        // println!("{} programs loaded", ncp_count);
         let mut virus_library = virus_library_mutex.write().await;
         match virus_library.load_viruses().await {
             Ok(s) => println!("{}", s),
@@ -546,11 +548,9 @@ async fn main() {
         .group(&BNBVIRUSES_GROUP)
         .group(&BNBNCPS_GROUP);
 
-    /*
-        let mut client = Client::new_with_framework(&config.token, Handler, framework)
-            .await
-            .expect("Err creating client");
-    */
+    // let mut client = Client::new_with_framework(&config.token, Handler, framework)
+    // .await
+    // .expect("Err creating client");
     let mut client = Client::new_with_extras(&config.token, move |f| {
         f.framework(framework)
             .intents(

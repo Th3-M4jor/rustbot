@@ -1,14 +1,15 @@
-use std::cmp::Ordering;
-use std::collections::HashMap;
-use std::sync::Arc;
+use std::{cmp::Ordering, collections::HashMap, sync::Arc};
 use tokio::sync::{RwLock, RwLockReadGuard};
 
 use rand::distributions::{Distribution, Uniform};
 
 use rand::rngs::ThreadRng;
 
-use serenity::framework::standard::{macros::*, Args, CommandResult};
-use serenity::{model::channel::Message, prelude::*};
+use serenity::{
+    framework::standard::{macros::*, Args, CommandResult},
+    model::channel::Message,
+    prelude::*,
+};
 
 use serde::Serialize;
 
@@ -27,7 +28,7 @@ use std::fmt::Formatter;
 use std::str::FromStr;
 use unicode_normalization::UnicodeNormalization;
 
-//const VIRUS_URL: &'static str = "https://docs.google.com/feeds/download/documents/export/Export?id=1PZKYP0mzzxMTmjJ8CfrUMapgQPHgi24Ev6VB3XLBUrU&exportFormat=txt";
+// const VIRUS_URL: &'static str = "https://docs.google.com/feeds/download/documents/export/Export?id=1PZKYP0mzzxMTmjJ8CfrUMapgQPHgi24Ev6VB3XLBUrU&exportFormat=txt";
 
 #[derive(Serialize)]
 #[serde(rename_all(serialize = "PascalCase"))]
@@ -111,10 +112,10 @@ impl VirusLibrary {
         }
 
         self.library.clear();
-        //let virus_regex : Regex = Regex::new(r"((.+)\s\((\w+)\))").expect("could not compile virus regex");
-        //let cr_regex : Regex = Regex::new(r"CR\s+(\d+)").expect("could not compile CR regex");
+        // let virus_regex : Regex = Regex::new(r"((.+)\s\((\w+)\))").expect("could not compile virus regex");
+        // let cr_regex : Regex = Regex::new(r"CR\s+(\d+)").expect("could not compile CR regex");
 
-        //let mut virus_list : Vec<Box<Virus>> = vec![];
+        // let mut virus_list : Vec<Box<Virus>> = vec![];
         self.duplicates.clear();
         let virus_text = reqwest::get(&self.virus_url)
             .await?
@@ -140,7 +141,7 @@ impl VirusLibrary {
                 && !current_virus_description.is_empty()
             {
                 if (i + 1) == virus_text_arr.len() && !(cr_cap.is_some() || virus_cap.is_some()) {
-                    //push last line
+                    // push last line
                     current_virus_description.push_str(virus_text_arr[i]);
                 }
 
@@ -166,9 +167,9 @@ impl VirusLibrary {
                     )
                 };
                 if add_res.is_some() {
-                    //println!("{} , {} , {}\n{}", current_virus_name, current_virus_full_name, current_virus_element, current_virus_description);
-                    //found a duplicate, fixing
-                    //let add_res_val = add_res.unwrap();
+                    // println!("{} , {} , {}\n{}", current_virus_name, current_virus_full_name, current_virus_element, current_virus_description);
+                    // found a duplicate, fixing
+                    // let add_res_val = add_res.unwrap();
                     let old_virus = add_res.unwrap();
                     let new_virus = self
                         .library
@@ -179,7 +180,7 @@ impl VirusLibrary {
                                 current_virus_full_name, self.duplicates
                             ))
                         })?;
-                    //let new_virus = new_virus_res.unwrap();
+                    // let new_virus = new_virus_res.unwrap();
 
                     if new_virus.element == old_virus.element {
                         return Err(Box::new(SimpleError::new(format!(
@@ -233,7 +234,7 @@ impl VirusLibrary {
                 current_virus_element =
                     Elements::from_str(virus_val.get(3).expect("Virus had no element").as_str())
                         .expect("could not parse element");
-            //current_virus_full_name.push_str(virus_val.get(3).unwrap().as_str());
+            // current_virus_full_name.push_str(virus_val.get(3).unwrap().as_str());
             } else {
                 current_virus_description.push_str(virus_text_arr[i]);
                 current_virus_description.push('\n');
@@ -242,7 +243,7 @@ impl VirusLibrary {
         }
         self.highest_cr = curr_cr;
 
-        //only write json file if not debug
+        // only write json file if not debug
         #[cfg(not(debug_assertions))]
         {
             let mut viruses: Vec<&Arc<Virus>> = self.library.values().collect();
@@ -363,7 +364,10 @@ impl VirusLibrary {
 struct BnbViruses;
 
 #[command("virus")]
-#[description("Get the description of the virus with that name, or suggestions if a virus with that name does not exist")]
+#[description(
+    "Get the description of the virus with that name, or suggestions if a virus with that name \
+     does not exist"
+)]
 #[example = "Mettaur"]
 pub(crate) async fn send_virus(ctx: &mut Context, msg: &Message, args: Args) -> CommandResult {
     if args.is_empty() {
@@ -380,7 +384,7 @@ pub(crate) async fn send_virus(ctx: &mut Context, msg: &Message, args: Args) -> 
         Ok(val) => say!(ctx, msg, val),
         Err(val) => say!(ctx, msg, format!("Did you mean: {}", val.join(", "))),
     }
-    //say!(ctx, msg, search_lib_obj(&to_search, library));
+    // say!(ctx, msg, search_lib_obj(&to_search, library));
     return Ok(());
 }
 
@@ -470,7 +474,7 @@ pub(crate) async fn send_random_encounter(
         return Ok(());
     }
     let first_arg = args.single::<String>().unwrap();
-    //args.advance();
+    // args.advance();
     let second_arg = args.single::<String>().unwrap();
     let virus_count = second_arg.parse::<isize>().unwrap_or(-1);
     if virus_count <= 0 {
@@ -485,9 +489,9 @@ pub(crate) async fn send_random_encounter(
     let single_cr_res = first_arg.parse::<isize>();
     let to_send: Vec<&str>;
 
-    //was it a single CR or a range?
+    // was it a single CR or a range?
     if let Ok(single_cr) = single_cr_res {
-        //a single CR
+        // a single CR
         if single_cr <= 0 || single_cr > library.get_highest_cr() as isize {
             say!(ctx, msg, "an invalid single CR was given");
             return Ok(());
@@ -531,14 +535,17 @@ pub(crate) fn virus_as_lib_obj(obj: Arc<Virus>) -> Arc<dyn LibraryObject> {
 }
 
 #[command("family")]
-#[description("Lists all viruses who are determined to be of a particular family, given the name of the first virus in it\nNote: Only guaranteed to work if they follow the 2 3 EX scheme")]
+#[description(
+    "Lists all viruses who are determined to be of a particular family, given the name of the \
+     first virus in it\nNote: Only guaranteed to work if they follow the 2 3 EX scheme"
+)]
 #[example = "Swordy"]
 pub(crate) async fn send_family(ctx: &mut Context, msg: &Message, args: Args) -> CommandResult {
     if args.is_empty() {
         say!(ctx, msg, "you must provide a name");
         return Ok(());
     }
-    //let to_join = &args[1..];
+    // let to_join = &args[1..];
     let to_search = args.rest();
     let data = ctx.data.read().await;
     let library_lock: &RwLock<VirusLibrary> =

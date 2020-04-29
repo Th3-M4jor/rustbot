@@ -12,6 +12,7 @@ pub enum Ranges {
 
 impl std::str::FromStr for Ranges {
     type Err = SimpleError;
+
     fn from_str(to_parse: &str) -> Result<Ranges, SimpleError> {
         match to_parse.to_ascii_lowercase().as_str() {
             "self" => Ok(Ranges::Itself),

@@ -18,6 +18,7 @@ pub enum Skills {
 
 impl std::str::FromStr for Skills {
     type Err = SimpleError;
+
     fn from_str(to_parse: &str) -> Result<Skills, SimpleError> {
         match to_parse.to_ascii_lowercase().as_str() {
             "sense" => Ok(Skills::Sense),

@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 use simple_error::SimpleError;
-//use std::slice::Iter;
+// use std::slice::Iter;
 
 #[derive(Serialize, Deserialize, Eq, PartialEq, Clone, Copy, PartialOrd, Ord)]
 pub enum Elements {
@@ -20,6 +20,7 @@ pub enum Elements {
 
 impl std::str::FromStr for Elements {
     type Err = SimpleError;
+
     fn from_str(to_parse: &str) -> Result<Elements, SimpleError> {
         match to_parse.to_ascii_lowercase().as_str() {
             "fire" => Ok(Elements::Fire),

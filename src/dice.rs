@@ -1,7 +1,12 @@
-use rand::distributions::{Distribution, Uniform};
-use rand::rngs::ThreadRng;
-use serenity::framework::standard::{macros::*, Args, CommandResult};
-use serenity::{model::channel::Message, prelude::*};
+use rand::{
+    distributions::{Distribution, Uniform},
+    rngs::ThreadRng,
+};
+use serenity::{
+    framework::standard::{macros::*, Args, CommandResult},
+    model::channel::Message,
+    prelude::*,
+};
 
 pub struct DieRoll;
 
@@ -75,7 +80,7 @@ impl DieRoll {
 struct Dice;
 
 async fn perform_roll(ctx: &mut Context, msg: &Message, to_roll: &str, reroll: bool) {
-    //let mut results: Vec<i64> = vec![];
+    // let mut results: Vec<i64> = vec![];
     let (amt, results) = DieRoll::roll_dice(&to_roll, reroll);
     let repl_str = format!("{:?}", results);
     let reply = if repl_str.len() > 1850 {
@@ -96,7 +101,10 @@ async fn perform_roll(ctx: &mut Context, msg: &Message, to_roll: &str, reroll: b
 }
 
 #[command]
-#[description("Same as the roll command, except 1's and 2's will be re-rolled once, keeping the higher result")]
+#[description(
+    "Same as the roll command, except 1's and 2's will be re-rolled once, keeping the higher \
+     result"
+)]
 async fn reroll(ctx: &mut Context, msg: &Message, args: Args) -> CommandResult {
     if args.is_empty() {
         say!(
@@ -114,7 +122,10 @@ async fn reroll(ctx: &mut Context, msg: &Message, args: Args) -> CommandResult {
 }
 
 #[command]
-#[description("Roll a number of dice, using the format XdY where X is the number of dice, and Y is the number of sides on the die to roll")]
+#[description(
+    "Roll a number of dice, using the format XdY where X is the number of dice, and Y is the \
+     number of sides on the die to roll"
+)]
 #[example = "1d20"]
 #[example = "4d27"]
 pub(crate) async fn roll(ctx: &mut Context, msg: &Message, args: Args) -> CommandResult {
@@ -137,12 +148,12 @@ pub(crate) async fn roll(ctx: &mut Context, msg: &Message, args: Args) -> Comman
 #[description("Roll character stats for D&D 5e by rolling 4d6 and dropping the lowest 6 times")]
 pub(crate) async fn roll_stats(ctx: &mut Context, msg: &Message, _: Args) -> CommandResult {
     let mut stats: [i64; 6] = [0; 6];
-    //let mut rolls: Vec<i64> = vec![];
+    // let mut rolls: Vec<i64> = vec![];
     for i in &mut stats {
-        //rolls.clear();
+        // rolls.clear();
         let (_, mut rolls) = DieRoll::roll_dice("4d6", false);
 
-        //sort reverse to put lowest at the end
+        // sort reverse to put lowest at the end
         rolls.sort_unstable_by(|a, b| b.cmp(a));
         rolls.pop();
 

@@ -5,8 +5,7 @@ pub(crate) mod elements;
 pub(crate) mod full_library;
 pub(crate) mod ncp_library;
 pub(crate) mod virus_library;
-use std::collections::HashMap;
-use std::sync::Arc;
+use std::{collections::HashMap, sync::Arc};
 
 use serenity::prelude::*;
 
@@ -63,7 +62,7 @@ pub trait Library: TypeMapKey {
             let dist = jaro_winkler(&to_get.to_lowercase(), &val.get_name().to_lowercase());
             distances.push((dist, val.get_name()));
         }
-        //distances.sort_unstable_by(|a,b| a.0.cmp(&b.0));
+        // distances.sort_unstable_by(|a,b| a.0.cmp(&b.0));
         distances.sort_unstable_by(|a, b| a.0.partial_cmp(&b.0).unwrap().reverse());
         distances.truncate(limit_val);
         distances.shrink_to_fit();
@@ -117,28 +116,26 @@ pub trait Library: TypeMapKey {
     }
 }
 
-/*
-pub(crate) fn search_lib_obj<'b, U, T>(search: &str, lib: &'b T) -> Result<String, Vec<&'b str>>
-where
-    U: Library,
-    T: Deref<Target = U>,
-{
-    let item = lib.get(search);
-    if item.is_some() {
-        return Ok(format!("{}", item.unwrap()));
-    }
-    let mut item_search;
-    match lib.name_contains(search, None) {
-        Some(t) => item_search = t,
-        None => item_search = lib.distance(search, None),
-    }
-    if item_search.len() == 1 {
-        let found_item = lib.get(&item_search[0]).unwrap();
-        return Ok(format!("{}", found_item));
-    }
-    item_search.dedup();
-    return Err(item_search);
-    //let to_send: String = item_search.join(", ");
-    //return format!("Did you mean: {}", to_send);
-}
-*/
+// pub(crate) fn search_lib_obj<'b, U, T>(search: &str, lib: &'b T) -> Result<String, Vec<&'b str>>
+// where
+// U: Library,
+// T: Deref<Target = U>,
+// {
+// let item = lib.get(search);
+// if item.is_some() {
+// return Ok(format!("{}", item.unwrap()));
+// }
+// let mut item_search;
+// match lib.name_contains(search, None) {
+// Some(t) => item_search = t,
+// None => item_search = lib.distance(search, None),
+// }
+// if item_search.len() == 1 {
+// let found_item = lib.get(&item_search[0]).unwrap();
+// return Ok(format!("{}", found_item));
+// }
+// item_search.dedup();
+// return Err(item_search);
+// let to_send: String = item_search.join(", ");
+// return format!("Did you mean: {}", to_send);
+// }
