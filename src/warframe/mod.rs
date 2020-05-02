@@ -132,7 +132,7 @@ struct Warframe;
 
 #[command("fissures")]
 /// Get info about the current Warframe fissures (PC)
-pub(crate) async fn get_fissures(ctx: &mut Context, msg: &Message, _: Args) -> CommandResult {
+pub(crate) async fn get_fissures(ctx: &Context, msg: &Message, _: Args) -> CommandResult {
     if msg.channel_id.broadcast_typing(&ctx.http).await.is_err() {
         println!("could not broadcast typing, not sending");
         return Ok(());
@@ -153,7 +153,7 @@ pub(crate) async fn get_fissures(ctx: &mut Context, msg: &Message, _: Args) -> C
 
 #[command("sortie")]
 /// Get info about the current Warframe sortie (PC)
-pub(crate) async fn get_sortie(ctx: &mut Context, msg: &Message, _: Args) -> CommandResult {
+pub(crate) async fn get_sortie(ctx: &Context, msg: &Message, _: Args) -> CommandResult {
     if msg.channel_id.broadcast_typing(&ctx.http).await.is_err() {
         println!("could not broadcast typing, not sending");
         return Ok(());

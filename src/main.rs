@@ -181,7 +181,7 @@ where
                             name with battlechips being prioritized. (NCP's and Viruses may have a \
                             _n or _v appended to their name if there is a chip with that name)"]
 async fn help_command(
-    context: &mut Context,
+    context: &Context,
     msg: &Message,
     args: Args,
     help_options: &'static HelpOptions,
@@ -259,7 +259,7 @@ async fn reload_viruses(data: Arc<RwLock<TypeMap>>) -> ReloadReturnType {
 #[check]
 #[name = "Admin"]
 async fn admin_check(
-    ctx: &mut Context,
+    ctx: &Context,
     msg: &Message,
     _: &mut Args,
     _: &CommandOptions,
@@ -274,7 +274,7 @@ async fn admin_check(
 #[command]
 #[checks(Admin)]
 /// Reload all Blights, BattleChips, NaviCust Parts, and Viruses
-async fn reload(ctx: &mut Context, msg: &Message, _: Args) -> CommandResult {
+async fn reload(ctx: &Context, msg: &Message, _: Args) -> CommandResult {
     println!(
         "{} : Reload command called by: {}",
         chrono::Local::now(),
@@ -369,7 +369,7 @@ async fn reload(ctx: &mut Context, msg: &Message, _: Args) -> CommandResult {
 
 #[command("about")]
 /// Get some more information about the bot itself
-async fn about_bot(ctx: &mut Context, msg: &Message, _: Args) -> CommandResult {
+async fn about_bot(ctx: &Context, msg: &Message, _: Args) -> CommandResult {
     let res = msg
         .author
         .dm(ctx, |m| m.content(format!("```{}```", *ABOUT_BOT)))
@@ -382,7 +382,7 @@ async fn about_bot(ctx: &mut Context, msg: &Message, _: Args) -> CommandResult {
 
 #[command("shut_up")]
 /// Makes the bot stop DMing the owner on certain events
-async fn shut_up(ctx: &mut Context, msg: &Message, _: Args) -> CommandResult {
+async fn shut_up(ctx: &Context, msg: &Message, _: Args) -> CommandResult {
     {
         let data = ctx.data.read().await;
 
@@ -395,7 +395,7 @@ async fn shut_up(ctx: &mut Context, msg: &Message, _: Args) -> CommandResult {
         #[cfg(debug_assertions)]
         println!("DMing owner set to: {}", !_res);
     }
-    msg.react(ctx, "\u{1f44d}").await?;
+    msg.react(ctx, '\u{1f44d}').await?;
     return Ok(());
 }
 
@@ -421,7 +421,7 @@ async fn shut_up(ctx: &mut Context, msg: &Message, _: Args) -> CommandResult {
 // }
 
 #[hook]
-async fn default_message(ctx: &mut Context, msg: &Message) {
+async fn default_message(ctx: &Context, msg: &Message) {
     let mut args: Vec<&str>;
     let new_first;
     {
@@ -441,7 +441,7 @@ async fn default_message(ctx: &mut Context, msg: &Message) {
 }
 
 #[hook]
-async fn prefix_only_message(ctx: &mut Context, msg: &Message) {
+async fn prefix_only_message(ctx: &Context, msg: &Message) {
     #[cfg(debug_assertions)]
     println!("I recieved only a prefix");
     say!(
@@ -464,6 +464,7 @@ async fn main() {
     let blight_mutex = RwLock::new(Blights::new());
 
     {
+        
         let mut blights = blight_mutex.write().await;
         match blights.load().await {
             Ok(()) => {
@@ -492,7 +493,7 @@ async fn main() {
                 println!("{}", e.to_string());
             }
         }
-
+        
         // println!("{} programs loaded", ncp_count);
         let mut virus_library = virus_library_mutex.write().await;
         match virus_library.load_viruses().await {
@@ -520,7 +521,9 @@ async fn main() {
             }
         }
         println!("Full library loaded, size is {}", full_library.len());
+        
     }
+    
     let mut owners = std::collections::HashSet::new();
     let owner_id = serenity::model::id::UserId::from(config.owner);
     owners.insert(owner_id);
@@ -550,6 +553,14 @@ async fn main() {
     // let mut client = Client::new_with_framework(&config.token, Handler, framework)
     // .await
     // .expect("Err creating client");
+    let mut client = Client::new(&config.token).event_handler(Handler).framework(framework).intents(
+        GatewayIntents::GUILD_MESSAGE_REACTIONS
+        | GatewayIntents::DIRECT_MESSAGES
+        | GatewayIntents::GUILD_MESSAGES
+        | GatewayIntents::GUILDS,
+    ).await.expect("Err creating client");
+    
+    /*
     let mut client = Client::new_with_extras(&config.token, move |f| {
         f.framework(framework)
             .intents(
@@ -562,7 +573,9 @@ async fn main() {
     })
     .await
     .expect("Err creating client");
+    */
     // set scope to ensure that lock is released immediately
+    
     {
         let mut data = client.data.write().await;
         data.insert::<ChipLibrary>(chip_library_mutex);
@@ -575,14 +588,17 @@ async fn main() {
         data.insert::<ShardManagerContainer>(Arc::clone(&client.shard_manager));
         data.insert::<DmOwner>(AtomicBool::new(true));
     }
+    
     // Finally, start a single shard, and start listening to events.
     //
     // Shards will automatically attempt to reconnect, and will perform
     // exponential backoff until it reconnects.
 
+    
     if let Err(why) = client.start().await {
         println!("Client error: {:?}", why);
     } else {
         println!("Bot shutdown successfully");
     }
+    
 }

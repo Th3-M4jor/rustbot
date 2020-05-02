@@ -186,7 +186,7 @@ struct BnbNcps;
 /// get the description of an NCP with the specified name, or suggestions if there is not an NCP with that name
 
 #[example = "Undershirt"]
-pub(crate) async fn send_ncp(ctx: &mut Context, msg: &Message, args: Args) -> CommandResult {
+pub(crate) async fn send_ncp(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
     if args.is_empty() {
         say!(ctx, msg, "you must provide a name");
         return Ok(());
@@ -207,7 +207,7 @@ pub(crate) async fn send_ncp(ctx: &mut Context, msg: &Message, args: Args) -> Co
 /// get a list of NCPs which are of the specified color, valid colors are:
 /// white, pink, yellow, green, blue, red, gray
 #[example = "pink"]
-pub(crate) async fn send_ncp_color(ctx: &mut Context, msg: &Message, args: Args) -> CommandResult {
+pub(crate) async fn send_ncp_color(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
     if args.is_empty() {
         say!(
             ctx,

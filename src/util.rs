@@ -122,7 +122,7 @@ pub(crate) async fn has_reaction_perm(ctx: &Context, channel_id: ChannelId) -> b
 
 #[command]
 /// Get the last few lines of the server log file
-pub(crate) async fn audit(ctx: &mut Context, msg: &Message, _: Args) -> CommandResult {
+pub(crate) async fn audit(ctx: &Context, msg: &Message, _: Args) -> CommandResult {
     let data = ctx.data.read().await;
     let config = data.get::<BotData>().expect("config not found");
 
@@ -146,7 +146,7 @@ pub(crate) async fn audit(ctx: &mut Context, msg: &Message, _: Args) -> CommandR
 
 #[command]
 /// Get a link to the BnB Battlechip manager website
-async fn manager(ctx: &mut Context, msg: &Message, _: Args) -> CommandResult {
+async fn manager(ctx: &Context, msg: &Message, _: Args) -> CommandResult {
     let data = ctx.data.read().await;
     let config = data.get::<BotData>().expect("could not get config");
     say!(ctx, msg, &config.manager);
@@ -155,7 +155,7 @@ async fn manager(ctx: &mut Context, msg: &Message, _: Args) -> CommandResult {
 
 #[command]
 /// Get a link to the BnB Players Handbook
-async fn phb(ctx: &mut Context, msg: &Message, _: Args) -> CommandResult {
+async fn phb(ctx: &Context, msg: &Message, _: Args) -> CommandResult {
     let data = ctx.data.read().await;
     let config = data.get::<BotData>().expect("could not get config");
     say!(ctx, msg, &config.phb);
@@ -164,14 +164,14 @@ async fn phb(ctx: &mut Context, msg: &Message, _: Args) -> CommandResult {
 
 #[command]
 /// Tells the bot to "die" and it will try to shutdown gracefully
-async fn die(ctx: &mut Context, msg: &Message, _: Args) -> CommandResult {
+async fn die(ctx: &Context, msg: &Message, _: Args) -> CommandResult {
     let data = ctx.data.read().await;
 
     ctx.invisible().await;
     if let Some(manager) = data.get::<ShardManagerContainer>() {
         manager.lock().await.shutdown_all().await;
     } else {
-        let _ = msg.reply(&ctx, "There was a problem getting the shard manager");
+        let _ = msg.reply(ctx, "There was a problem getting the shard manager");
         std::process::exit(1);
     }
     return Ok(());

@@ -208,7 +208,7 @@ struct BnBSkills;
 #[command("chip")]
 /// get the description of a chip with the specified name, or suggestions if there is not a chip with that name
 #[example = "Airshot"]
-pub(crate) async fn send_chip(ctx: &mut Context, msg: &Message, args: Args) -> CommandResult {
+async fn send_chip(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
     if args.is_empty() {
         say!(ctx, msg, "you must provide a name");
         return Ok(());
@@ -232,7 +232,7 @@ pub(crate) async fn send_chip(ctx: &mut Context, msg: &Message, args: Args) -> C
 #[command("skill")]
 /// get a list of chips that use the specified skill in it's attack roll
 #[example = "Sense"]
-async fn send_chip_skill(ctx: &mut Context, msg: &Message, mut args: Args) -> CommandResult {
+async fn send_chip_skill(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
     if args.is_empty() {
         say!(ctx, msg, "you must provide a skill");
         return Ok(());
@@ -251,7 +251,7 @@ async fn send_chip_skill(ctx: &mut Context, msg: &Message, mut args: Args) -> Co
 #[command("user")]
 /// get a list of chips that have a save and the DC is determined by the specified skill
 #[example = "Strength"]
-async fn send_chip_skill_user(ctx: &mut Context, msg: &Message, mut args: Args) -> CommandResult {
+async fn send_chip_skill_user(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
     if args.is_empty() {
         say!(ctx, msg, "you must provide a skill");
         return Ok(());
@@ -270,7 +270,7 @@ async fn send_chip_skill_user(ctx: &mut Context, msg: &Message, mut args: Args) 
 #[command("target")]
 /// get a list of chips where the specified skill is used to make the save by the target
 #[example = "Speed"]
-async fn send_chip_skill_target(ctx: &mut Context, msg: &Message, mut args: Args) -> CommandResult {
+async fn send_chip_skill_target(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
     if args.is_empty() {
         say!(ctx, msg, "you must provide a skill");
         return Ok(());
@@ -289,7 +289,7 @@ async fn send_chip_skill_target(ctx: &mut Context, msg: &Message, mut args: Args
 #[command("check")]
 /// get a list of chips where the specified skill is used either to determine the save DC or to make the save
 #[example = "Bravery"]
-async fn send_chip_skill_check(ctx: &mut Context, msg: &Message, mut args: Args) -> CommandResult {
+async fn send_chip_skill_check(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
     if args.is_empty() {
         say!(ctx, msg, "you must provide a skill");
         return Ok(());
@@ -308,8 +308,8 @@ async fn send_chip_skill_check(ctx: &mut Context, msg: &Message, mut args: Args)
 #[command("element")]
 /// get a list of chips which are of the specified element
 #[example = "Aqua"]
-pub(crate) async fn send_chip_element(
-    ctx: &mut Context,
+async fn send_chip_element(
+    ctx: &Context,
     msg: &Message,
     args: Args,
 ) -> CommandResult {

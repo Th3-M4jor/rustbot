@@ -79,7 +79,7 @@ impl DieRoll {
 /// A group of commands related to rolling dice
 struct Dice;
 
-async fn perform_roll(ctx: &mut Context, msg: &Message, to_roll: &str, reroll: bool) {
+async fn perform_roll(ctx: &Context, msg: &Message, to_roll: &str, reroll: bool) {
     // let mut results: Vec<i64> = vec![];
     let (amt, results) = DieRoll::roll_dice(&to_roll, reroll);
     let repl_str = format!("{:?}", results);
@@ -102,7 +102,7 @@ async fn perform_roll(ctx: &mut Context, msg: &Message, to_roll: &str, reroll: b
 
 #[command]
 /// Same as the roll command, except 1's and 2's will be re-rolled once, keeping the higher result
-async fn reroll(ctx: &mut Context, msg: &Message, args: Args) -> CommandResult {
+async fn reroll(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
     if args.is_empty() {
         say!(
             ctx,
@@ -122,7 +122,7 @@ async fn reroll(ctx: &mut Context, msg: &Message, args: Args) -> CommandResult {
 /// Roll a number of dice, using the format XdY where X is the number of dice, and Y is the number of sides on the die to roll
 #[example = "1d20"]
 #[example = "4d27"]
-pub(crate) async fn roll(ctx: &mut Context, msg: &Message, args: Args) -> CommandResult {
+pub(crate) async fn roll(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
     if args.is_empty() {
         say!(
             ctx,
@@ -140,7 +140,7 @@ pub(crate) async fn roll(ctx: &mut Context, msg: &Message, args: Args) -> Comman
 
 #[command("rollstats")]
 /// Roll character stats for D&D 5e by rolling 4d6 and dropping the lowest 6 times
-pub(crate) async fn roll_stats(ctx: &mut Context, msg: &Message, _: Args) -> CommandResult {
+pub(crate) async fn roll_stats(ctx: &Context, msg: &Message, _: Args) -> CommandResult {
     let mut stats: [i64; 6] = [0; 6];
     // let mut rolls: Vec<i64> = vec![];
     for i in &mut stats {

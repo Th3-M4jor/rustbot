@@ -1,7 +1,8 @@
 use serde::{Deserialize, Serialize};
 use simple_error::SimpleError;
+use std::hash::Hash;
 
-#[derive(Serialize, Deserialize, Eq, PartialEq, Clone, Copy)]
+#[derive(Serialize, Deserialize, Eq, PartialEq, Clone, Copy, Hash)]
 pub enum Skills {
     Sense,
     Info,

@@ -35,7 +35,7 @@ impl TypeMapKey for Blights {
 #[command("blight")]
 /// Get info on what a blight from an element does
 #[example = "Fire"]
-pub(crate) async fn get_blight(ctx: &mut Context, msg: &Message, args: Args) -> CommandResult {
+pub(crate) async fn get_blight(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
     if args.is_empty() {
         say!(ctx, msg, "you must provide an element");
         return Ok(());
