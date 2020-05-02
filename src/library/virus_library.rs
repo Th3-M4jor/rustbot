@@ -18,10 +18,9 @@ use serde_json;
 #[cfg(not(debug_assertions))]
 use tokio::fs;
 
-use lazy_static::lazy_static;
 use regex::Regex;
 
-use crate::library::{elements::Elements, Library, LibraryObject};
+use crate::library::{elements::Elements, Library, LibraryObject, battlechip::skills::Skills};
 use simple_error::SimpleError;
 use std::fmt::Formatter;
 
@@ -35,19 +34,17 @@ use unicode_normalization::UnicodeNormalization;
 pub struct Virus {
     pub name: String,
     pub element: Elements,
+    pub skills: HashMap<Skills, u8>,
+    pub h_p: usize,
+    pub a_c: usize,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub abilities: Option<Vec<String>>,
     pub c_r: u8,
+    pub mind: u8,
+    pub body: u8,
+    pub spirit: u8,
+    pub drops: HashMap<String, String>,
     pub description: String,
-}
-
-impl Virus {
-    pub fn new<T: Into<String>, S: Into<u8>>(name: T, elem: Elements, cr: S, desc: T) -> Virus {
-        Virus {
-            name: name.into().nfc().collect::<String>(),
-            element: elem,
-            c_r: cr.into(),
-            description: desc.into().nfc().collect::<String>(),
-        }
-    }
 }
 
 impl LibraryObject for Virus {
@@ -63,10 +60,28 @@ impl LibraryObject for Virus {
 
 impl std::fmt::Display for Virus {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
+        
+        let first_line = format!("{} ({}) - CR {}", self.name, self.element, self.c_r);
+        let second_line = format!("HP: {} | AC: {}", self.h_p, self.a_c);
+        let third_line = format!("Mind: {} | Body: {} | Spirit: {}", self.mind, self.body, self.spirit);
+
+        let skill_line = self.skills.iter().map(
+            |skill| format!("{}: {}", skill.0, skill.1)
+        ).collect::<Vec<String>>().join(" | ");
+        let abilities_line = match &self.abilities {
+            Some(abilities) => format!("Abilities: {}", abilities.join(", ")),
+            None => String::from("Abilities: None"),
+        };
+
+        let mut drops_line = String::from("Drops: ");
+        let mut drop_list = self.drops.iter().map(|drop| format!("{}: {}", drop.0, drop.1)).collect::<Vec<String>>();
+        drop_list.sort_unstable();
+        drops_line.push_str(&drop_list.join(" | "));
+        
         return write!(
             f,
-            "```{} ({}) - CR {}\n{}```",
-            self.name, self.element, self.c_r, self.description
+            "```{}\n{}\n{}\n{}\n{}\n{}\n{}```",
+            first_line, second_line, third_line, skill_line, abilities_line, drops_line, self.description
         );
     }
 }
@@ -76,6 +91,21 @@ pub struct VirusLibrary {
     highest_cr: u8,
     duplicates: Vec<String>,
     virus_url: String,
+    virus_regex: Regex,
+    cr_regex: Regex,
+    hp_ac_regex: Regex,
+    m_b_s_regex: Regex,
+}
+
+struct VirusSats {
+    hp: usize,
+    ac: usize,
+    abilities: Option<Vec<String>>,
+    skills: HashMap<Skills, u8>,
+    mind: u8,
+    body: u8,
+    spirit: u8,
+    drops: HashMap<String, String>,
 }
 
 impl TypeMapKey for VirusLibrary {
@@ -98,18 +128,16 @@ impl VirusLibrary {
             highest_cr: 0,
             duplicates: vec![],
             virus_url: String::from(url),
+            virus_regex: Regex::new(r"^\s*(.+)\s+\((\w+)\)\s*$").expect("could not compile virus regex"),
+            cr_regex: Regex::new(r"^CR\s+(\d+)$").expect("could not compile CR regex"),
+            hp_ac_regex: Regex::new(r"(?i)hp:\s+(\d+)\s+\|\s+ac:\s+(\d+)").expect("could not compile HP regex"),
+            m_b_s_regex: Regex::new(r"(?i)mind:\s+(\d+)\s+\|\s+body:\s+(\d+)\s+\|\sspirit:\s+(\d+)").expect("could not compile mbs regex"),
         }
     }
 
     pub async fn load_viruses(
         &mut self,
     ) -> Result<String, Box<dyn std::error::Error + Send + Sync>> {
-        lazy_static! {
-            static ref VIRUS_REGEX: Regex =
-                Regex::new(r"^\s*((.+)\s+\((\w+)\))\s*$").expect("could not compile virus regex");
-            static ref CR_REGEX: Regex =
-                Regex::new(r"^CR\s+(\d+)$").expect("could not compile CR regex");
-        }
 
         self.library.clear();
         // let virus_regex : Regex = Regex::new(r"((.+)\s\((\w+)\))").expect("could not compile virus regex");
@@ -128,122 +156,53 @@ impl VirusLibrary {
             .split('\n')
             .filter(|&i| !i.trim().is_empty())
             .collect();
-        let mut curr_cr: u8 = 0;
-        let mut current_virus_name = String::new();
-        let mut current_virus_element: Elements = Elements::Null;
-        let mut current_virus_full_name = String::new();
-        let mut current_virus_description = String::new();
-        let mut found_duplicates = false;
-        for i in 0..virus_text_arr.len() {
-            let cr_cap = CR_REGEX.captures(virus_text_arr[i]);
-            let virus_cap = VIRUS_REGEX.captures(virus_text_arr[i]);
-            if (cr_cap.is_some() || virus_cap.is_some() || (i + 1) == virus_text_arr.len())
-                && !current_virus_description.is_empty()
-            {
-                if (i + 1) == virus_text_arr.len() && !(cr_cap.is_some() || virus_cap.is_some()) {
-                    // push last line
-                    current_virus_description.push_str(virus_text_arr[i]);
-                }
+        //let mut curr_cr: u8 = 0;
+        let mut index: usize = 1;
 
-                let add_res = if self.duplicates.contains(&current_virus_name.to_lowercase()) {
-                    self.library.insert(
-                        current_virus_full_name.to_lowercase(),
-                        Arc::new(Virus::new(
-                            &current_virus_full_name,
-                            current_virus_element,
-                            curr_cr,
-                            &current_virus_description,
-                        )),
-                    )
-                } else {
-                    self.library.insert(
-                        current_virus_name.to_lowercase(),
-                        Arc::new(Virus::new(
-                            &current_virus_name,
-                            current_virus_element,
-                            curr_cr,
-                            &current_virus_description,
-                        )),
-                    )
-                };
-                if add_res.is_some() {
-                    // println!("{} , {} , {}\n{}", current_virus_name, current_virus_full_name, current_virus_element, current_virus_description);
-                    // found a duplicate, fixing
-                    // let add_res_val = add_res.unwrap();
-                    let old_virus = add_res.unwrap();
-                    let new_virus = self
-                        .library
-                        .remove(&current_virus_name.to_lowercase())
-                        .ok_or_else(|| {
-                            SimpleError::new(format!(
-                                "found an unrecoverable duplicate, {} 119 {:?}",
-                                current_virus_full_name, self.duplicates
-                            ))
-                        })?;
-                    // let new_virus = new_virus_res.unwrap();
+        let cr_cap = self.cr_regex.captures(virus_text_arr[0]).ok_or_else(|| SimpleError::new("Failed to capture first Virus CR"))?;
+        let mut curr_cr = cr_cap[1].parse::<u8>().map_err(|_| SimpleError::new("Failed to parse first Virus CR"))?;
 
-                    if new_virus.element == old_virus.element {
-                        return Err(Box::new(SimpleError::new(format!(
-                            "found an unrecoverable duplicate, {}, 124",
-                            current_virus_full_name
-                        ))));
-                    }
-                    let repl_new_virus = Arc::new(Virus::new(
-                        format!("{} ({})", new_virus.name, new_virus.element),
-                        new_virus.element,
-                        new_virus.c_r,
-                        new_virus.description.clone(),
-                    ));
-                    let repl_old_virus = Arc::new(Virus::new(
-                        format!("{} ({})", old_virus.name, old_virus.element),
-                        old_virus.element,
-                        old_virus.c_r,
-                        old_virus.description.clone(),
-                    ));
-                    let new_add_res = self
-                        .library
-                        .insert(repl_new_virus.name.to_lowercase(), repl_new_virus);
-                    let old_add_res = self
-                        .library
-                        .insert(repl_old_virus.name.to_lowercase(), repl_old_virus);
-                    if new_add_res.is_some() || old_add_res.is_some() {
-                        return Err(Box::new(SimpleError::new(format!(
-                            "found an unrecoverable duplicate, {}, 131",
-                            current_virus_full_name
-                        ))));
-                    }
-                    self.duplicates.push(current_virus_name.to_lowercase());
-                    found_duplicates = true;
-                }
-                current_virus_name.clear();
-                current_virus_full_name.clear();
-                current_virus_description.clear();
+        while virus_text_arr.len() > index {
+            if let Some(cr_cap) = self.cr_regex.captures(virus_text_arr[index]) {
+                curr_cr = cr_cap[1].parse::<u8>().map_err(|_| SimpleError::new(format!("Could not parse \"{}\" into CR", virus_text_arr[index])))?;
+                index += 1;
             }
-            if cr_cap.is_some() {
-                let cr_val = cr_cap.unwrap();
-                curr_cr = cr_val
-                    .get(1)
-                    .unwrap()
-                    .as_str()
-                    .parse::<u8>()
-                    .unwrap_or(u8::max_value());
-            } else if virus_cap.is_some() {
-                let virus_val = virus_cap.unwrap();
-                current_virus_full_name.push_str(virus_val.get(1).unwrap().as_str());
-                current_virus_name.push_str(virus_val.get(2).unwrap().as_str());
-                current_virus_element =
-                    Elements::from_str(virus_val.get(3).expect("Virus had no element").as_str())
-                        .expect("could not parse element");
-            // current_virus_full_name.push_str(virus_val.get(3).unwrap().as_str());
-            } else {
-                current_virus_description.push_str(virus_text_arr[i]);
-                current_virus_description.push('\n');
+
+            let name_res = self.virus_regex.captures(virus_text_arr[index]).ok_or_else(|| SimpleError::new(format!("Failed to parse virus name:\n{}",virus_text_arr[index])))?;
+            let virus_name = &name_res[1];
+            //println!("{}", virus_name);
+            //println!("{}", &name_res[2]);
+            let virus_element = name_res[2].parse::<Elements>().map_err(|_| SimpleError::new(format!("Failed to parse virus element:\n{}", virus_text_arr[index])))?;
+            index += 1;
+            let stat_res = self.parse_stats(&virus_text_arr[index..=(index+4)]).map_err(|e| SimpleError::new(format!("Error at {}:\n{}\n{}", virus_name, e.as_str(), virus_text_arr[index])))?;
+            index += 5;
+            let mut description = String::new();
+            while virus_text_arr.len() > index && !self.cr_regex.is_match(virus_text_arr[index]) && !self.virus_regex.is_match(virus_text_arr[index]) {
+                description.push_str(virus_text_arr[index]);
+                index += 1;
             }
-            tokio::task::yield_now().await;
+            let virus = Arc::new(Virus {
+                name: virus_name.nfc().collect(),
+                h_p: stat_res.hp,
+                a_c: stat_res.ac,
+                c_r: curr_cr,
+                element: virus_element.to_owned(),
+                mind: stat_res.mind,
+                body: stat_res.body,
+                spirit: stat_res.spirit,
+                skills: stat_res.skills,
+                abilities: stat_res.abilities,
+                drops: stat_res.drops,
+                description
+            });
+
+            if self.library.insert(virus.name.to_ascii_lowercase(), virus).is_some() {
+                return Err(Box::new(SimpleError::new(format!("Duplicate virus name found: {}", virus_name))));
+            }
         }
+
         self.highest_cr = curr_cr;
 
-        // only write json file if not debug
         #[cfg(not(debug_assertions))]
         {
             let mut viruses: Vec<&Arc<Virus>> = self.library.values().collect();
@@ -256,17 +215,102 @@ impl VirusLibrary {
                 .expect("could not write to virusCompendium.json");
         }
 
-        if found_duplicates {
-            let res = format!(
-                "{} viruses loaded, found {} duplicates, recovered from all\nThey were: {:?}",
-                self.library.len(),
-                self.duplicates.len(),
-                self.duplicates
-            );
-            Ok(res)
-        } else {
-            Ok(format!("{} viruses were loaded\n", self.library.len()))
+        Ok(format!("{} viruses were loaded\n", self.library.len()))
+
+    }
+
+    fn parse_stats(&self, lines: &[&str]) -> Result<VirusSats, SimpleError> {
+    
+        if lines.len() < 4 {
+            return Err(SimpleError::new("unexpected end of file"));
         }
+
+        //let HP_AC_Regex = Regex::new(r"(?i)hp:\s+(\d+)\s+\|\s+ac:\s+(\d+)").expect("could not compile HP regex");
+        //let m_b_s_Regex = Regex::new(r"(?i)mind:\s+(\d+)\s+\|\s+body:\s+(\d+)\s+\|\sspirit:\s+(\d+)").expect("could not compile mbs regex");
+
+        let hp_ac_res = self.hp_ac_regex.captures(lines[0]).ok_or_else(|| SimpleError::new("Failed to parse HP or AC"))?;
+
+        let hp: usize = hp_ac_res[1].parse::<usize>().map_err(|_| SimpleError::new("Failed to parse HP"))?;
+        let ac: usize = hp_ac_res[2].parse::<usize>().map_err(|_| SimpleError::new("Failed to parse AC"))?;
+
+        let m_b_s_res = self.m_b_s_regex.captures(lines[1]).ok_or_else(|| SimpleError::new("Failed to parse Mind, Body, or Spirit"))?;
+
+        let mind = m_b_s_res[1].parse::<u8>().map_err(|_| SimpleError::new("Failed to parse virus Mind stat"))?;
+        let body = m_b_s_res[2].parse::<u8>().map_err(|_| SimpleError::new("Failed to parse virus Body stat"))?;
+        let spirit = m_b_s_res[3].parse::<u8>().map_err(|_| SimpleError::new("Failed to parse virus Spirit stat"))?;
+
+        let skills = VirusLibrary::convert_skills(lines[2])?;
+        let abilities = VirusLibrary::convert_abilities(lines[3])?;
+        let drops = VirusLibrary::convert_drops(lines[4])?;
+
+        Ok(VirusSats {
+            hp,
+            ac,
+            mind,
+            body,
+            spirit,
+            skills,
+            abilities,
+            drops,
+        })
+
+    }
+
+    fn convert_skills(line: &str) -> Result<HashMap<Skills, u8>, SimpleError> {
+
+        let mut to_ret: HashMap<Skills, u8> = HashMap::new();
+        for skill in line.split('|') {
+            let name_skill = skill.trim().split(':').collect::<Vec<&str>>();
+            if name_skill.len() != 2 {
+                return Err(SimpleError::new(format!("Failed to parse skill:\n{}", skill)));
+            }
+            let name = name_skill[0].trim().parse::<Skills>().map_err(|_| SimpleError::new(format!("Failed to parse skill:\n{}", skill)))?;
+            let value = name_skill[1].trim().parse::<u8>().map_err(|_| SimpleError::new(format!("Failed to parse skill:\n{}", skill)))?;
+            if to_ret.insert(name, value).is_some() {
+                return Err(SimpleError::new(format!("Failed to parse:\n{}", skill)));
+            }
+        }
+
+        Ok(to_ret)
+
+    }
+
+    fn convert_drops(line: &str) -> Result<HashMap<String, String>, SimpleError> {
+        let mut to_ret: HashMap<String, String> = HashMap::new();
+        let drop_line = line.splitn(2,':').collect::<Vec<&str>>();
+        if drop_line.len() != 2 {
+            return Err(SimpleError::new(format!("Failed to parse drops:\n{}", line)));
+        }
+        for drops in drop_line[1].split('|') {
+            let drop = drops.trim().split(':').collect::<Vec<&str>>();
+            if drop.len() != 2 {
+                return Err(SimpleError::new(format!("Failed to parse drops:\n{}", drops)));
+            }
+            let range = drop[0].trim().to_string();
+            let value = drop[1].trim().to_string();
+            if to_ret.insert(range, value).is_some() {
+                return Err(SimpleError::new(format!("Failed to parse drops:\n{}", drops)));
+            }
+        }
+        Ok(to_ret)
+    }
+
+    fn convert_abilities(line: &str) -> Result<Option<Vec<String>>, SimpleError> {
+        let abilities = line.split(':').collect::<Vec<&str>>();
+        if abilities.len() != 2 {
+            return Err(SimpleError::new(format!("Failed to parse ability:\n{}", line)));
+        }
+
+        if abilities[0].trim().to_ascii_lowercase() != "abilities" {
+            return Err(SimpleError::new(format!("Failed to parse ability:\n{}", line)));
+        }
+
+        let abilities_list = abilities[1].trim().split(',').collect::<Vec<&str>>();
+        if abilities_list.len() == 1 && abilities_list[0].trim().to_ascii_lowercase() == "none" {
+            return Ok(None);
+        }
+
+        Ok(Some(abilities_list.iter().map(|a| a.trim().to_owned()).collect::<Vec<String>>()))
     }
 
     pub fn get_cr(&self, cr_to_get: u8) -> Option<Vec<&str>> {
@@ -364,7 +408,7 @@ struct BnbViruses;
 #[command("virus")]
 /// Get the description of the virus with that name, or suggestions if a virus with that name does not exist
 #[example = "Mettaur"]
-pub(crate) async fn send_virus(ctx: &mut Context, msg: &Message, args: Args) -> CommandResult {
+pub(crate) async fn send_virus(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
     if args.is_empty() {
         say!(ctx, msg, "you must provide a name");
         return Ok(());
@@ -387,7 +431,7 @@ pub(crate) async fn send_virus(ctx: &mut Context, msg: &Message, args: Args) -> 
 /// Get a list of all viruses which are of the given element
 #[example = "Elec"]
 pub(crate) async fn send_virus_element(
-    ctx: &mut Context,
+    ctx: &Context,
     msg: &Message,
     args: Args,
 ) -> CommandResult {
@@ -417,7 +461,7 @@ pub(crate) async fn send_virus_element(
 /// Get a list of all viruses which are of the given CR
 #[example = "4"]
 pub(crate) async fn send_virus_cr(
-    ctx: &mut Context,
+    ctx: &Context,
     msg: &Message,
     mut args: Args,
 ) -> CommandResult {
@@ -450,7 +494,7 @@ pub(crate) async fn send_virus_cr(
 #[example = "2-3 5"]
 #[example = "4 6"]
 pub(crate) async fn send_random_encounter(
-    ctx: &mut Context,
+    ctx: &Context,
     msg: &Message,
     mut args: Args,
 ) -> CommandResult {
@@ -531,7 +575,7 @@ pub(crate) fn virus_as_lib_obj(obj: Arc<Virus>) -> Arc<dyn LibraryObject> {
 /// Lists all viruses who are determined to be of a particular family, given the name of the
 /// first virus in it\nNote: Only guaranteed to work if they follow the 2 3 EX scheme
 #[example = "Swordy"]
-pub(crate) async fn send_family(ctx: &mut Context, msg: &Message, args: Args) -> CommandResult {
+pub(crate) async fn send_family(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
     if args.is_empty() {
         say!(ctx, msg, "you must provide a name");
         return Ok(());
