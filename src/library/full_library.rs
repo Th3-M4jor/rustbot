@@ -283,6 +283,8 @@ pub(crate) async fn search_full_library(ctx: &Context, msg: &Message, args: &[&s
 
 
 #[command("drops")]
+#[example("Widesword")]
+/// Returns a list of viruses who drop the given chip
 async fn chip_drop(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
     
     if args.is_empty() {
