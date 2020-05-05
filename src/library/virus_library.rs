@@ -11,7 +11,7 @@ use serenity::{
     prelude::*,
 };
 
-use serde::Serialize;
+use serde::{Serialize, Serializer, ser::SerializeMap};
 
 #[cfg(not(debug_assertions))]
 use serde_json;
@@ -43,8 +43,23 @@ pub struct Virus {
     pub mind: u8,
     pub body: u8,
     pub spirit: u8,
-    pub drops: HashMap<String, String>,
+    pub drops: VirusDrops,
     pub description: String,
+}
+
+pub struct VirusDrops {
+    pub table: Vec<(String, String)>,
+}
+
+impl Serialize for VirusDrops {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where S: Serializer {
+        let mut map = serializer.serialize_map(Some(self.table.len()))?;
+        for drop in &self.table {
+            map.serialize_entry(&drop.0, &drop.1)?;
+        }
+        map.end()
+    }
 }
 
 impl LibraryObject for Virus {
@@ -74,7 +89,7 @@ impl std::fmt::Display for Virus {
         };
 
         let mut drops_line = String::from("Drops: ");
-        let mut drop_list = self.drops.iter().map(|drop| format!("{}: {}", drop.0, drop.1)).collect::<Vec<String>>();
+        let mut drop_list = self.drops.table.iter().map(|drop| format!("{}: {}", drop.0, drop.1)).collect::<Vec<String>>();
         drop_list.sort_unstable();
         drops_line.push_str(&drop_list.join(" | "));
         
@@ -105,7 +120,7 @@ struct VirusSats {
     mind: u8,
     body: u8,
     spirit: u8,
-    drops: HashMap<String, String>,
+    drops: VirusDrops,
 }
 
 impl TypeMapKey for VirusLibrary {
@@ -158,7 +173,7 @@ impl VirusLibrary {
             .collect();
         //let mut curr_cr: u8 = 0;
         let mut index: usize = 1;
-
+        let mut premature_eof = None;
         let cr_cap = self.cr_regex.captures(virus_text_arr[0]).ok_or_else(|| SimpleError::new("Failed to capture first Virus CR"))?;
         let mut curr_cr = cr_cap[1].parse::<u8>().map_err(|_| SimpleError::new("Failed to parse first Virus CR"))?;
 
@@ -175,7 +190,8 @@ impl VirusLibrary {
             let virus_element = name_res[2].parse::<Elements>().map_err(|_| SimpleError::new(format!("Failed to parse virus element:\n{}", virus_text_arr[index])))?;
             index += 1;
             if index + 4 >= virus_text_arr.len() {
-                return Err(Box::new(SimpleError::new(format!("Unexpected end of file reached while parsing {}", virus_name))));
+                premature_eof = Some(Box::new(SimpleError::new(format!("Unexpected end of file reached while parsing {}", virus_name))));
+                break;
             }
             let stat_res = self.parse_stats(&virus_text_arr[index..=(index+4)]).map_err(|e| SimpleError::new(format!("Error at {}:\n{}\n{}", virus_name, e.as_str(), virus_text_arr[index])))?;
             index += 5;
@@ -217,6 +233,10 @@ impl VirusLibrary {
             fs::write("./virusCompendium.json", j)
                 .await
                 .expect("could not write to virusCompendium.json");
+        }
+
+        if let Some(err) = premature_eof {
+            return Err(err);
         }
 
         Ok(format!("{} viruses were loaded\n", self.library.len()))
@@ -279,8 +299,8 @@ impl VirusLibrary {
 
     }
 
-    fn convert_drops(line: &str) -> Result<HashMap<String, String>, SimpleError> {
-        let mut to_ret: HashMap<String, String> = HashMap::new();
+    fn convert_drops(line: &str) -> Result<VirusDrops, SimpleError> {
+        let mut table: Vec<(String, String)> = Vec::new();
         let drop_line = line.splitn(2,':').collect::<Vec<&str>>();
         if drop_line.len() != 2 {
             return Err(SimpleError::new(format!("Failed to parse drops:\n{}", line)));
@@ -292,11 +312,9 @@ impl VirusLibrary {
             }
             let range = drop[0].trim().to_string();
             let value = drop[1].trim().to_string();
-            if to_ret.insert(range, value).is_some() {
-                return Err(SimpleError::new(format!("Failed to parse drops:\n{}", drops)));
-            }
+            table.push((range, value));
         }
-        Ok(to_ret)
+        Ok(VirusDrops{table})
     }
 
     fn convert_abilities(line: &str) -> Result<Option<Vec<String>>, SimpleError> {
