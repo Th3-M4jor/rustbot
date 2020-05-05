@@ -83,10 +83,15 @@ impl ChipLibrary {
 
         let mut chips: Vec<BattleChip> = vec![];
         // let mut bad_chips: Vec<String> = vec![];
-        for i in (0..chip_text_arr.len()).step_by(2) {
-            let chip = BattleChip::from_chip_string(chip_text_arr[i], chip_text_arr[i + 1])
+        //for i in (0..chip_text_arr.len()).step_by(2) {
+        for val in chip_text_arr.iter().step_by(2).zip(chip_text_arr.iter().skip(1).step_by(2)) {
+            //let first_line = chip_text_arr.get(i).ok_or_else(|| SimpleError::new("Unexpected end of file while parsing chips"))?;
+            let first_line = val.0;
+            let second_line = val.1;
+            //let second_line = chip_text_arr.get(i + 1).ok_or_else(|| SimpleError::new("Unexpected end of file while parsing chips"))?;
+            let chip = BattleChip::from_chip_string(first_line, second_line)
                 .map_err(|_| {
-                    SimpleError::new(format!("Found an invalid chip:\n{}", chip_text_arr[i]))
+                    SimpleError::new(format!("Found an invalid chip:\n{}", first_line))
                 })?;
             chips.push(chip);
 

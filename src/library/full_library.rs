@@ -3,12 +3,14 @@ use tokio::sync::{RwLock, RwLockReadGuard};
 
 use crate::{
     library::{Library, LibraryObject},
+    ChipLibrary, VirusLibrary,
     util::{edit_message_by_id, has_reaction_perm},
 };
 
 use serenity::{
     model::channel::{Message, ReactionType},
     prelude::*,
+    framework::standard::{macros::*, Args, CommandResult},
 };
 use simple_error::SimpleError;
 
@@ -278,6 +280,48 @@ pub(crate) async fn search_full_library(ctx: &Context, msg: &Message, args: &[&s
         println!("Could not delete reactions: {:?}", why);
     }
 }
+
+
+#[command("drops")]
+async fn chip_drop(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
+    
+    if args.is_empty() {
+        say!(ctx, msg, "You must provide a chip name");
+        return Ok(());
+    }
+    let chip_name = args.current().unwrap();
+
+    let data = ctx.data.read().await;
+    let chip_library_lock = data.get::<ChipLibrary>().expect("No chip library");
+    let chip_library:  RwLockReadGuard<ChipLibrary> = chip_library_lock.read().await;
+    let chip_res = chip_library.search_lib_obj(chip_name);
+    let chip = match chip_res {
+        Ok(chip) => chip,
+        Err(chips) => {
+            say!(ctx, msg, format!("Did you mean: {}", chips.join(", ")));
+            return Ok(());
+        }
+    };
+    let virus_libary_lock = data.get::<VirusLibrary>().expect("No virus library");
+    let virus_libary: RwLockReadGuard<VirusLibrary> = virus_libary_lock.read().await;
+    let mut dropped_by: Vec<&str> = vec![];
+    for virus in virus_libary.get_collection().values() {
+        for drop in virus.drops.iter() {
+            if drop.1 == chip.name {
+                dropped_by.push(&virus.name);
+            }
+        }
+    }
+
+    if dropped_by.is_empty() {
+        say!(ctx, msg, format!("No known virus currently drops {}", chip.name));
+    } else {
+        say!(ctx, msg, format!("{} is dropped by: {}", chip.name, dropped_by.join(", ")));
+    }
+    
+    Ok(())
+}
+
 
 impl TypeMapKey for FullLibrary {
     type Value = RwLock<FullLibrary>;

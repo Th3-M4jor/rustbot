@@ -13,9 +13,9 @@ use serenity::{
 
 use serde::{Serialize, Serializer, ser::SerializeMap};
 
-#[cfg(not(debug_assertions))]
+//#[cfg(not(debug_assertions))]
 use serde_json;
-#[cfg(not(debug_assertions))]
+//#[cfg(not(debug_assertions))]
 use tokio::fs;
 
 use regex::Regex;
@@ -62,6 +62,12 @@ impl Serialize for VirusDrops {
     }
 }
 
+impl VirusDrops {
+    pub fn iter(&self) -> std::slice::Iter<(String, String)> {
+        self.table.iter()
+    }
+}
+
 impl LibraryObject for Virus {
     #[inline]
     fn get_name(&self) -> &str {
@@ -89,8 +95,7 @@ impl std::fmt::Display for Virus {
         };
 
         let mut drops_line = String::from("Drops: ");
-        let mut drop_list = self.drops.table.iter().map(|drop| format!("{}: {}", drop.0, drop.1)).collect::<Vec<String>>();
-        drop_list.sort_unstable();
+        let drop_list = self.drops.table.iter().map(|drop| format!("{}: {}", drop.0, drop.1)).collect::<Vec<String>>();
         drops_line.push_str(&drop_list.join(" | "));
         
         return write!(
@@ -189,11 +194,13 @@ impl VirusLibrary {
             //println!("{}", &name_res[2]);
             let virus_element = name_res[2].parse::<Elements>().map_err(|_| SimpleError::new(format!("Failed to parse virus element:\n{}", virus_text_arr[index])))?;
             index += 1;
-            if index + 4 >= virus_text_arr.len() {
+            let stat_chunk = if let Some(val) = virus_text_arr.get(index..=(index+4)) {
+                val
+            } else {
                 premature_eof = Some(Box::new(SimpleError::new(format!("Unexpected end of file reached while parsing {}", virus_name))));
                 break;
-            }
-            let stat_res = self.parse_stats(&virus_text_arr[index..=(index+4)]).map_err(|e| SimpleError::new(format!("Error at {}:\n{}\n{}", virus_name, e.as_str(), virus_text_arr[index])))?;
+            };
+            let stat_res = self.parse_stats(stat_chunk).map_err(|e| SimpleError::new(format!("Error at {}:\n{}\n{}", virus_name, e.as_str(), virus_text_arr[index])))?;
             index += 5;
             let mut description = String::new();
             while virus_text_arr.len() > index && !self.cr_regex.is_match(virus_text_arr[index]) && !self.virus_regex.is_match(virus_text_arr[index]) {
@@ -223,7 +230,7 @@ impl VirusLibrary {
 
         self.highest_cr = curr_cr;
 
-        #[cfg(not(debug_assertions))]
+        //#[cfg(not(debug_assertions))]
         {
             let mut viruses: Vec<&Arc<Virus>> = self.library.values().collect();
             viruses.sort_unstable_by(|a, b| a.c_r.cmp(&b.c_r).then_with(|| a.name.cmp(&b.name)));
@@ -235,11 +242,11 @@ impl VirusLibrary {
                 .expect("could not write to virusCompendium.json");
         }
 
-        if let Some(err) = premature_eof {
-            return Err(err);
+        return if let Some(err) = premature_eof {
+            Err(err)
+        } else {
+            Ok(format!("{} viruses were loaded\n", self.library.len()))
         }
-
-        Ok(format!("{} viruses were loaded\n", self.library.len()))
 
     }
 

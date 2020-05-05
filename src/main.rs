@@ -199,7 +199,7 @@ async fn help_command(
 struct Owner;
 
 #[group]
-#[commands(manager, phb, reload, get_blight, about_bot)]
+#[commands(manager, phb, reload, get_blight, about_bot, chip_drop)]
 /// Misc. commands related to BnB
 struct BnbGeneral;
 

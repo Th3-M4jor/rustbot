@@ -95,9 +95,9 @@ pub trait Library: TypeMapKey {
         Some(to_ret)
     }
 
-    fn search_lib_obj<'a>(&'a self, search: &str) -> Result<String, Vec<&'a str>> {
+    fn search_lib_obj<'a>(&'a self, search: &str) -> Result<&'a Self::LibObj, Vec<&'a str>> {
         if let Some(item) = self.get(search) {
-            return Ok(format!("{}", item));
+            return Ok(item);
         }
         let mut item_search;
 
@@ -108,7 +108,7 @@ pub trait Library: TypeMapKey {
 
         if item_search.len() == 1 {
             let found_item = self.get(&item_search[0]).unwrap();
-            return Ok(format!("{}", found_item));
+            return Ok(found_item);
         }
 
         item_search.dedup();
