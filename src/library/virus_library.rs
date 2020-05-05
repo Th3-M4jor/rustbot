@@ -174,6 +174,9 @@ impl VirusLibrary {
             //println!("{}", &name_res[2]);
             let virus_element = name_res[2].parse::<Elements>().map_err(|_| SimpleError::new(format!("Failed to parse virus element:\n{}", virus_text_arr[index])))?;
             index += 1;
+            if index + 4 >= virus_text_arr.len() {
+                return Err(Box::new(SimpleError::new(format!("Unexpected end of file reached while parsing {}", virus_name))));
+            }
             let stat_res = self.parse_stats(&virus_text_arr[index..=(index+4)]).map_err(|e| SimpleError::new(format!("Error at {}:\n{}\n{}", virus_name, e.as_str(), virus_text_arr[index])))?;
             index += 5;
             let mut description = String::new();
@@ -199,6 +202,7 @@ impl VirusLibrary {
             if self.library.insert(virus.name.to_ascii_lowercase(), virus).is_some() {
                 return Err(Box::new(SimpleError::new(format!("Duplicate virus name found: {}", virus_name))));
             }
+            tokio::task::yield_now().await;
         }
 
         self.highest_cr = curr_cr;
