@@ -13,9 +13,9 @@ use serenity::{
 
 use serde::{Serialize, Serializer, ser::SerializeMap};
 
-//#[cfg(not(debug_assertions))]
+#[cfg(not(debug_assertions))]
 use serde_json;
-//#[cfg(not(debug_assertions))]
+#[cfg(not(debug_assertions))]
 use tokio::fs;
 
 use regex::Regex;
@@ -230,7 +230,7 @@ impl VirusLibrary {
 
         self.highest_cr = curr_cr;
 
-        //#[cfg(not(debug_assertions))]
+        #[cfg(not(debug_assertions))]
         {
             let mut viruses: Vec<&Arc<Virus>> = self.library.values().collect();
             viruses.sort_unstable_by(|a, b| a.c_r.cmp(&b.c_r).then_with(|| a.name.cmp(&b.name)));
