@@ -324,6 +324,20 @@ async fn chip_drop(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
     Ok(())
 }
 
+pub(crate) fn check_virus_drops(virus_lib: &VirusLibrary, chip_lib: &ChipLibrary) -> Result<(), SimpleError> {
+    for virus in virus_lib.get_collection().values() {
+        for drop in virus.drops.iter() {
+            if drop.1.to_ascii_lowercase().contains("zenny") {
+                continue;
+            }
+            if chip_lib.get(&drop.1).is_none() {
+                return Err(SimpleError::new(format!("Warning, {} drops {} at {}, however it is not in the chip library", virus.name, drop.1, drop.0)));
+            }
+        }
+    }
+    Ok(())
+}
+
 
 impl TypeMapKey for FullLibrary {
     type Value = RwLock<FullLibrary>;

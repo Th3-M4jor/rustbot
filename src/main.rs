@@ -363,6 +363,14 @@ async fn reload(ctx: &Context, msg: &Message, _: Args) -> CommandResult {
         str_to_send.push_str(&format!("\nfull duplicates: {:?}", full_duplicates));
     }
 
+    let virus_lib_lock = data.get::<VirusLibrary>().expect("virus library not found");
+    let chip_lib_lock = data.get::<ChipLibrary>().expect("chip library not found");
+    let chip_lib = chip_lib_lock.read().await;
+    let virus_lib = virus_lib_lock.read().await;
+
+    if let Err(why) = check_virus_drops(&virus_lib, &chip_lib) {
+        str_to_send.push_str(&why.to_string());
+    }
     say!(ctx, msg, str_to_send);
     return Ok(());
 }
@@ -493,12 +501,17 @@ async fn main() {
                 println!("{}", e.to_string());
             }
         }
+
         
         // println!("{} programs loaded", ncp_count);
         let mut virus_library = virus_library_mutex.write().await;
         match virus_library.load_viruses().await {
             Ok(s) => println!("{}", s),
             Err(e) => println!("{}", e.to_string()),
+        }
+
+        if let Err(why) = check_virus_drops(&virus_library, &chip_library) {
+            println!("{}", why.as_str());
         }
 
         let mut full_library = full_library_mutex.write().await;
