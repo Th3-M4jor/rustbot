@@ -109,53 +109,55 @@ impl NCPLibrary {
             .split('\n')
             .filter(|&i| !i.trim().is_empty())
             .collect();
-        let mut curr_color: String = String::new();
-        // let mut new_color : String;
-        for ncp in ncp_text_arr {
-            if COLORS.contains(&ncp.trim().to_lowercase().as_str()) {
-                curr_color = String::from(ncp.trim());
-                continue;
+        self.library = tokio::task::block_in_place(|| {
+            let mut curr_color: String = String::new();
+            // let mut new_color : String;
+            for ncp in ncp_text_arr {
+                if COLORS.contains(&ncp.trim().to_lowercase().as_str()) {
+                    curr_color = String::from(ncp.trim());
+                    continue;
+                }
+
+                let ncp_cap_res = NCP_TEST.captures(ncp);
+                let ncp_cap;
+                match ncp_cap_res {
+                    Some(val) => ncp_cap = val,
+                    None => continue,
+                }
+                let name = ncp_cap.get(1);
+                let cost = ncp_cap.get(2);
+                let desc = ncp_cap.get(3);
+                if name.is_none() || cost.is_none() || desc.is_none() {
+                    continue;
+                }
+                let cost_val = cost
+                    .unwrap()
+                    .as_str()
+                    .parse::<u8>()
+                    .unwrap_or(u8::max_value());
+                ncp_list.push(NCP::new(
+                    name.unwrap().as_str(),
+                    cost_val,
+                    &curr_color,
+                    ncp,
+                    desc.unwrap().as_str(),
+                ));
             }
 
-            let ncp_cap_res = NCP_TEST.captures(ncp);
-            let ncp_cap;
-            match ncp_cap_res {
-                Some(val) => ncp_cap = val,
-                None => continue,
+            // only write json file if not debug
+            #[cfg(not(debug_assertions))]
+            {
+                let j =
+                    serde_json::to_string_pretty(&ncp_list).expect("could not serialize to json");
+                std::fs::write("naviCust.json", j).expect("could not write to naviCust.json");
             }
-            let name = ncp_cap.get(1);
-            let cost = ncp_cap.get(2);
-            let desc = ncp_cap.get(3);
-            if name.is_none() || cost.is_none() || desc.is_none() {
-                continue;
+            let mut new_lib = HashMap::new();
+            while !ncp_list.is_empty() {
+                let ncp = ncp_list.pop().unwrap();
+                new_lib.insert(ncp.name.to_lowercase(), Arc::new(ncp));
             }
-            let cost_val = cost
-                .unwrap()
-                .as_str()
-                .parse::<u8>()
-                .unwrap_or(u8::max_value());
-            ncp_list.push(NCP::new(
-                name.unwrap().as_str(),
-                cost_val,
-                &curr_color,
-                ncp,
-                desc.unwrap().as_str(),
-            ));
-            tokio::task::yield_now().await;
-        }
-
-        // only write json file if not debug
-        #[cfg(not(debug_assertions))]
-        {
-            let j = serde_json::to_string_pretty(&ncp_list).expect("could not serialize to json");
-            fs::write("naviCust.json", j)
-                .await
-                .expect("could not write to naviCust.json");
-        }
-        while !ncp_list.is_empty() {
-            let ncp = ncp_list.pop().unwrap();
-            self.library.insert(ncp.name.to_lowercase(), Arc::new(ncp));
-        }
+            new_lib
+        });
         Ok(self.library.len())
     }
 

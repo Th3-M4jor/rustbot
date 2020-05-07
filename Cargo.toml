@@ -19,7 +19,7 @@ unicode-normalization = "*"
 rand = "*"
 strsim = "*"
 chrono = "*"
-tokio  = { version = "0.2", features = ["rt-core", "time", "sync", "fs", "macros", "rt-util"] }
+tokio  = { version = "0.2", features = ["rt-threaded", "time", "sync", "fs", "macros", "rt-util", "blocking"] }
 serenity = { git = "https://github.com/Lakelezz/serenity.git", features = ["framework", "standard_framework", "collector"], branch = "await" }
 futures = "*"
 log = "*"

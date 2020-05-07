@@ -472,7 +472,6 @@ async fn main() {
     let blight_mutex = RwLock::new(Blights::new());
 
     {
-        
         let mut blights = blight_mutex.write().await;
         match blights.load().await {
             Ok(()) => {
@@ -502,7 +501,6 @@ async fn main() {
             }
         }
 
-        
         // println!("{} programs loaded", ncp_count);
         let mut virus_library = virus_library_mutex.write().await;
         match virus_library.load_viruses().await {
@@ -534,9 +532,8 @@ async fn main() {
             }
         }
         println!("Full library loaded, size is {}", full_library.len());
-        
     }
-    
+
     let mut owners = std::collections::HashSet::new();
     let owner_id = serenity::model::id::UserId::from(config.owner);
     owners.insert(owner_id);
@@ -566,29 +563,32 @@ async fn main() {
     // let mut client = Client::new_with_framework(&config.token, Handler, framework)
     // .await
     // .expect("Err creating client");
-    let mut client = Client::new(&config.token).event_handler(Handler).framework(framework).intents(
-        GatewayIntents::GUILD_MESSAGE_REACTIONS
-        | GatewayIntents::DIRECT_MESSAGES
-        | GatewayIntents::GUILD_MESSAGES
-        | GatewayIntents::GUILDS,
-    ).await.expect("Err creating client");
-    
-    /*
-    let mut client = Client::new_with_extras(&config.token, move |f| {
-        f.framework(framework)
-            .intents(
-                GatewayIntents::GUILD_MESSAGE_REACTIONS
-                    | GatewayIntents::DIRECT_MESSAGES
-                    | GatewayIntents::GUILD_MESSAGES
-                    | GatewayIntents::GUILDS,
-            )
-            .event_handler(Handler)
-    })
-    .await
-    .expect("Err creating client");
-    */
+    let mut client = Client::new(&config.token)
+        .event_handler(Handler)
+        .framework(framework)
+        .intents(
+            GatewayIntents::GUILD_MESSAGE_REACTIONS
+                | GatewayIntents::DIRECT_MESSAGES
+                | GatewayIntents::GUILD_MESSAGES
+                | GatewayIntents::GUILDS,
+        )
+        .await
+        .expect("Err creating client");
+
+    // let mut client = Client::new_with_extras(&config.token, move |f| {
+    // f.framework(framework)
+    // .intents(
+    // GatewayIntents::GUILD_MESSAGE_REACTIONS
+    // | GatewayIntents::DIRECT_MESSAGES
+    // | GatewayIntents::GUILD_MESSAGES
+    // | GatewayIntents::GUILDS,
+    // )
+    // .event_handler(Handler)
+    // })
+    // .await
+    // .expect("Err creating client");
     // set scope to ensure that lock is released immediately
-    
+
     {
         let mut data = client.data.write().await;
         data.insert::<ChipLibrary>(chip_library_mutex);
@@ -601,17 +601,15 @@ async fn main() {
         data.insert::<ShardManagerContainer>(Arc::clone(&client.shard_manager));
         data.insert::<DmOwner>(AtomicBool::new(true));
     }
-    
+
     // Finally, start a single shard, and start listening to events.
     //
     // Shards will automatically attempt to reconnect, and will perform
     // exponential backoff until it reconnects.
 
-    
     if let Err(why) = client.start().await {
         println!("Client error: {:?}", why);
     } else {
         println!("Bot shutdown successfully");
     }
-    
 }

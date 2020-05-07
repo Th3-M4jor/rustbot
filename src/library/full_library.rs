@@ -3,14 +3,14 @@ use tokio::sync::{RwLock, RwLockReadGuard};
 
 use crate::{
     library::{Library, LibraryObject},
-    ChipLibrary, VirusLibrary,
     util::{edit_message_by_id, has_reaction_perm},
+    ChipLibrary, VirusLibrary,
 };
 
 use serenity::{
+    framework::standard::{macros::*, Args, CommandResult},
     model::channel::{Message, ReactionType},
     prelude::*,
-    framework::standard::{macros::*, Args, CommandResult},
 };
 use simple_error::SimpleError;
 
@@ -281,12 +281,10 @@ pub(crate) async fn search_full_library(ctx: &Context, msg: &Message, args: &[&s
     }
 }
 
-
 #[command("drops")]
 #[example("Widesword")]
 /// Returns a list of viruses who drop the given chip
 async fn chip_drop(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
-    
     if args.is_empty() {
         say!(ctx, msg, "You must provide a chip name");
         return Ok(());
@@ -295,7 +293,7 @@ async fn chip_drop(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
 
     let data = ctx.data.read().await;
     let chip_library_lock = data.get::<ChipLibrary>().expect("No chip library");
-    let chip_library:  RwLockReadGuard<ChipLibrary> = chip_library_lock.read().await;
+    let chip_library: RwLockReadGuard<ChipLibrary> = chip_library_lock.read().await;
     let chip_res = chip_library.search_lib_obj(chip_name);
     let chip = match chip_res {
         Ok(chip) => chip,
@@ -316,28 +314,41 @@ async fn chip_drop(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
     }
 
     if dropped_by.is_empty() {
-        say!(ctx, msg, format!("No known virus currently drops {}", chip.name));
+        say!(
+            ctx,
+            msg,
+            format!("No known virus currently drops {}", chip.name)
+        );
     } else {
-        say!(ctx, msg, format!("{} is dropped by: {}", chip.name, dropped_by.join(", ")));
+        say!(
+            ctx,
+            msg,
+            format!("{} is dropped by: {}", chip.name, dropped_by.join(", "))
+        );
     }
-    
+
     Ok(())
 }
 
-pub(crate) fn check_virus_drops(virus_lib: &VirusLibrary, chip_lib: &ChipLibrary) -> Result<(), SimpleError> {
+pub(crate) fn check_virus_drops(
+    virus_lib: &VirusLibrary,
+    chip_lib: &ChipLibrary,
+) -> Result<(), SimpleError> {
     for virus in virus_lib.get_collection().values() {
         for drop in virus.drops.iter() {
             if drop.1.to_ascii_lowercase().contains("zenny") {
                 continue;
             }
             if chip_lib.get(&drop.1).is_none() {
-                return Err(SimpleError::new(format!("Warning, {} drops {} at {}, however it is not in the chip library", virus.name, drop.1, drop.0)));
+                return Err(SimpleError::new(format!(
+                    "Warning, {} drops {} at {}, however it is not in the chip library",
+                    virus.name, drop.1, drop.0
+                )));
             }
         }
     }
     Ok(())
 }
-
 
 impl TypeMapKey for FullLibrary {
     type Value = RwLock<FullLibrary>;

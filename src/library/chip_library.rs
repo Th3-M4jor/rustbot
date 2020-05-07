@@ -62,15 +62,10 @@ impl ChipLibrary {
             tokio::join!(chip_text_future, custom_chip_text_future);
 
         let chip_text = chip_text_res?;
-        // get chip text and replace necessary characters for compatibility
-        // let chip_text = ChipLibrary::get_chip_text(&self.chip_url).await;
         let mut chip_text_arr: Vec<&str> = chip_text
             .split('\n')
             .filter(|&i| !i.trim().is_empty())
             .collect();
-
-        // load in custom chips if any
-        // let special_chips_res = ChipLibrary::get_custom_chip_text(&self.custom_chip_url).await;
         let special_chip_text;
         if special_chips_res.is_some() {
             special_chip_text = special_chips_res.unwrap();
@@ -80,41 +75,42 @@ impl ChipLibrary {
                 .collect();
             chip_text_arr.append(special_chip_arr.borrow_mut());
         }
+        self.chips = tokio::task::block_in_place(move || {
+            let mut chips: Vec<BattleChip> = vec![];
+            for val in chip_text_arr
+                .iter()
+                .step_by(2)
+                .zip(chip_text_arr.iter().skip(1).step_by(2))
+            {
+                let first_line = val.0;
+                let second_line = val.1;
+                let chip = match BattleChip::from_chip_string(first_line, second_line) {
+                    Ok(val) => val,
+                    Err(_) => {
+                        return Err(SimpleError::new(format!(
+                            "Found an invalid chip:\n{}",
+                            first_line
+                        )))
+                    }
+                };
+                chips.push(chip);
+            }
+            chips.shrink_to_fit();
+            chips.sort_unstable();
 
-        let mut chips: Vec<BattleChip> = vec![];
-        // let mut bad_chips: Vec<String> = vec![];
-        //for i in (0..chip_text_arr.len()).step_by(2) {
-        for val in chip_text_arr.iter().step_by(2).zip(chip_text_arr.iter().skip(1).step_by(2)) {
-            //let first_line = chip_text_arr.get(i).ok_or_else(|| SimpleError::new("Unexpected end of file while parsing chips"))?;
-            let first_line = val.0;
-            let second_line = val.1;
-            //let second_line = chip_text_arr.get(i + 1).ok_or_else(|| SimpleError::new("Unexpected end of file while parsing chips"))?;
-            let chip = BattleChip::from_chip_string(first_line, second_line)
-                .map_err(|_| {
-                    SimpleError::new(format!("Found an invalid chip:\n{}", first_line))
-                })?;
-            chips.push(chip);
-
-            // yield after each chip parsed to avoid blocking
-            tokio::task::yield_now().await;
-        }
-
-        chips.shrink_to_fit();
-        chips.sort_unstable();
-
-        // only write json file if not debug
-        #[cfg(not(debug_assertions))]
-        {
-            let j = serde_json::to_string_pretty(&chips).expect("could not serialize to json");
-            fs::write("chips.json", j)
-                .await
-                .expect("could not write to chips.json");
-        }
-
-        while !chips.is_empty() {
-            let chip = chips.pop().expect("Something went wrong popping a chip");
-            self.chips.insert(chip.name.to_lowercase(), Arc::new(chip));
-        }
+            // only write json file if not debug
+            #[cfg(not(debug_assertions))]
+            {
+                let j = serde_json::to_string_pretty(&chips).expect("could not serialize to json");
+                std::fs::write("chips.json", j).expect("could not write to chips.json");
+            }
+            let mut new_chips = HashMap::new();
+            while !chips.is_empty() {
+                let chip = chips.pop().expect("Something went wrong popping a chip");
+                new_chips.insert(chip.name.to_lowercase(), Arc::new(chip));
+            }
+            Ok(new_chips)
+        })?;
 
         Ok(self.chips.len())
     }
@@ -313,11 +309,7 @@ async fn send_chip_skill_check(ctx: &Context, msg: &Message, mut args: Args) -> 
 #[command("element")]
 /// get a list of chips which are of the specified element
 #[example = "Aqua"]
-async fn send_chip_element(
-    ctx: &Context,
-    msg: &Message,
-    args: Args,
-) -> CommandResult {
+async fn send_chip_element(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
     if args.is_empty() {
         say!(ctx, msg, "you must provide an element");
         return Ok(());
