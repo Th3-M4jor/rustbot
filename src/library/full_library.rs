@@ -8,7 +8,7 @@ use crate::{
 };
 
 use serenity::{
-    framework::standard::{macros::*, Args, CommandResult},
+    framework::standard::{macros::command, Args, CommandResult},
     model::channel::{Message, ReactionType},
     prelude::*,
 };
@@ -26,7 +26,7 @@ impl FullLibrary {
             library: HashMap::new(),
         }
     }
-
+#[allow(clippy::map_entry)]
     pub fn insert(&mut self, obj: Arc<dyn LibraryObject>) -> Result<(), SimpleError> {
         let res = if self.library.contains_key(&obj.get_name().to_lowercase()) {
             let dup = match obj.get_kind() {

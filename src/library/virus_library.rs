@@ -6,7 +6,7 @@ use rand::distributions::{Distribution, Uniform};
 use rand::rngs::ThreadRng;
 
 use serenity::{
-    framework::standard::{macros::*, Args, CommandResult},
+    framework::standard::{macros::{command, group}, Args, CommandResult},
     model::channel::Message,
     prelude::*,
 };
@@ -304,11 +304,11 @@ impl VirusLibrary {
                 .expect("could not write to virusCompendium.json");
         }
 
-        return if let Some(err) = premature_eof {
+        if let Some(err) = premature_eof {
             Err(err)
         } else {
             Ok(format!("{} viruses were loaded\n", self.library.len()))
-        };
+        }
     }
 
     fn parse_stats(&self, lines: &[&str]) -> Result<VirusSats, SimpleError> {
@@ -499,9 +499,7 @@ impl VirusLibrary {
     }
 
     fn get_family(&self, name: &str) -> Option<Vec<&str>> {
-        if self.get(&name.to_lowercase()).is_none() {
-            return None;
-        }
+        self.get(&name.to_lowercase())?;
         let mut viruses = self.name_contains(name, Some(usize::max_value()))?;
         if viruses.len() == 1 {
             return Some(viruses);

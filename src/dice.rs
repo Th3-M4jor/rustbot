@@ -3,7 +3,7 @@ use rand::{
     rngs::ThreadRng,
 };
 use serenity::{
-    framework::standard::{macros::*, Args, CommandResult},
+    framework::standard::{macros::{command, group}, Args, CommandResult},
     model::channel::Message,
     prelude::*,
 };

@@ -1,7 +1,7 @@
 #[cfg(not(debug_assertions))]
 use serde_json;
 use serenity::{
-    framework::standard::{macros::*, Args, CommandResult},
+    framework::standard::{macros::{command, group}, Args, CommandResult},
     model::channel::Message,
     prelude::*,
 };

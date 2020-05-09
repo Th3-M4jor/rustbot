@@ -3,7 +3,7 @@ use tokio::sync::RwLock;
 
 use serde::Serialize;
 use serenity::{
-    framework::standard::{macros::*, Args, CommandResult},
+    framework::standard::{macros::{command, group}, Args, CommandResult},
     model::channel::Message,
     prelude::*,
 };

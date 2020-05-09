@@ -1,8 +1,8 @@
-use crate::util::*;
+use crate::util::build_time_rem;
 use chrono::prelude::*;
-use market::*;
+use market::MARKET_COMMAND;
 use serenity::{
-    framework::standard::{macros::*, Args, CommandResult},
+    framework::standard::{macros::{command, group}, Args, CommandResult},
     model::channel::Message,
     prelude::*,
 };
@@ -16,6 +16,7 @@ const WARFRAME_URL: &str = "https://api.warframestat.us/pc";
 // https://docs.google.com/document/d/1121cjBNN4BeZdMBGil6Qbuqse-sWpEXPpitQH5fb_Fo/edit#heading=h.yi84u2lickud
 // URL for warframe market API
 
+#[allow(clippy::module_name_repetitions)]
 pub struct WarframeData {
     data: Arc<RwLock<serde_json::Value>>,
 }

@@ -13,6 +13,8 @@ use strsim::jaro_winkler;
 
 use std::ops::Deref;
 
+
+#[allow(clippy::module_name_repetitions)]
 pub trait LibraryObject: std::fmt::Display + Send + Sync {
     fn get_name(&self) -> &str;
 
@@ -29,6 +31,7 @@ impl<T: LibraryObject + ?Sized> LibraryObject for Arc<T> {
     }
 }
 
+#[allow(clippy::module_name_repetitions)]
 pub trait Library: TypeMapKey {
     type LibObj: LibraryObject;
 

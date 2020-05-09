@@ -10,7 +10,7 @@ use serenity::{
     async_trait,
     client::bridge::gateway::GatewayIntents,
     framework::standard::{
-        help_commands, macros::*, Args, CheckResult, CommandError, CommandGroup, CommandOptions,
+        help_commands, macros::{check, command, group, help, hook}, Args, CheckResult, CommandError, CommandGroup, CommandOptions,
         CommandResult, HelpOptions, StandardFramework,
     },
     model::{
@@ -26,16 +26,20 @@ use serenity::{
 use crate::{
     bot_data::BotData,
     library::{
-        blights::*, chip_library::*, full_library::*, ncp_library::*, virus_library::*, Library,
+        blights::{Blights, GET_BLIGHT_COMMAND},
+        chip_library::{BNBCHIPS_GROUP, BNBSKILLS_GROUP, ChipLibrary, battlechip_as_lib_obj},
+        full_library::{CHIP_DROP_COMMAND, FullLibrary, check_virus_drops, search_full_library},
+        ncp_library::{BNBNCPS_GROUP, NCPLibrary, ncp_as_lib_obj},
+        virus_library::{BNBVIRUSES_GROUP, VirusLibrary, virus_as_lib_obj},
+        Library,
         LibraryObject,
     },
-    warframe::*,
+    warframe::{WARFRAME_GROUP, WarframeData},
 };
 
-use crate::{dice::*, util::*};
+use crate::{dice::DICE_GROUP, util::{AUDIT_COMMAND, DIE_COMMAND, MANAGER_COMMAND, PHB_COMMAND, ShardManagerContainer, send_long_message}};
 use std::fs;
 
-// use regex::Replacer;
 #[macro_use]
 mod util;
 mod bot_data;
@@ -43,7 +47,6 @@ mod dice;
 mod library;
 mod warframe;
 
-// type BotCommand = fn(Context, &Message, &[&str]) -> ();
 
 type ReloadOkType = (String, Vec<Arc<dyn LibraryObject>>);
 type ReloadReturnType = Result<ReloadOkType, Box<dyn std::error::Error + Send + Sync>>;
@@ -68,7 +71,7 @@ lazy_static! {
 
 #[async_trait]
 impl EventHandler for Handler {
-    async fn cache_ready(&self, ctx: Context, _guilds: Vec<GuildId>) {
+    async fn cache_ready(&self, ctx: Context, _: Vec<GuildId>) {
         if FIRST_CACHE_READY.compare_and_swap(false, true, Ordering::AcqRel) {
             // previous value was already true, return
             return;
@@ -107,8 +110,6 @@ impl EventHandler for Handler {
             );
         }
 
-        // tokio::time::delay_for(std::time::Duration::from_secs(3)).await;
-
         {
             let data = ctx.data.read().await;
             let config = data.get::<BotData>().expect("no bot data, panicking");
@@ -123,8 +124,6 @@ impl EventHandler for Handler {
     }
 
     async fn resume(&self, ctx: Context, resumed: ResumedEvent) {
-        // let owner = fetch_owner(&ctx).await.expect("Could not fetch owner");
-        // let owner_user = owner.user.read().await;
         let message_to_owner = "resume event was emitted";
 
         if let Err(why) = dm_owner(&ctx, message_to_owner).await {
@@ -395,13 +394,9 @@ async fn shut_up(ctx: &Context, msg: &Message, _: Args) -> CommandResult {
         let data = ctx.data.read().await;
 
         // fetch and xor means fewer operations whole true ^ true is false, and true ^ false is true;
-        let _res = data
-            .get::<DmOwner>()
+        data.get::<DmOwner>()
             .expect("No DM Owner setting found")
             .fetch_xor(true, Ordering::Relaxed);
-
-        #[cfg(debug_assertions)]
-        println!("DMing owner set to: {}", !_res);
     }
     msg.react(ctx, '\u{1f44d}').await?;
     return Ok(());
