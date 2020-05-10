@@ -138,7 +138,7 @@ impl ChipLibrary {
         Some(res)
     }
 
-    pub fn search_element(&self, to_get: &str) -> Option<Vec<&str>> {
+    pub fn search_element(&self, to_get: &str) -> Option<Vec<&Arc<BattleChip>>> {
         // let elem_res = Elements::from_str(to_get);
 
         let elem_to_get = Elements::from_str(to_get).ok()?;
@@ -146,7 +146,7 @@ impl ChipLibrary {
         self.search_any(elem_to_get, |a, b| a.element.contains(&b))
     }
 
-    pub fn search_skill(&self, to_get: &str) -> Option<Vec<&str>> {
+    pub fn search_skill(&self, to_get: &str) -> Option<Vec<&Arc<BattleChip>>> {
         let skill_to_get = Skills::from_str(to_get).ok()?;
 
         // special case for where you want chips with more than one possible skill
@@ -157,19 +157,19 @@ impl ChipLibrary {
         }
     }
 
-    pub fn search_skill_target(&self, to_get: &str) -> Option<Vec<&str>> {
+    pub fn search_skill_target(&self, to_get: &str) -> Option<Vec<&Arc<BattleChip>>> {
         let skill_to_get = Skills::from_str(to_get).ok()?;
 
         self.search_any(skill_to_get, |a, b| a.skill_target == b)
     }
 
-    pub fn search_skill_user(&self, to_get: &str) -> Option<Vec<&str>> {
+    pub fn search_skill_user(&self, to_get: &str) -> Option<Vec<&Arc<BattleChip>>> {
         let skill_to_get = Skills::from_str(to_get).ok()?;
 
         self.search_any(skill_to_get, |a, b| a.skill_user == b)
     }
 
-    pub fn search_skill_check(&self, to_get: &str) -> Option<Vec<&str>> {
+    pub fn search_skill_check(&self, to_get: &str) -> Option<Vec<&Arc<BattleChip>>> {
         // return search_skill_spec!(val.SkillTarget == skill_to_get || val.SkillUser == skill_to_get);
         let skill_to_get = Skills::from_str(to_get).ok()?;
 
@@ -222,12 +222,9 @@ async fn send_chip(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
     // let library = locked_library.read().expect("library was poisoned");
     // search!(ctx, msg, to_get, library);
 
-    match library.search_lib_obj(to_get) {
-        Ok(val) => say!(ctx, msg, val),
-        Err(val) => say!(ctx, msg, format!("Did you mean: {}", val.join(", "))),
-    }
-    // say!(ctx, msg, search_lib_obj(to_get, library));
-    return Ok(());
+
+    library.reaction_name_search(ctx, msg, to_get).await;
+    Ok(())
 }
 
 #[command("skill")]
@@ -243,7 +240,10 @@ async fn send_chip_skill(ctx: &Context, msg: &Message, mut args: Args) -> Comman
     let library_lock = data.get::<ChipLibrary>().expect("chip library not found");
     let library: RwLockReadGuard<ChipLibrary> = library_lock.read().await;
     match library.search_skill(&skill) {
-        Some(chips) => long_say!(ctx, msg, chips, ", "),
+        Some(chips) => {
+            let to_send = chips.iter().map(|a| a.get_name()).collect::<Vec<&str>>();
+            long_say!(ctx, msg, to_send, ", ")
+        },
         None => say!(ctx, msg, "nothing matched your search"),
     }
     return Ok(());
@@ -262,7 +262,10 @@ async fn send_chip_skill_user(ctx: &Context, msg: &Message, mut args: Args) -> C
     let library_lock = data.get::<ChipLibrary>().expect("chip library not found");
     let library: RwLockReadGuard<ChipLibrary> = library_lock.read().await;
     match library.search_skill_user(&skill) {
-        Some(chips) => long_say!(ctx, msg, chips, ", "),
+        Some(chips) => {
+            let to_send = chips.iter().map(|a| a.get_name()).collect::<Vec<&str>>();
+            long_say!(ctx, msg, to_send, ", ")
+        },
         None => say!(ctx, msg, "nothing matched your search"),
     }
     return Ok(());
@@ -281,7 +284,10 @@ async fn send_chip_skill_target(ctx: &Context, msg: &Message, mut args: Args) ->
     let library_lock = data.get::<ChipLibrary>().expect("chip library not found");
     let library: RwLockReadGuard<ChipLibrary> = library_lock.read().await;
     match library.search_skill_target(&skill) {
-        Some(chips) => long_say!(ctx, msg, chips, ", "),
+        Some(chips) => {
+            let to_send = chips.iter().map(|a| a.get_name()).collect::<Vec<&str>>();
+            long_say!(ctx, msg, to_send, ", ")
+        },
         None => say!(ctx, msg, "nothing matched your search"),
     }
     return Ok(());
@@ -300,7 +306,10 @@ async fn send_chip_skill_check(ctx: &Context, msg: &Message, mut args: Args) -> 
     let library_lock = data.get::<ChipLibrary>().expect("chip library not found");
     let library: RwLockReadGuard<ChipLibrary> = library_lock.read().await;
     match library.search_skill_check(&skill) {
-        Some(chips) => long_say!(ctx, msg, chips, ", "),
+        Some(chips) => {
+            let to_send = chips.iter().map(|a| a.get_name()).collect::<Vec<&str>>();
+            long_say!(ctx, msg, to_send, ", ")
+        },
         None => say!(ctx, msg, "nothing matched your search"),
     }
     return Ok(());
@@ -321,7 +330,10 @@ async fn send_chip_element(ctx: &Context, msg: &Message, args: Args) -> CommandR
     let elem_res = library.search_element(args.rest());
 
     match elem_res {
-        Some(elem) => long_say!(ctx, msg, elem, ", "),
+        Some(chips) => {
+            let to_send = chips.iter().map(|a| a.get_name()).collect::<Vec<&str>>();
+            long_say!(ctx, msg, to_send, ", ")
+        },
         None => say!(
             ctx,
             msg,

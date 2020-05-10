@@ -1,15 +1,15 @@
-use std::{collections::HashMap, sync::Arc, time::Duration};
+use std::{collections::HashMap, sync::Arc};
 use tokio::sync::{RwLock, RwLockReadGuard};
 
 use crate::{
     library::{Library, LibraryObject},
-    util::{edit_message_by_id, has_reaction_perm},
+    util::{edit_message_by_id, has_reaction_perm, reaction_did_you_mean},
     ChipLibrary, VirusLibrary,
 };
 
 use serenity::{
     framework::standard::{macros::command, Args, CommandResult},
-    model::channel::{Message, ReactionType},
+    model::channel::Message,
     prelude::*,
 };
 use simple_error::SimpleError;
@@ -131,18 +131,6 @@ impl Library for FullLibrary {
     }
 }
 
-const NUMBERS: &[&str] = &[
-    "\u{31}\u{fe0f}\u{20e3}", // 1
-    "\u{32}\u{fe0f}\u{20e3}", // 2
-    "\u{33}\u{fe0f}\u{20e3}", // 3
-    "\u{34}\u{fe0f}\u{20e3}", // 4
-    "\u{35}\u{fe0f}\u{20e3}", // 5
-    "\u{36}\u{fe0f}\u{20e3}", // 6
-    "\u{37}\u{fe0f}\u{20e3}", // 7
-    "\u{38}\u{fe0f}\u{20e3}", // 8
-    "\u{39}\u{fe0f}\u{20e3}", // 9
-];
-
 pub(crate) async fn search_full_library(ctx: &Context, msg: &Message, args: &[&str]) {
     let to_search = args.join(" ");
     let data = ctx.data.read().await;
@@ -160,7 +148,7 @@ pub(crate) async fn search_full_library(ctx: &Context, msg: &Message, args: &[&s
     if !has_reaction_perm(ctx, msg.channel_id).await {
         match library.search_lib_obj(&to_search) {
             Ok(val) => say!(ctx, msg, val),
-            Err(val) => say!(ctx, msg, format!("Did you mean: {}", val.join(", "))),
+            Err(val) => say!(ctx, msg, format!("Did you mean: {}", val.iter().map(|a| format!("{} ({})",a.get_name(), a.get_kind())).collect::<Vec<String>>().join(", "))),
         }
         return;
     }
@@ -180,11 +168,11 @@ pub(crate) async fn search_full_library(ctx: &Context, msg: &Message, args: &[&s
 
     let mut msg_string = String::from("Did you mean: ");
     let mut num: isize = 1;
-    for obj in &res {
+    for obj in res.iter() {
         msg_string.push_str(&num.to_string());
         msg_string.push_str(": ");
         // msg_string.push_str(&(*obj).format_name());
-        msg_string.push_str(&format!("{} ({})", (*obj).get_name(), (*obj).get_kind()));
+        msg_string.push_str(&(*obj).get_formatted_name());
         msg_string.push_str(", ");
         num += 1;
     }
@@ -193,91 +181,18 @@ pub(crate) async fn search_full_library(ctx: &Context, msg: &Message, args: &[&s
     msg_string.pop();
     msg_string.pop();
 
-    let msg_to_await: Message;
-
-    match msg.channel_id.say(ctx, msg_string).await {
-        Ok(val) => msg_to_await = val,
+    let msg_to_await= match msg.channel_id.say(ctx, msg_string).await {
+        Ok(val) => val,
         Err(why) => {
             println!("Could not send message: {:?}", why);
             return;
         }
-    }
+    };
 
-    let http_clone = Arc::clone(&ctx.http);
-    let msg_id = msg_to_await.id.0;
-    let channel_id = msg.channel_id.0;
-    let res_len = res.len();
-
-    let all_reactions_added = tokio::spawn(async move {
-        for number in NUMBERS.iter().take(res_len) {
-            if let Err(why) = http_clone
-                .create_reaction(
-                    channel_id,
-                    msg_id,
-                    &ReactionType::Unicode((*number).to_string()),
-                )
-                .await
-            {
-                println!("Could not react to message: {:?}", why);
-                return false;
-            }
+    if let Some(num) = reaction_did_you_mean(ctx, &msg_to_await, msg.author.id, res.len()).await {
+        if let Err(why) = edit_message_by_id(ctx, msg_to_await.channel_id.0, msg_to_await.id.0, res[num]).await {
+            println!("Could not edit message: {:?}", why);
         }
-        return true;
-    });
-
-    let mut got_proper_rection = false;
-    let mut edited_msg = String::new();
-    while !got_proper_rection {
-        if let Some(reaction) = &msg_to_await
-            .await_reaction(&ctx)
-            .timeout(Duration::from_secs(30))
-            .author_id(msg.author.id)
-            .await
-        {
-            let emoji = &reaction.as_inner_ref().emoji.as_data();
-            let reacted_emoji = emoji.as_str();
-            // zipping here to constrain length to that of "res"
-            let pos = res
-                .iter()
-                .zip(NUMBERS.iter())
-                .position(|(_, num_emoji)| *num_emoji == reacted_emoji);
-
-            if let Some(index) = pos {
-                #[cfg(debug_assertions)]
-                println!("Got a correct reaction, editing message");
-
-                edited_msg.push_str(&format!("{}", res[index]));
-                got_proper_rection = true;
-                break;
-            }
-        } else {
-            #[cfg(debug_assertions)]
-            println!("reaction wait timed out");
-            break;
-        }
-    }
-
-    if let Err(why) = all_reactions_added.await {
-        println!("{:?}", why);
-    }
-
-    let delete_reactions = msg_to_await.delete_reactions(ctx);
-
-    if got_proper_rection {
-        // let edit_message = msg_to_await.edit(ctx, |m| m.content(edited_msg));
-
-        let edit_message = edit_message_by_id(
-            ctx,
-            msg_to_await.channel_id.0,
-            msg_to_await.id.0,
-            edited_msg,
-        );
-
-        if let Err(why) = tokio::try_join!(edit_message, delete_reactions) {
-            println!("Could not delete reactions or edit message: {:?}", why);
-        }
-    } else if let Err(why) = delete_reactions.await {
-        println!("Could not delete reactions: {:?}", why);
     }
 }
 
@@ -298,7 +213,9 @@ async fn chip_drop(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
     let chip = match chip_res {
         Ok(chip) => chip,
         Err(chips) => {
-            say!(ctx, msg, format!("Did you mean: {}", chips.join(", ")));
+            //say!(ctx, msg, format!("Did you mean: {}", chips.join(", ")));
+            let to_say = chips.iter().map(|a| a.get_name()).collect::<Vec<&str>>().join(", ");
+            say!(ctx, msg, format!("Did you mean: {}", to_say));
             return Ok(());
         }
     };

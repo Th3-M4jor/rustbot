@@ -41,6 +41,7 @@ impl LibraryObject for NCP {
     fn get_kind(&self) -> &str {
         "NCP"
     }
+
 }
 
 impl NCP {
@@ -161,7 +162,7 @@ impl NCPLibrary {
         Ok(self.library.len())
     }
 
-    pub fn search_color(&self, color: &str) -> Option<Vec<&str>> {
+    pub fn search_color(&self, color: &str) -> Option<Vec<&Arc<NCP>>> {
         if !COLORS.contains(&color.to_lowercase().as_str()) {
             return None;
         }
@@ -193,14 +194,11 @@ pub(crate) async fn send_ncp(ctx: &Context, msg: &Message, args: Args) -> Comman
         say!(ctx, msg, "you must provide a name");
         return Ok(());
     }
+    let to_get = args.current().unwrap();
     let data = ctx.data.read().await;
     let library_lock = data.get::<NCPLibrary>().expect("NCP library not found");
     let library = library_lock.read().await;
-
-    match library.search_lib_obj(args.current().unwrap()) {
-        Ok(val) => say!(ctx, msg, val),
-        Err(val) => say!(ctx, msg, format!("Did you mean: {}", val.join(", "))),
-    }
+    library.reaction_name_search(ctx, msg, to_get).await;
     // say!(ctx, msg, search_lib_obj(args.current().unwrap(), library));
     return Ok(());
 }

@@ -3,11 +3,11 @@ use serenity::{
     client::bridge::gateway::ShardManager,
     framework::standard::{macros::command, Args, CommandResult},
     http::CacheHttp,
-    model::{channel::Message, id::ChannelId, permissions::Permissions},
+    model::{channel::{Message, ReactionType}, id::{ChannelId, UserId}, permissions::Permissions},
     prelude::*,
 };
 
-use std::sync::Arc;
+use std::{sync::Arc, time::Duration};
 
 use crate::bot_data::BotData;
 use tokio::fs;
@@ -97,6 +97,7 @@ pub(crate) async fn edit_message_by_id<T: ToString>(
         .await
 }
 
+/// Returns true if the bot has permission to manage messages and add reactions to the given channel
 pub(crate) async fn has_reaction_perm(ctx: &Context, channel_id: ChannelId) -> bool {
     let channel_res = channel_id.to_channel(ctx).await;
     if channel_res.is_err() {
@@ -118,6 +119,80 @@ pub(crate) async fn has_reaction_perm(ctx: &Context, channel_id: ChannelId) -> b
         .unwrap();
 
     permissions.contains(Permissions::ADD_REACTIONS | Permissions::MANAGE_MESSAGES)
+}
+
+const NUMBERS: &[&str] = &[
+    "\u{31}\u{fe0f}\u{20e3}", // 1
+    "\u{32}\u{fe0f}\u{20e3}", // 2
+    "\u{33}\u{fe0f}\u{20e3}", // 3
+    "\u{34}\u{fe0f}\u{20e3}", // 4
+    "\u{35}\u{fe0f}\u{20e3}", // 5
+    "\u{36}\u{fe0f}\u{20e3}", // 6
+    "\u{37}\u{fe0f}\u{20e3}", // 7
+    "\u{38}\u{fe0f}\u{20e3}", // 8
+    "\u{39}\u{fe0f}\u{20e3}", // 9
+];
+
+/// Panics if len is 0 or greater than 9
+pub(crate) async fn reaction_did_you_mean(ctx: &Context, msg: &Message, author_id: UserId, len: usize) -> Option<usize> {
+    if len == 0 || len > 9 {
+        panic!("Recieved invalid number for did you mean: {}", len);
+    }
+    if !has_reaction_perm(&ctx, msg.channel_id).await {
+        return None;
+    }
+    let http_clone = Arc::clone(&ctx.http);
+    let msg_id = msg.id.0;
+    let channel_id = msg.channel_id.0;
+    let all_reactions_added = tokio::spawn(async move {
+        for number in NUMBERS.iter().take(len) {
+            if let Err(why) = http_clone
+                .create_reaction(
+                    channel_id,
+                    msg_id,
+                    &ReactionType::Unicode((*number).to_string()),
+                )
+                .await
+            {
+                println!("Could not react to message: {:?}", why);
+                return false;
+            }
+        }
+        return true;
+    });
+
+    let mut reacted_number: Option<usize> = None;
+    'outer: loop {
+    if let Some(reaction) = msg.await_reaction(&ctx)
+    .timeout(Duration::from_secs(30))
+    .author_id(author_id)
+    .await {
+        let emoji = &reaction.as_inner_ref().emoji.as_data();
+        let reacted_emoji = emoji.as_str();
+        for num in NUMBERS.iter().take(len).zip(0..=len) {
+            if *num.0 == reacted_emoji {
+                reacted_number = Some(num.1);
+                break 'outer;
+            }
+        }
+    } else {
+        break;
+    }
+
+    }
+
+
+    if let Err(why) = all_reactions_added.await {
+        println!("{:?}", why);
+    }
+
+    if let Err(why) = msg.delete_reactions(ctx).await {
+        println!("Could not delete reactions: {:?}", why);
+        return None;
+    }
+
+    reacted_number
+
 }
 
 #[command]

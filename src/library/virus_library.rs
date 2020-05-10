@@ -79,6 +79,7 @@ impl LibraryObject for Virus {
     fn get_kind(&self) -> &str {
         "Virus"
     }
+
 }
 
 impl std::fmt::Display for Virus {
@@ -441,14 +442,14 @@ impl VirusLibrary {
         ))
     }
 
-    pub fn get_cr(&self, cr_to_get: u8) -> Option<Vec<&str>> {
+    pub fn get_cr(&self, cr_to_get: u8) -> Option<Vec<&Arc<Virus>>> {
         if cr_to_get > self.highest_cr {
             return None;
         }
         self.search_any(cr_to_get, |a, b| a.c_r == b)
     }
 
-    pub fn search_element(&self, elem: &str) -> Option<Vec<&str>> {
+    pub fn search_element(&self, elem: &str) -> Option<Vec<&Arc<Virus>>> {
         let elem_to_get = Elements::from_str(elem).ok()?;
 
         self.search_any(elem_to_get, |a, b| a.element == b)
@@ -462,7 +463,7 @@ impl VirusLibrary {
         &self,
         cr_to_get: u8,
         num_viruses: usize,
-    ) -> Option<Vec<&str>> {
+    ) -> Option<Vec<String>> {
         let viruses = self.get_cr(cr_to_get)?;
 
         Some(VirusLibrary::build_encounter(&viruses, num_viruses))
@@ -473,8 +474,8 @@ impl VirusLibrary {
         low_cr: u8,
         high_cr: u8,
         num_viruses: usize,
-    ) -> Option<Vec<&str>> {
-        let mut viruses: Vec<&str> = vec![];
+    ) -> Option<Vec<String>> {
+        let mut viruses = vec![];
         for i in low_cr..=high_cr {
             let mut to_append = self.get_cr(i)?;
             viruses.append(&mut to_append);
@@ -486,27 +487,27 @@ impl VirusLibrary {
     }
 
     #[inline]
-    fn build_encounter<'a>(viruses: &[&'a str], num_viruses: usize) -> Vec<&'a str> {
+    fn build_encounter(viruses: &[&Arc<Virus>], num_viruses: usize) -> Vec<String> {
         let mut rng = ThreadRng::default();
-        let mut to_ret: Vec<&str> = vec![];
+        let mut to_ret: Vec<String> = vec![];
         let vir_size = viruses.len();
         let distribution = Uniform::from(0..vir_size);
         for _ in 0..num_viruses {
             let index = distribution.sample(&mut rng);
-            to_ret.push(viruses[index]);
+            to_ret.push(viruses[index].get_name().to_string());
         }
         to_ret
     }
 
-    fn get_family(&self, name: &str) -> Option<Vec<&str>> {
+    fn get_family(&self, name: &str) -> Option<Vec<&Arc<Virus>>> {
         self.get(&name.to_lowercase())?;
         let mut viruses = self.name_contains(name, Some(usize::max_value()))?;
         if viruses.len() == 1 {
             return Some(viruses);
         }
         viruses.sort_unstable_by(move |a, b| {
-            let a_val = self.get(&a.to_lowercase()).unwrap();
-            let b_val = self.get(&b.to_lowercase()).unwrap();
+            let a_val = self.get(a.get_name()).unwrap();
+            let b_val = self.get(b.get_name()).unwrap();
             a_val
                 .c_r
                 .cmp(&b_val.c_r)
@@ -542,13 +543,9 @@ pub(crate) async fn send_virus(ctx: &Context, msg: &Message, args: Args) -> Comm
     let library_lock = data.get::<VirusLibrary>().expect("Virus library not found");
     let library = library_lock.read().await;
     //.expect("library was poisoned, panicking");
-
-    match library.search_lib_obj(to_search) {
-        Ok(val) => say!(ctx, msg, val),
-        Err(val) => say!(ctx, msg, format!("Did you mean: {}", val.join(", "))),
-    }
+    library.reaction_name_search(ctx, msg, to_search).await;
     // say!(ctx, msg, search_lib_obj(&to_search, library));
-    return Ok(());
+    Ok(())
 }
 
 #[command("element")]
@@ -567,7 +564,10 @@ pub(crate) async fn send_virus_element(ctx: &Context, msg: &Message, args: Args)
     //.expect("Virus library poisoned, panicking");
     let elem_res = library.search_element(args.current().unwrap());
     match elem_res {
-        Some(elem) => long_say!(ctx, msg, elem, ", "),
+        Some(elem) => {
+            let to_send = elem.iter().map(|a| a.get_name()).collect::<Vec<&str>>();
+            long_say!(ctx, msg, to_send, ", ")
+        },
         None => say!(
             ctx,
             msg,
@@ -599,7 +599,10 @@ pub(crate) async fn send_virus_cr(ctx: &Context, msg: &Message, mut args: Args) 
     let library = library_lock.read().await;
     //.expect("library was poisoned, panicking");
     match library.get_cr(cr_to_get) {
-        Some(val) => long_say!(ctx, msg, val, ", "),
+        Some(val) => {
+            let to_send = val.iter().map(|a| a.get_name()).collect::<Vec<&str>>();
+            long_say!(ctx, msg, to_send, ", ")
+        },
         None => say!(ctx, msg, "There are currently no viruses in that CR"),
     }
     return Ok(());
@@ -640,7 +643,7 @@ pub(crate) async fn send_random_encounter(
     let library: RwLockReadGuard<VirusLibrary> = library_lock.read().await;
     //.expect("library was poisoned, panicking");
     let single_cr_res = first_arg.parse::<isize>();
-    let to_send: Vec<&str>;
+    let to_send: Vec<String>;
 
     // was it a single CR or a range?
     if let Ok(single_cr) = single_cr_res {
@@ -704,7 +707,10 @@ pub(crate) async fn send_family(ctx: &Context, msg: &Message, args: Args) -> Com
     let library = library_lock.read().await;
     //.expect("library was poisoned, panicking");
     match library.get_family(&to_search) {
-        Some(res) => long_say!(ctx, msg, res, ", "),
+        Some(res) => {
+            let to_send = res.iter().map(|val| (*val).get_name()).collect::<Vec<&str>>();
+            long_say!(ctx, msg, to_send, ", ")
+        },
         None => say!(ctx, msg, "There is no family under that name"),
     }
     return Ok(());
