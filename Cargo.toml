@@ -24,6 +24,7 @@ serenity = { git = "https://github.com/Lakelezz/serenity.git", features = ["fram
 futures = "*"
 log = "*"
 pretty_env_logger = "*"
+async-trait = "*"
 
 [profile.release]
 lto = true
