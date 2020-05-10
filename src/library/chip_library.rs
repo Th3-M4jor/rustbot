@@ -20,9 +20,6 @@ use crate::{
 };
 use std::borrow::BorrowMut;
 
-#[cfg(not(debug_assertions))]
-use tokio::fs;
-
 use std::str::FromStr;
 
 // const CHIP_URL: &'static str = "https://docs.google.com/feeds/download/documents/export/Export?id=1lvAKkymOplIJj6jS-N5__9aLIDXI6bETIMz01MK9MfY&exportFormat=txt";
@@ -62,7 +59,8 @@ impl ChipLibrary {
             tokio::join!(chip_text_future, custom_chip_text_future);
 
         let chip_text = chip_text_res?;
-        let mut chip_text_arr: Vec<&str> = chip_text
+        self.chips = tokio::task::spawn_blocking(move || {
+            let mut chip_text_arr: Vec<&str> = chip_text
             .split('\n')
             .filter(|&i| !i.trim().is_empty())
             .collect();
@@ -75,7 +73,6 @@ impl ChipLibrary {
                 .collect();
             chip_text_arr.append(special_chip_arr.borrow_mut());
         }
-        self.chips = tokio::task::block_in_place(move || {
             let mut chips: Vec<BattleChip> = vec![];
             for val in chip_text_arr
                 .iter()
@@ -110,7 +107,7 @@ impl ChipLibrary {
                 new_chips.insert(chip.name.to_lowercase(), Arc::new(chip));
             }
             Ok(new_chips)
-        })?;
+        }).await??;
 
         Ok(self.chips.len())
     }

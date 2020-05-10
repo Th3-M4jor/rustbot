@@ -10,11 +10,8 @@ use serenity::{
 
 #[cfg(not(debug_assertions))]
 use serde_json;
-#[cfg(not(debug_assertions))]
-use tokio::fs;
 
 use crate::library::{Library, LibraryObject};
-use lazy_static::lazy_static;
 use regex::Regex;
 use std::fmt::Formatter;
 
@@ -68,7 +65,7 @@ impl std::fmt::Display for NCP {
 
 pub struct NCPLibrary {
     library: HashMap<String, Arc<NCP>>,
-    ncp_url: String,
+    ncp_url: Arc<String>,
 }
 
 const COLORS: &[&str] = &["white", "pink", "yellow", "green", "blue", "red", "gray"];
@@ -86,23 +83,25 @@ impl NCPLibrary {
     pub fn new(url: &str) -> NCPLibrary {
         NCPLibrary {
             library: HashMap::new(),
-            ncp_url: String::from(url),
+            ncp_url: Arc::new(String::from(url)),
         }
     }
 
     pub async fn load_programs(
         &mut self,
     ) -> Result<usize, Box<dyn std::error::Error + Send + Sync>> {
-        lazy_static! {
-            static ref NCP_TEST: Regex =
-                Regex::new(r"(.+)\s\((\d+)\sEB\)\s-\s(.+)").expect("Bad NCP regex");
-        }
         self.library.clear();
-        let mut ncp_list: Vec<NCP> = vec![];
-        let ncp_text = reqwest::get(&self.ncp_url)
-            .await?
-            .text()
-            .await?
+        let url = Arc::clone(&self.ncp_url);
+        self.library = tokio::task::spawn_blocking(|| {
+            NCPLibrary::_load_ncp_list(url)
+        }).await??;
+        Ok(self.library.len())
+    }
+
+    fn _load_ncp_list(ncp_url: Arc<String>) -> Result<HashMap<String, Arc<NCP>>, Box<dyn std::error::Error + Send + Sync>> {
+        let ncp_regex = Regex::new(r"(.+)\s\((\d+)\sEB\)\s-\s(.+)").expect("Bad NCP regex");
+            let ncp_text = reqwest::blocking::get(ncp_url.as_ref())?
+            .text()?
             .replace("\u{e2}\u{20ac}\u{2122}", "'")
             .replace("\u{FEFF}", "")
             .replace("\r", "");
@@ -110,8 +109,9 @@ impl NCPLibrary {
             .split('\n')
             .filter(|&i| !i.trim().is_empty())
             .collect();
-        self.library = tokio::task::block_in_place(|| {
+
             let mut curr_color: String = String::new();
+            let mut ncp_list: Vec<NCP> = vec![];
             // let mut new_color : String;
             for ncp in ncp_text_arr {
                 if COLORS.contains(&ncp.trim().to_lowercase().as_str()) {
@@ -119,7 +119,7 @@ impl NCPLibrary {
                     continue;
                 }
 
-                let ncp_cap_res = NCP_TEST.captures(ncp);
+                let ncp_cap_res = ncp_regex.captures(ncp);
                 let ncp_cap;
                 match ncp_cap_res {
                     Some(val) => ncp_cap = val,
@@ -157,9 +157,7 @@ impl NCPLibrary {
                 let ncp = ncp_list.pop().unwrap();
                 new_lib.insert(ncp.name.to_lowercase(), Arc::new(ncp));
             }
-            new_lib
-        });
-        Ok(self.library.len())
+            Ok(new_lib)
     }
 
     pub fn search_color(&self, color: &str) -> Option<Vec<&Arc<NCP>>> {
@@ -168,6 +166,8 @@ impl NCPLibrary {
         }
         self.search_any(color, |a, b| a.color.to_lowercase() == b.to_lowercase())
     }
+
+
 }
 
 impl TypeMapKey for NCPLibrary {
