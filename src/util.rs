@@ -121,6 +121,13 @@ pub(crate) async fn has_reaction_perm(ctx: &Context, channel_id: ChannelId) -> b
     permissions.contains(Permissions::ADD_REACTIONS | Permissions::MANAGE_MESSAGES)
 }
 
+/*
+pub fn to_boxed_fut<F>(fut: impl Fn(Arc<Context>, Arc<Message>, Args) -> F) -> Pin<Box<dyn std::future::Future<Output = CommandResult>>>
+    where F: std::future::Future<Output=CommandResult> {
+        Box::pin(fut)
+}
+*/
+
 const NUMBERS: &[&str] = &[
     "\u{31}\u{fe0f}\u{20e3}", // 1
     "\u{32}\u{fe0f}\u{20e3}", // 2
@@ -251,3 +258,33 @@ async fn die(ctx: &Context, msg: &Message, _: Args) -> CommandResult {
     }
     return Ok(());
 }
+
+/*
+struct TestStruct {
+    pub map: std::collections::HashMap<String, Box<dyn Fn() -> std::pin::Pin<Box<dyn std::future::Future<Output = usize>>>>>,
+}
+
+impl TestStruct {
+    pub fn insert<F>(&mut self, name: String, fut: &'static impl Fn() -> F) 
+        where F: 'static + std::future::Future<Output=usize> {
+        self.map.insert(name, Box::new(move ||Box::pin(fut())));
+    }
+}
+
+pub(crate) async fn test_fn() -> usize {
+    42
+}
+
+pub(crate) async fn test_struct() {
+    let mut test = TestStruct { map: std::collections::HashMap::new()};
+    test.insert("test".to_string(), &test_fn);
+    let val = test.map.get("test").unwrap();
+    
+    println!("{}", val().await);
+
+    let val_2 = test.map.get("test").unwrap();
+    println!("{}", val_2().await);
+
+    println!("{}", test_fn().await);
+}
+*/

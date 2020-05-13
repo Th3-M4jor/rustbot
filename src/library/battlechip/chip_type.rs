@@ -7,6 +7,7 @@ pub enum ChipType {
     Mega,
     Giga,
     Dark,
+    Support,
 }
 
 impl std::str::FromStr for ChipType {
@@ -18,6 +19,7 @@ impl std::str::FromStr for ChipType {
             "mega" => Ok(ChipType::Mega),
             "giga" => Ok(ChipType::Giga),
             "dark" => Ok(ChipType::Dark),
+            "support" => Ok(ChipType::Support),
             _ => Err(SimpleError::new("Failed to parse chip type")),
         }
     }
@@ -30,6 +32,7 @@ impl std::fmt::Display for ChipType {
             ChipType::Mega => write!(f, "Mega"),
             ChipType::Giga => write!(f, "Giga"),
             ChipType::Dark => write!(f, "Dark"),
+            ChipType::Support => write!(f, "Support"),
         }
     }
 }
