@@ -157,8 +157,7 @@ where
 
     let owner_id = UserId::from(config.owner);
 
-    if let Some(owner_lock) = ctx.cache.read().await.users.get(&owner_id) {
-        let owner = owner_lock.read().await;
+    if let Some(owner) = ctx.cache.user(&owner_id).await {
         let _ = owner.dm(ctx, |m| m.content(format!("{}", to_send))).await?;
     } else {
         let owner = ctx.http.get_user(config.owner).await?;

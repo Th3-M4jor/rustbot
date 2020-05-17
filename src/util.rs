@@ -111,7 +111,7 @@ pub(crate) async fn has_reaction_perm(ctx: &Context, channel_id: ChannelId) -> b
         None => return false,
     }
 
-    let current_user_id = ctx.cache.read().await.user.id;
+    let current_user_id = ctx.cache.current_user_id().await;
 
     let permissions = guild_channel
         .permissions_for_user(ctx, current_user_id)
