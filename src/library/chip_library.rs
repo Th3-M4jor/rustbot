@@ -15,6 +15,7 @@ use crate::{
         battlechip::{skills::Skills, BattleChip},
         elements::Elements,
         Library,
+        virus_library::VirusLibrary,
     },
     LibraryObject,
 };
@@ -187,7 +188,7 @@ pub(crate) fn battlechip_as_lib_obj(obj: Arc<BattleChip>) -> Arc<dyn LibraryObje
 #[group]
 #[prefixes("c", "chip")]
 #[default_command(send_chip)]
-#[commands(send_chip, send_chip_element)]
+#[commands(send_chip, send_chip_element, chip_drop_cr)]
 /// A group of commands related to Navi-Customizer Parts, see `c chip` for the get chip command help
 struct BnbChips;
 
@@ -216,9 +217,6 @@ async fn send_chip(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
     let data = ctx.data.read().await;
     let library_lock = data.get::<ChipLibrary>().expect("chip library not found");
     let library = library_lock.read().await;
-    // let library = locked_library.read().expect("library was poisoned");
-    // search!(ctx, msg, to_get, library);
-
 
     library.reaction_name_search(ctx, msg, to_get).await;
     Ok(())
@@ -287,7 +285,7 @@ async fn send_chip_skill_target(ctx: &Context, msg: &Message, mut args: Args) ->
         },
         None => say!(ctx, msg, "nothing matched your search"),
     }
-    return Ok(());
+    Ok(())
 }
 
 #[command("check")]
@@ -309,7 +307,7 @@ async fn send_chip_skill_check(ctx: &Context, msg: &Message, mut args: Args) -> 
         },
         None => say!(ctx, msg, "nothing matched your search"),
     }
-    return Ok(());
+    Ok(())
 }
 
 #[command("element")]
@@ -337,5 +335,51 @@ async fn send_chip_element(ctx: &Context, msg: &Message, args: Args) -> CommandR
             "nothing matched your search, are you sure you gave an element?"
         ),
     }
-    return Ok(());
+    Ok(())
+}
+
+#[command("cr")]
+/// get a list of chips dropped by viruses of a particular CR
+#[example = "3"]
+async fn chip_drop_cr(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
+    
+    if args.is_empty() {
+        say!(ctx, msg, "You must provide a CR to search for");
+        return Ok(());
+    }
+    
+    let cr_to_get = match args.single::<u8>() {
+        Ok(cr) => cr,
+        Err(_) => {
+            say!(ctx, msg, "An invalid number was provided");
+            return Ok(());
+        }
+    };
+
+    let data = ctx.data.read().await;
+    let virus_lock = data.get::<VirusLibrary>().expect("Virus library not found");
+    let virus_library: RwLockReadGuard<VirusLibrary> = virus_lock.read().await;
+
+    let cr_list = match virus_library.get_cr(cr_to_get) {
+        Some(list) => list,
+        None => {
+            say!(ctx, msg, "There are no viruses in that CR");
+            return Ok(());
+        }
+    };
+
+    let mut drop_list = Vec::new();
+
+    for virus in cr_list {
+        //skip 1 because first is always zenny
+        for drop in virus.drops.iter().skip(1) {
+            drop_list.push(drop.1.as_str());
+        }
+    }
+
+    drop_list.sort_unstable();
+
+    long_say!(ctx, msg, drop_list, ", ");
+    
+    Ok(())
 }
