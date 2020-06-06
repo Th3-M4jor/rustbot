@@ -1,7 +1,7 @@
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 use simple_error::SimpleError;
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize)]
 pub enum ChipType {
     Standard,
     Mega,

@@ -1,8 +1,8 @@
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 use simple_error::SimpleError;
 // use std::slice::Iter;
 
-#[derive(Serialize, Deserialize, Eq, PartialEq, Clone, Copy, PartialOrd, Ord)]
+#[derive(Serialize, Eq, PartialEq, Clone, Copy, PartialOrd, Ord)]
 pub enum Elements {
     Fire,
     Aqua,
