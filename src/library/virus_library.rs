@@ -15,8 +15,6 @@ use serde::{ser::SerializeMap, Serialize, Serializer};
 
 #[cfg(not(debug_assertions))]
 use serde_json;
-#[cfg(not(debug_assertions))]
-use tokio::fs;
 
 use regex::Regex;
 
