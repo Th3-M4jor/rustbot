@@ -99,7 +99,7 @@ impl ChipLibrary {
             // only write json file if not debug
             #[cfg(not(debug_assertions))]
             {
-                let j = serde_json::to_string_pretty(&chips).expect("could not serialize to json");
+                let j = serde_json::to_string(&chips).expect("could not serialize to json");
                 std::fs::write("chips.json", j).expect("could not write to chips.json");
             }
             let mut new_chips = HashMap::new();

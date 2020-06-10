@@ -296,7 +296,7 @@ impl VirusLibrary {
             let mut viruses: Vec<&Arc<Virus>> = self.library.values().collect();
             viruses.sort_unstable_by(|a, b| a.c_r.cmp(&b.c_r).then_with(|| a.name.cmp(&b.name)));
 
-            let j = tokio::task::block_in_place(|| serde_json::to_string_pretty(&viruses))
+            let j = tokio::task::block_in_place(|| serde_json::to_string(&viruses))
                 .expect("could not serialize virus library to JSON");
             tokio::fs::write("./virusCompendium.json", j)
                 .await

@@ -149,7 +149,7 @@ impl NCPLibrary {
             #[cfg(not(debug_assertions))]
             {
                 let j =
-                    serde_json::to_string_pretty(&ncp_list).expect("could not serialize to json");
+                    serde_json::to_string(&ncp_list).expect("could not serialize to json");
                 std::fs::write("naviCust.json", j).expect("could not write to naviCust.json");
             }
             let mut new_lib = HashMap::new();
