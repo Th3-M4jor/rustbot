@@ -103,10 +103,11 @@ impl ChipLibrary {
                 std::fs::write("chips.json", j).expect("could not write to chips.json");
             }
             let mut new_chips = HashMap::new();
-            while !chips.is_empty() {
-                let chip = chips.pop().expect("Something went wrong popping a chip");
+
+            for chip in chips.drain(..) {
                 new_chips.insert(chip.name.to_lowercase(), Arc::new(chip));
             }
+            
             Ok(new_chips)
         }).await??;
 

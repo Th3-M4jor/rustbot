@@ -153,8 +153,8 @@ impl NCPLibrary {
                 std::fs::write("naviCust.json", j).expect("could not write to naviCust.json");
             }
             let mut new_lib = HashMap::new();
-            while !ncp_list.is_empty() {
-                let ncp = ncp_list.pop().unwrap();
+            
+            for ncp in ncp_list.drain(..) {
                 new_lib.insert(ncp.name.to_lowercase(), Arc::new(ncp));
             }
             Ok(new_lib)
