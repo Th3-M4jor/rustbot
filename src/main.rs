@@ -10,7 +10,7 @@ use serenity::{
     async_trait,
     client::bridge::gateway::GatewayIntents,
     framework::standard::{
-        help_commands, macros::{check, command, group, help, hook}, Args, CheckResult, CommandError, CommandGroup, CommandOptions,
+        help_commands, macros::{check, command, group, help, hook}, Args, CheckResult, CommandGroup, CommandOptions,
         CommandResult, HelpOptions, StandardFramework,
     },
     model::{
@@ -186,7 +186,8 @@ async fn help_command(
     groups: &[&'static CommandGroup],
     owners: std::collections::HashSet<UserId>,
 ) -> CommandResult {
-    help_commands::with_embeds(context, msg, args, help_options, groups, owners).await
+    let _ = help_commands::with_embeds(context, msg, args, help_options, groups, owners).await;
+    Ok(())
 }
 
 #[group]
@@ -316,7 +317,7 @@ async fn reload(ctx: &Context, msg: &Message, _: Args) -> CommandResult {
                     e.to_string()
                 )
             );
-            return Err(CommandError(e.to_string()));
+            return Err(e);
         }
     }
     let data = ctx.data.read().await;
@@ -392,7 +393,7 @@ async fn shut_up(ctx: &Context, msg: &Message, _: Args) -> CommandResult {
     {
         let data = ctx.data.read().await;
 
-        // fetch and xor means fewer operations whole true ^ true is false, and true ^ false is true;
+        // fetch and xor means fewer operations, true ^ true is false, and true ^ false is true;
         data.get::<DmOwner>()
             .expect("No DM Owner setting found")
             .fetch_xor(true, Ordering::Relaxed);
