@@ -92,65 +92,68 @@ impl NCPLibrary {
     ) -> Result<usize, Box<dyn std::error::Error + Send + Sync>> {
         self.library.clear();
         let url = Arc::clone(&self.ncp_url);
-        self.library = tokio::task::spawn_blocking(|| {
-            NCPLibrary::_load_ncp_list(url)
-        }).await??;
+        self.library = NCPLibrary::_load_ncp_list(url).await?;
         Ok(self.library.len())
     }
 
-    fn _load_ncp_list(ncp_url: Arc<String>) -> Result<HashMap<String, Arc<NCP>>, Box<dyn std::error::Error + Send + Sync>> {
+    async fn _load_ncp_list(ncp_url: Arc<String>) -> Result<HashMap<String, Arc<NCP>>, Box<dyn std::error::Error + Send + Sync>> {
         let ncp_regex = Regex::new(r"(.+)\s\((\d+)\sEB\)\s-\s(.+)").expect("Bad NCP regex");
-            let ncp_text = reqwest::blocking::get(ncp_url.as_ref())?
-            .text()?
+            let ncp_text = reqwest::get(ncp_url.as_ref()).await?
+            .text().await?
             .replace("\u{e2}\u{20ac}\u{2122}", "'")
             .replace("\u{FEFF}", "")
             .replace("\r", "");
-        let ncp_text_arr: Vec<&str> = ncp_text
-            .split('\n')
-            .filter(|&i| !i.trim().is_empty())
-            .collect();
 
-            let mut curr_color: String = String::new();
-            let mut ncp_list: Vec<NCP> = vec![];
-            // let mut new_color : String;
-            for ncp in ncp_text_arr {
-                if COLORS.contains(&ncp.trim().to_lowercase().as_str()) {
-                    curr_color = String::from(ncp.trim());
-                    continue;
-                }
+            let mut ncp_list = tokio::task::spawn_blocking(move ||{
+                let mut curr_color: String = String::new();
+                let mut ncp_list: Vec<NCP> = vec![];
+                let ncp_text_arr: Vec<&str> = ncp_text
+                    .split('\n')
+                    .filter(|&i| !i.trim().is_empty())
+                    .collect();
+                // let mut new_color : String;
+                for ncp in ncp_text_arr {
+                    if COLORS.contains(&ncp.trim().to_lowercase().as_str()) {
+                        curr_color = String::from(ncp.trim());
+                        continue;
+                    }
 
-                let ncp_cap_res = ncp_regex.captures(ncp);
-                let ncp_cap;
-                match ncp_cap_res {
-                    Some(val) => ncp_cap = val,
-                    None => continue,
+                    let ncp_cap_res = ncp_regex.captures(ncp);
+                    let ncp_cap;
+                    match ncp_cap_res {
+                        Some(val) => ncp_cap = val,
+                        None => continue,
+                    }
+                    let name = ncp_cap.get(1);
+                    let cost = ncp_cap.get(2);
+                    let desc = ncp_cap.get(3);
+                    if name.is_none() || cost.is_none() || desc.is_none() {
+                        continue;
+                    }
+                    let cost_val = cost
+                        .unwrap()
+                        .as_str()
+                        .parse::<u8>()
+                        .unwrap_or(u8::max_value());
+                    ncp_list.push(NCP::new(
+                        name.unwrap().as_str(),
+                        cost_val,
+                        &curr_color,
+                        ncp,
+                        desc.unwrap().as_str(),
+                    ));
                 }
-                let name = ncp_cap.get(1);
-                let cost = ncp_cap.get(2);
-                let desc = ncp_cap.get(3);
-                if name.is_none() || cost.is_none() || desc.is_none() {
-                    continue;
-                }
-                let cost_val = cost
-                    .unwrap()
-                    .as_str()
-                    .parse::<u8>()
-                    .unwrap_or(u8::max_value());
-                ncp_list.push(NCP::new(
-                    name.unwrap().as_str(),
-                    cost_val,
-                    &curr_color,
-                    ncp,
-                    desc.unwrap().as_str(),
-                ));
-            }
+                ncp_list
+            }).await?;
+
+            
 
             // only write json file if not debug
             #[cfg(not(debug_assertions))]
             {
                 let j =
-                    serde_json::to_string(&ncp_list).expect("could not serialize to json");
-                std::fs::write("naviCust.json", j).expect("could not write to naviCust.json");
+                    tokio::task::spawn_blocking(|| serde_json::to_string(&ncp_list).expect("could not serialize to json")).await?;
+                tokio::fs::write("naviCust.json", j).await.expect("could not write to naviCust.json");
             }
             let mut new_lib = HashMap::new();
             
