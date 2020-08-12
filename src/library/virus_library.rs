@@ -286,6 +286,7 @@ impl VirusLibrary {
                     virus_name
                 ))));
             }
+            //yield to other tasks on each iteration
             tokio::task::yield_now().await;
         }
 

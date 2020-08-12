@@ -151,8 +151,8 @@ impl NCPLibrary {
             // only write json file if not debug
             #[cfg(not(debug_assertions))]
             {
-                let j =
-                    tokio::task::spawn_blocking(|| serde_json::to_string(&ncp_list).expect("could not serialize to json")).await?;
+                let j = tokio::task::block_in_place(|| serde_json::to_string(&ncp_list).expect("could not serialize to json"));
+                    //tokio::task::spawn_blocking(|| serde_json::to_string(&ncp_list).expect("could not serialize to json")).await?;
                 tokio::fs::write("naviCust.json", j).await.expect("could not write to naviCust.json");
             }
             let mut new_lib = HashMap::new();
