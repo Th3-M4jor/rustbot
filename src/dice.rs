@@ -75,7 +75,7 @@ impl DieRoll {
 }
 
 #[group]
-#[commands(roll, reroll, roll_stats)]
+#[commands(roll, reroll, roll_stats, shuffle)]
 /// A group of commands related to rolling dice
 struct Dice;
 
@@ -164,4 +164,81 @@ pub(crate) async fn roll_stats(ctx: &Context, msg: &Message, _: Args) -> Command
         )
     );
     return Ok(());
+}
+
+#[command]
+/// shuffle a series of numbers from 1 to the given argument (inclusive)
+#[example = "20"]
+pub(crate) async fn shuffle(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
+    if args.is_empty() {
+        say!(
+            ctx,
+            msg,
+            format!(
+                "{}, you must supply a number of numbers to shuffle",
+                msg.author.mention()
+            )
+        );
+        return Ok(());
+    }
+
+    let size = match args.single::<usize>() {
+        Ok(size) => size,
+        Err(_) => {
+            say!(
+                ctx,
+                msg,
+                format!(
+                    "{}, an invalid number was provided",
+                    msg.author.mention()
+                )
+            );
+            return Ok(());
+        }
+    };
+
+    if size < 2 {
+        say!(
+            ctx,
+            msg,
+            "Cannot shuffle a number less than 2"
+        );
+        return Ok(());
+    }
+
+    if size > 64 {
+        say!(
+            ctx,
+            msg,
+            "Cowardly refusing to shuffle a number greater than 64"
+        );
+        return Ok(());
+    }
+
+    let _ = msg.channel_id.broadcast_typing(ctx).await;
+
+    let list = tokio::task::spawn_blocking( move || {
+        let mut list: Vec<usize> = Vec::new();
+
+        list.reserve(size);
+
+        for num in 1..(size + 1) {
+            list.push(num);
+        }
+
+        let shuffler = Uniform::from(0..size);
+        let mut rng = ThreadRng::default();
+        for index in 0..list.len() {
+            let rand_index = shuffler.sample(&mut rng);
+            let temp = list[rand_index];
+            list[rand_index] = list[index];
+            list[index] = temp;
+        }
+        list
+    }).await?;
+
+    long_say!(ctx, msg, list, ", ");
+
+    Ok(())
+
 }
