@@ -288,9 +288,10 @@ impl VirusLibrary {
             }
             //yield to other tasks on each iteration
             tokio::task::yield_now().await;
+            self.highest_cr = curr_cr;
         }
 
-        self.highest_cr = curr_cr;
+        //self.highest_cr = curr_cr;
 
         #[cfg(not(debug_assertions))]
         {
