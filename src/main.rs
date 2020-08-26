@@ -539,6 +539,7 @@ async fn main() {
                 .prefix(&prefix)
                 .case_insensitivity(true)
                 .owners(owners)
+                .delimiters(vec![" ", ", "])
         })
         //.unrecognised_command(search_everything_command)
         .normal_message(default_message)
