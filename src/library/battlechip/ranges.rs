@@ -8,6 +8,7 @@ pub enum Ranges {
     Close,
     Near,
     Far,
+    Varies,
 }
 
 impl std::str::FromStr for Ranges {
@@ -19,6 +20,7 @@ impl std::str::FromStr for Ranges {
             "close" => Ok(Ranges::Close),
             "near" => Ok(Ranges::Near),
             "far" => Ok(Ranges::Far),
+            "varies" => Ok(Ranges::Varies),
             _ => Err(SimpleError::new("Failed to parse range")),
         }
     }
@@ -31,6 +33,7 @@ impl std::fmt::Display for Ranges {
             Ranges::Close => write!(f, "Close"),
             Ranges::Near => write!(f, "Near"),
             Ranges::Far => write!(f, "Far"),
+            Ranges::Varies => write!(f, "Varies"),
         }
     }
 }
