@@ -223,7 +223,7 @@ pub(crate) async fn send_ncp_color(ctx: &Context, msg: &Message, args: Args) -> 
     let library_lock = data.get::<NCPLibrary>().expect("NCP library not found");
     let library = library_lock.read().await;
     match library.search_color(args.current().unwrap()) {
-        Some(list) => long_say!(ctx, msg, list, ", "),
+        Some(list) => long_say!(ctx, msg, list, "\n"),
         None => say!(
             ctx,
             msg,
