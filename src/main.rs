@@ -26,7 +26,7 @@ use serenity::{
 use crate::{
     bot_data::BotData,
     library::{
-        blights::{Blights, GET_BLIGHT_COMMAND},
+        blights::{Blights, GET_BLIGHT_COMMAND, Statuses, GET_STATUS_COMMAND, Panels, GET_PANELS_COMMAND},
         chip_library::{BNBCHIPS_GROUP, BNBSKILLS_GROUP, ChipLibrary, battlechip_as_lib_obj},
         full_library::{CHIP_DROP_COMMAND, FullLibrary, check_virus_drops, search_full_library},
         ncp_library::{BNBNCPS_GROUP, NCPLibrary, ncp_as_lib_obj},
@@ -198,7 +198,7 @@ async fn help_command(
 struct Owner;
 
 #[group]
-#[commands(manager, phb, reload, get_blight, about_bot, chip_drop)]
+#[commands(manager, phb, reload, get_blight, about_bot, chip_drop, get_status, get_panels)]
 /// Misc. commands related to BnB
 struct BnbGeneral;
 
@@ -465,12 +465,32 @@ async fn main() {
     let warframe_data = WarframeData::new();
     let full_library_mutex = RwLock::new(FullLibrary::new());
     let blight_mutex = RwLock::new(Blights::new());
+    let status_mutex = RwLock::new(Statuses::new());
+    let panels_mutex = RwLock::new(Panels::new());
 
     {
         let mut blights = blight_mutex.write().await;
         match blights.load().await {
             Ok(()) => {
                 println!("blights loaded");
+            }
+            Err(e) => {
+                println!("{}", e.to_string());
+            }
+        }
+        let mut statuses = status_mutex.write().await;
+        match statuses.load().await {
+            Ok(()) => {
+                println!("statuses loaded");
+            }
+            Err(e) => {
+                println!("{}", e.to_string());
+            }
+        }
+        let mut panels = panels_mutex.write().await;
+        match panels.load().await {
+            Ok(()) => {
+                println!("panels loaded");
             }
             Err(e) => {
                 println!("{}", e.to_string());
@@ -594,6 +614,8 @@ async fn main() {
         data.insert::<WarframeData>(warframe_data);
         data.insert::<FullLibrary>(full_library_mutex);
         data.insert::<Blights>(blight_mutex);
+        data.insert::<Statuses>(status_mutex);
+        data.insert::<Panels>(panels_mutex);
         data.insert::<ShardManagerContainer>(Arc::clone(&client.shard_manager));
         data.insert::<DmOwner>(AtomicBool::new(true));
     }

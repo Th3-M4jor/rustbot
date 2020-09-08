@@ -49,5 +49,104 @@ pub(crate) async fn get_blight(ctx: &Context, msg: &Message, args: Args) -> Comm
         None => String::from("There is no blight with that element, perhaps you spelled it wrong?"),
     };
     say!(ctx, msg, to_send);
-    return Ok(());
+    Ok(())
+}
+
+pub struct Statuses {
+    values: serde_json::Value,
+}
+
+impl Statuses {
+    pub fn new() -> Statuses {
+        Statuses {
+            values: serde_json::Value::Null,
+        }
+    }
+
+    pub async fn load(&mut self) -> Result<(), Box<dyn Error>> {
+        let blights = tokio::fs::read_to_string("./statuses.json").await?;
+        self.values = serde_json::from_str(&blights)?;
+        Ok(())
+    }
+
+    pub fn get(&self, status: &str) -> Option<&str> {
+        self.values.as_object()?.get(&status.to_lowercase())?.as_str()
+    }
+
+}
+
+impl TypeMapKey for Statuses {
+    type Value = RwLock<Statuses>;
+}
+
+#[command("status")]
+/// Get info on what a status means
+#[example = "Blind"]
+pub(crate) async fn get_status(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
+    if args.is_empty() {
+        say!(ctx, msg, "you must provide a status");
+        return Ok(());
+    }
+
+    let data = ctx.data.read().await;
+    let status_lock = data.get::<Statuses>().expect("statuses not found");
+    let statuses = status_lock.read().await;
+    let res = statuses.get(args.current().unwrap()); //.unwrap_or("There is no blight with that element, perhaps you spelled it wrong?");
+    let to_send = match res {
+        Some(val) => format!("```{}```", val),
+        None => String::from("There is no status with that name, perhaps you spelled it wrong?"),
+    };
+    say!(ctx, msg, to_send);
+
+    Ok(())
+}
+
+pub struct Panels {
+    values: serde_json::Value,
+}
+
+impl Panels {
+    pub fn new() -> Panels {
+        Panels {
+            values: serde_json::Value::Null,
+        }
+    }
+
+    pub async fn load(&mut self) -> Result<(), Box<dyn Error>> {
+        let blights = tokio::fs::read_to_string("./panels.json").await?;
+        self.values = serde_json::from_str(&blights)?;
+        Ok(())
+    }
+
+    pub fn get(&self, status: &str) -> Option<&str> {
+        self.values.as_object()?.get(&status.to_lowercase())?.as_str()
+    }
+
+}
+
+impl TypeMapKey for Panels {
+    type Value = RwLock<Panels>;
+}
+
+#[command("panel")]
+#[aliases("terrain")]
+/// Get info on what a panel type means
+#[example = "lava"]
+pub(crate) async fn get_panels(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
+    if args.is_empty() {
+        say!(ctx, msg, "you must provide a panel type");
+        return Ok(());
+    }
+
+    let data = ctx.data.read().await;
+    let panel_lock = data.get::<Panels>().expect("panels not found");
+    let panels = panel_lock.read().await;
+    let res = panels.get(args.current().unwrap()); //.unwrap_or("There is no blight with that element, perhaps you spelled it wrong?");
+    let to_send = match res {
+        Some(val) => format!("```{}```", val),
+        None => String::from("There is no panel with that name, perhaps you spelled it wrong?"),
+    };
+    say!(ctx, msg, to_send);
+
+    Ok(())
 }
