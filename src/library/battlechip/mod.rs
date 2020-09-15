@@ -8,6 +8,7 @@ use serde::Serialize;
 use std::{
     cmp::{Ord, Ordering},
     str::FromStr,
+    borrow::Cow,
 };
 use unicode_normalization::UnicodeNormalization;
 
@@ -58,7 +59,31 @@ impl Eq for BattleChip {}
 
 impl std::fmt::Display for BattleChip {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
-        return write!(f, "```{}```", self.all);
+        
+        let damage = if self.damage == "--" {
+            Cow::Borrowed("--")
+        } else {
+            Cow::Owned(format!("{} damage", self.damage))
+        };
+
+        let hits = if self.hits == "1" {
+            Cow::Borrowed("1 hit.")
+        } else {
+            Cow::Owned(format!("{} hits.", self.hits))
+        };
+
+        let skills = self.skills.iter().map(|s| s.abbreviation()).collect::<Vec<&str>>().join(", ");
+        let elements = self.element.iter().map(|e| e.to_string()).collect::<Vec<String>>().join(", ");
+
+        if self.class == ChipType::Standard {
+            write!(f, "```{} - {} | {} | {} | {} | {}\n{}```", self.name, elements, skills, self.range, damage, hits, self.description)
+        } else {
+            write!(f, "```{} - {} | {} | {} | {} | {} | {}\n{}```", self.name, elements, skills, self.range, damage, self.class, hits, self.description)
+        }
+
+        //write!(f, "```{} - {} | {} | {}```");
+        
+        //return write!(f, "```{}```", self.all);
     }
 }
 

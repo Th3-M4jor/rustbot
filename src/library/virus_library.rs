@@ -89,12 +89,23 @@ impl std::fmt::Display for Virus {
             self.mind, self.body, self.spirit
         );
 
+        let mut skills = self.skills.iter().collect::<Vec<(&Skills, &u8)>>();
+        skills.sort_unstable_by(|a, b| {
+            a.0.cmp(b.0)
+        });
+
+        let skill_line = skills.iter().map( |skill|
+            format!("{}: {}", skill.0.abbreviation(), skill.1)
+        ).collect::<Vec<String>>().join(" | ");
+
+        /*
         let skill_line = self
             .skills
             .iter()
-            .map(|skill| format!("{}: {}", skill.0, skill.1))
+            .map(|skill| format!("{}: {}", skill.0.abbreviation(), skill.1))
             .collect::<Vec<String>>()
             .join(" | ");
+        */
         let abilities_line = match &self.abilities {
             Some(abilities) => format!("Abilities: {}", abilities.join(", ")),
             None => String::from("Abilities: None"),
