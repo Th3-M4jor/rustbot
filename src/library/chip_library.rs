@@ -50,11 +50,11 @@ impl ChipLibrary {
     }
 
     // returns number of chips loaded or a simple error
-    pub async fn load_chips(&mut self) -> Result<usize, Box<dyn std::error::Error + Send + Sync>> {
+    pub async fn load_chips(&mut self, load_custom_chips: bool) -> Result<usize, Box<dyn std::error::Error + Send + Sync>> {
         self.chips.clear();
 
         let chip_text_future = ChipLibrary::get_chip_text(&self.chip_url);
-        let custom_chip_text_future = ChipLibrary::get_custom_chip_text(&self.custom_chip_url);
+        let custom_chip_text_future = ChipLibrary::get_custom_chip_text(&self.custom_chip_url, load_custom_chips);
 
         let (chip_text_res, special_chips_res) =
             tokio::join!(chip_text_future, custom_chip_text_future);
@@ -125,7 +125,11 @@ impl ChipLibrary {
         Ok(res)
     }
 
-    async fn get_custom_chip_text(url: &str) -> Option<String> {
+    async fn get_custom_chip_text(url: &str, load_custom_chips: bool) -> Option<String> {
+        if !load_custom_chips {
+            return None;
+        }
+        
         let special_chips_res = reqwest::get(url).await.ok()?;
         let res = special_chips_res
             .text()

@@ -209,8 +209,9 @@ async fn reload_chips(data: Arc<RwLock<TypeMap>>) -> ReloadReturnType {
     let chip_library_lock = data_lock
         .get::<ChipLibrary>()
         .expect("chip library not found");
+    let config = data_lock.get::<BotData>().expect("bot data not found");
     let mut chip_library: RwLockWriteGuard<ChipLibrary> = chip_library_lock.write().await;
-    let chip_reload_str = chip_library.load_chips().await?;
+    let chip_reload_str = chip_library.load_chips(config.load_custom_chips).await?;
     str_to_ret = format!("{} chips loaded\n", chip_reload_str);
     vec_to_ret.reserve(chip_library.get_collection().len());
     for val in chip_library.get_collection().values() {
@@ -497,7 +498,7 @@ async fn main() {
             }
         }
         let mut chip_library = chip_library_mutex.write().await;
-        match chip_library.load_chips().await {
+        match chip_library.load_chips(config.load_custom_chips).await {
             Ok(s) => {
                 println!("{} chips were loaded", s);
             }

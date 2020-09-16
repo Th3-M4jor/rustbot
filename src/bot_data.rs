@@ -23,6 +23,8 @@ pub struct BotData {
     pub virus_url: String,
     #[serde(default)]
     pub ncp_url: String,
+    #[serde(default)]
+    pub load_custom_chips: bool,
 }
 
 impl BotData {
