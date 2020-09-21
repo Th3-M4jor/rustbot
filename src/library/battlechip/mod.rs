@@ -30,6 +30,8 @@ pub struct BattleChip {
     pub damage: String,
     #[serde(rename(serialize = "Type"))]
     pub class: ChipType,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub blight: Option<Elements>,
     pub hits: String,
     pub description: String,
     pub all: String,
@@ -124,6 +126,7 @@ impl BattleChip {
         lazy_static! {
             static ref RE: Regex = Regex::new(r"(.+?)\s-\s(.+?)\s\|\s(.+?)\s\|\s(.+?)\s\|\s(\d+d\d+|--)\s?(?:damage)?\s?\|?\s?(Mega|Giga|Dark|Support)?\s\|\s(\d+|\d+-\d+|--)\s?(?:hits?)\.?").expect("could not compile chip regex");
             static ref R_SAVE : Regex = Regex::new(r"an?\s(\w+)\scheck\sof\s\[DC\s\d+\s\+\s(\w+)]").expect("could not compile save regex");
+            static ref R_BLIGHT : Regex = Regex::new(r"[bB]light\s\((\w+)\)").expect("could not compile blight regex");
         }
 
         // let RE : Regex = Regex::new(r"(.+?)\s-\s(.+?)\s\|\s(.+?)\s\|\s(.+?)\s\|\s(\d+d\d+|--)\s?(?:damage)?\s?\|?\s?(Mega|Giga)?\s\|\s(\d+|\d+-\d+|--)\s?(?:hits?)\.?").unwrap();
@@ -192,6 +195,17 @@ impl BattleChip {
             skill_target = Skills::None;
         }
 
+        let blight: Option<Elements> =
+        if let Some(blight_res) = R_BLIGHT.captures(second_line) {
+            let blight_elem_str = blight_res
+                .get(1)
+                .ok_or_else(|| SimpleError::new("failed to get blight"))?
+                .as_str();
+            Some(Elements::from_str(blight_elem_str).unwrap_or(Elements::Null))
+        } else {
+            None
+        };
+
         let chip_all = format!("{}\n{}", first_line, second_line);
 
         let to_ret = BattleChip {
@@ -201,6 +215,7 @@ impl BattleChip {
             range: chip_range,
             damage: chip_damage.nfc().collect::<String>(),
             class: chip_type,
+            blight,
             hits: chip_hits.nfc().collect::<String>(),
             description: second_line.nfc().collect::<String>(),
             all: chip_all.nfc().collect::<String>(),

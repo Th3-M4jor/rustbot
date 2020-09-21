@@ -193,7 +193,7 @@ pub(crate) fn battlechip_as_lib_obj(obj: Arc<BattleChip>) -> Arc<dyn LibraryObje
 #[group]
 #[prefixes("c", "chip")]
 #[default_command(send_chip)]
-#[commands(send_chip, send_chip_element, chip_drop_cr)]
+#[commands(send_chip, send_chip_element, chip_drop_cr, send_chip_blight)]
 /// A group of commands related to Navi-Customizer Parts, see `c chip` for the get chip command help
 struct BnbChips;
 
@@ -341,6 +341,53 @@ async fn send_chip_element(ctx: &Context, msg: &Message, args: Args) -> CommandR
         ),
     }
     Ok(())
+}
+
+#[command("blight")]
+/// get a list of chips which can cause a blight of that element
+#[example = "Sword"]
+async fn send_chip_blight(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
+    if args.is_empty() {
+        say!(ctx, msg, "you must provide an element");
+        return Ok(());
+    }
+
+    let element_str = args.rest();
+    let element = match Elements::from_str(element_str) {
+        Ok(element) => element,
+        Err(_) => {
+            say!(ctx, msg, "That could not be parsed as an element, perhaps you spelled it wrong?");
+            return Ok(());
+        }
+    };
+
+    let data = ctx.data.read().await;
+    let library_lock = data.get::<ChipLibrary>().expect("chip library not found");
+    let library = library_lock.read().await;
+
+    let mut list = library.chips.iter().filter_map(|chip| {
+        match chip.1.blight {
+            Some(chip_elem) => {
+                if chip_elem == element {
+                    Some(chip.1.name.as_str())
+                } else {
+                    None
+                }
+            },
+            None => None
+        }
+    }).collect::<Vec<&str>>();
+
+    list.sort_unstable();
+
+    if list.is_empty() {
+        say!(ctx, msg, "No known chips cause a blight of that element");
+    } else {
+        long_say!(ctx, msg, list, ", ");
+    }
+
+    Ok(())
+
 }
 
 #[command("cr")]

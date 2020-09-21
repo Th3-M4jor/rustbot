@@ -32,6 +32,7 @@ impl std::str::FromStr for Elements {
             "break" => Ok(Elements::Break),
             "cursor" => Ok(Elements::Cursor),
             "recovery" => Ok(Elements::Recovery),
+            "recov" => Ok(Elements::Recovery),
             "invis" => Ok(Elements::Invis),
             "object" => Ok(Elements::Object),
             "null" => Ok(Elements::Null),
