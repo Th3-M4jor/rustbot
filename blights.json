@@ -1,12 +1,12 @@
 {
-	"fire": "When attacking, if your attack uses Strength or Speed to hit you must roll to hit twice and keep the lower of the two results.",
+	"fire": "When attacking, if your attack uses Strength or Agility to hit you must roll to hit twice and keep the lower of the two results.",
 	"aqua": "You may only make half your maximum Move Actions on your turn (minimum 1).",
 	"elec": "Instead of taking damage at the start of your turn, you will take the damage listed by the Blight effect every time you make a Move Action.",
 	"wood": "Damage done by Blight restores HP to the target who dealt it.",
-	"wind": "When attacking, if your attack uses Sense or Speed to hit you must make it with disadvantage.",
+	"wind": "When attacking, if your attack uses Perception or Agility to hit you must make it with disadvantage.",
 	"sword": "When you deal damage to a target in your Close range, that target takes damage equal to half the result of your damage roll instead of the full amount.",
-	"break": "Every time you make a Move Action, you must make a Stamina Check or you will be considered Staggered.",
-	"cursor": "When you use a Battlechip, you must make a Coding check of a given DC or lose an Attack Action on top of the action used for the chip.",
+	"break": "Every time you make a Move Action, you must make an Endurance Check or you will be considered Staggered.",
+	"cursor": "When you use a Battlechip, you must make a Tech check of a given DC or lose an Attack Action on top of the action used for the chip.",
 	"invis": "When you deal damage to a target in your Near range or beyond, the target takes damage equal to half the result of your damage roll instead of the full amount.",
 	"recovery": "You are unable to heal from any source.",
 	"object": "At the start of each turn, make an Info Check of a given DC. Should you fail, the target that Blighted you steals one chip from your Folder if any are present there."
