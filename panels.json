@@ -1,6 +1,6 @@
 {
-    "cracked" : "Cracked terrain forces anything attempting to step off of it to make a Stamina check or become Staggered.",
-    "grass" : "Wood Navis and Viruses regain HP equal to their Stamina whenever they end their turn while occupying this terrain. However, attacks that deal Fire damage have this damage increased by half their regular damage dice.",
+    "cracked" : "Cracked terrain forces anything attempting to step off of it to make an Endurance check or become Staggered.",
+    "grass" : "Wood Navis and Viruses regain HP equal to their Endurance whenever they end their turn while occupying this terrain. However, attacks that deal Fire damage have this damage increased by half their regular damage dice.",
     "holy" : "Any damage that a target takes while standing on this terrain is reduced by half.",
     "ice" : "Should a target use a Move Action to enter a space of this type, they will immediately slide forward one space in the direction they stepped in. This effect does not apply to Aqua Element targets. Elec attacks deal one and a half times their regular damage to targets standing on Ice terrain regardless of this.",
     "lava" : "Any target save those of the Fire Element that steps on a space of this type immediately takes damage equal to a roll of one of their HP dice and reverts the terrain to normal. Wood Navis and Viruses take twice this damage. If an Aqua attack passes over these spaces, they are reverted to normal terrain.",
@@ -8,5 +8,5 @@
     "metal" : "These spaces are immune to becoming Cracked by any sort of attack, and targets that stand on them have their AC increased by 2.",
     "poison" : "Targets standing on Poison terrain immediately suffer Blight (Recovery) and take 1d4 damage upon moving into it. For each Attack Action made on Poison terrain, an additional 1d4 Recovery damage is taken. Blight (Recovery) ends when the target starts their turn on a space that does not contain Poison terrain.",
     "sand" : "Targets stepping onto spaces of this type expend two Move Actions instead of one. If the target does not have two Move Actions remaining, they cannot step on these panels unless their Speed is less than 5. Wind attacks gain additional damage dice equal to half their regular value and immediately remove the terrain from these spaces when targeting them.",
-    "sea" : "Terrain of this type forces non-Aqua Element targets with less than 5 Speed that occupy it to use two Move Actions when moving away from it. Should these targets not have two Move Actions remanining, they cannot step off these panels. Elec attacks gain damage dice equal to half their regular value on targets standing in these spaces."
+    "sea" : "Terrain of this type forces non-Aqua Element targets with less than 5 Agility that occupy it to use two Move Actions when moving away from it. Should these targets not have two Move Actions remanining, they cannot step off these panels. Elec attacks gain damage dice equal to half their regular value on targets standing in these spaces."
 }
