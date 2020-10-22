@@ -8,7 +8,7 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-reqwest = { version = "*" }
+reqwest = { version = "^0.10" }
 serde_json = "*"
 serde = { version = "*", features = ["rc"] }
 regex = "*"
