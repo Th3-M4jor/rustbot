@@ -1,4 +1,4 @@
-use std::{cmp::Ordering, collections::HashMap, sync::Arc};
+use std::{cmp::Ordering, collections::HashMap, sync::Arc,};
 use tokio::sync::{RwLock, RwLockReadGuard};
 
 use rand::distributions::{Distribution, Uniform};
@@ -168,6 +168,40 @@ impl Library for VirusLibrary {
     }
 }
 
+
+#[derive(Debug)]
+pub enum VirusImportError {
+    TextDLFailure,
+    CRParseErr(String),
+    VirusParseErr(String),
+    UnexpectedEOF,
+    DuplicateVirus(String),
+}
+
+impl std::fmt::Display for VirusImportError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            VirusImportError::TextDLFailure => {
+                write!(f, "Failed to download Virus Compendium")
+            }
+            VirusImportError::CRParseErr(msg) => {
+                write!(f, "{}", msg)
+            }
+            VirusImportError::VirusParseErr(msg) => {
+                write!(f, "{}", msg)
+            }
+            VirusImportError::UnexpectedEOF => {
+                write!(f, "Unexpected end of file while parsing viruses")
+            }
+            VirusImportError::DuplicateVirus(msg) => {
+                write!(f, "{}", msg)
+            }
+        }
+    }
+}
+
+impl std::error::Error for VirusImportError {}
+
 impl VirusLibrary {
     pub fn new(url: &str) -> VirusLibrary {
         VirusLibrary {
@@ -188,16 +222,16 @@ impl VirusLibrary {
 
     pub async fn load_viruses(
         &mut self,
-    ) -> Result<String, Box<dyn std::error::Error + Send + Sync>> {
+    ) -> Result<String, VirusImportError> {
         self.library.clear();
         // let virus_regex : Regex = Regex::new(r"((.+)\s\((\w+)\))").expect("could not compile virus regex");
         // let cr_regex : Regex = Regex::new(r"CR\s+(\d+)").expect("could not compile CR regex");
 
         // let mut virus_list : Vec<Box<Virus>> = vec![];
         let virus_text = reqwest::get(&self.virus_url)
-            .await?
+            .await.map_err(|_| VirusImportError::TextDLFailure)?
             .text()
-            .await?
+            .await.map_err(|_| VirusImportError::TextDLFailure)?
             .replace("\u{e2}\u{20ac}\u{2122}", "'")
             .replace("\u{FEFF}", "")
             .replace("\r", "");
@@ -211,15 +245,15 @@ impl VirusLibrary {
         let cr_cap = self
             .cr_regex
             .captures(virus_text_arr[0])
-            .ok_or_else(|| SimpleError::new("Failed to capture first Virus CR"))?;
+            .ok_or_else(|| VirusImportError::CRParseErr("Failed to capture first Virus CR".to_owned()))?;
         let mut curr_cr = cr_cap[1]
             .parse::<u8>()
-            .map_err(|_| SimpleError::new("Failed to parse first Virus CR"))?;
+            .map_err(|_| VirusImportError::CRParseErr("Failed to parse first Virus CR".to_owned()))?;
 
         while virus_text_arr.len() > index {
             if let Some(cr_cap) = self.cr_regex.captures(virus_text_arr[index]) {
                 curr_cr = cr_cap[1].parse::<u8>().map_err(|_| {
-                    SimpleError::new(format!(
+                    VirusImportError::VirusParseErr(format!(
                         "Could not parse \"{}\" into CR",
                         virus_text_arr[index]
                     ))
@@ -231,7 +265,7 @@ impl VirusLibrary {
                 .virus_regex
                 .captures(virus_text_arr[index])
                 .ok_or_else(|| {
-                    SimpleError::new(format!(
+                    VirusImportError::VirusParseErr(format!(
                         "Failed to parse virus name:\n{}",
                         virus_text_arr[index]
                     ))
@@ -240,7 +274,7 @@ impl VirusLibrary {
             // println!("{}", virus_name);
             // println!("{}", &name_res[2]);
             let virus_element = name_res[2].parse::<Elements>().map_err(|_| {
-                SimpleError::new(format!(
+                VirusImportError::VirusParseErr(format!(
                     "Failed to parse virus element:\n{}",
                     virus_text_arr[index]
                 ))
@@ -249,14 +283,11 @@ impl VirusLibrary {
             let stat_chunk = if let Some(val) = virus_text_arr.get(index..=(index + 4)) {
                 val
             } else {
-                premature_eof = Some(Box::new(SimpleError::new(format!(
-                    "Unexpected end of file reached while parsing {}",
-                    virus_name
-                ))));
+                premature_eof = Some(VirusImportError::UnexpectedEOF);
                 break;
             };
             let stat_res = self.parse_stats(stat_chunk).map_err(|e| {
-                SimpleError::new(format!(
+                VirusImportError::VirusParseErr(format!(
                     "Error at {}:\n{}\n{}",
                     virus_name,
                     e.as_str(),
@@ -292,10 +323,10 @@ impl VirusLibrary {
                 .insert(virus.name.to_ascii_lowercase(), virus)
                 .is_some()
             {
-                return Err(Box::new(SimpleError::new(format!(
+                return Err(VirusImportError::DuplicateVirus(format!(
                     "Duplicate virus name found: {}",
                     virus_name
-                ))));
+                )));
             }
             //yield to other tasks on each iteration
             tokio::task::yield_now().await;

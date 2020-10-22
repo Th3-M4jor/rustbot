@@ -30,7 +30,7 @@ use crate::{
         chip_library::{BNBCHIPS_GROUP, BNBSKILLS_GROUP, ChipLibrary, battlechip_as_lib_obj},
         full_library::{CHIP_DROP_COMMAND, FullLibrary, check_virus_drops, search_full_library},
         ncp_library::{BNBNCPS_GROUP, NCPLibrary, ncp_as_lib_obj},
-        virus_library::{BNBVIRUSES_GROUP, VirusLibrary, virus_as_lib_obj},
+        virus_library::{BNBVIRUSES_GROUP, VirusLibrary, VirusImportError, virus_as_lib_obj},
         Library,
         LibraryObject,
     },
@@ -246,7 +246,28 @@ async fn reload_viruses(data: Arc<RwLock<TypeMap>>) -> ReloadReturnType {
         .get::<VirusLibrary>()
         .expect("virus library not found");
     let mut virus_library: RwLockWriteGuard<VirusLibrary> = virus_library_lock.write().await;
-    let str_to_ret = virus_library.load_viruses().await?;
+    let str_to_ret = match virus_library.load_viruses().await {
+        Ok(val) => val,
+        Err(err) => {
+            match err {
+                VirusImportError::TextDLFailure => {
+                    return Err(Box::new(err));
+                }
+                VirusImportError::CRParseErr(msg) => {
+                    msg
+                }
+                VirusImportError::VirusParseErr(msg) => {
+                    msg
+                }
+                VirusImportError::UnexpectedEOF => {
+                    return Err(Box::new(err));
+                }
+                VirusImportError::DuplicateVirus(_) => {
+                    return Err(Box::new(err));
+                }
+            }
+        }
+    };
 
     vec_to_ret.reserve(virus_library.get_collection().len());
     for val in virus_library.get_collection().values() {
@@ -299,6 +320,7 @@ async fn reload(ctx: &Context, msg: &Message, _: Args) -> CommandResult {
     let ncp_res;
     let virus_res;
 
+    
     let res: Result<
         (ReloadOkType, ReloadOkType, ReloadOkType),
         Box<dyn std::error::Error + Send + Sync>,
@@ -321,6 +343,7 @@ async fn reload(ctx: &Context, msg: &Message, _: Args) -> CommandResult {
             return Err(e);
         }
     }
+    
     let data = ctx.data.read().await;
     let blight_string;
     {
@@ -357,6 +380,7 @@ async fn reload(ctx: &Context, msg: &Message, _: Args) -> CommandResult {
     str_to_send.push_str(&chip_res.0);
     str_to_send.push_str(&ncp_res.0);
     str_to_send.push_str(&virus_res.0);
+    str_to_send.push('\n');
     str_to_send.push_str(&blight_string);
 
     if full_duplicates.len() > 0 {
