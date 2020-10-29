@@ -20,7 +20,7 @@ rand = "*"
 strsim = "*"
 chrono = "*"
 tokio  = { version = "^0.2", features = ["rt-threaded", "time", "sync", "fs", "macros", "rt-util", "blocking"] }
-serenity = { version = "^0.9.0-rc.2", features = ["framework", "standard_framework", "collector", ] }
+serenity = { version = "^0.9.0-rc.4", features = ["framework", "standard_framework", "collector", ] }
 futures = "*"
 log = "*"
 pretty_env_logger = "*"
