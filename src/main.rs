@@ -604,7 +604,8 @@ async fn main() {
     // let mut client = Client::new_with_framework(&config.token, Handler, framework)
     // .await
     // .expect("Err creating client");
-    let mut client = Client::new(&config.token)
+    let mut client = Client::builder(&config.token)
+    //let mut client = Client::new(&config.token)
         .event_handler(Handler)
         .framework(framework)
         .intents(
