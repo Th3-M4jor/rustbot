@@ -336,7 +336,7 @@ async fn reload(ctx: &Context, msg: &Message, _: Args) -> CommandResult {
                 ctx,
                 msg,
                 format!(
-                    "An error occurred, library is not guaranteed to be in a usable state:\n {}",
+                    "An error occurred, library is not guaranteed to be in a usable state:\n{}",
                     e.to_string()
                 )
             );
@@ -479,100 +479,75 @@ async fn prefix_only_message(ctx: &Context, msg: &Message) {
     );
 }
 
+
 #[tokio::main]
 async fn main() {
     pretty_env_logger::init();
     let config = BotData::new();
-    let chip_library_mutex =
-        RwLock::new(ChipLibrary::new(&config.chip_url, &config.custom_chip_url));
-    let ncp_library_mutex = RwLock::new(NCPLibrary::new(&config.ncp_url));
-    let virus_library_mutex = RwLock::new(VirusLibrary::new(&config.virus_url));
-    let warframe_data = WarframeData::new();
-    let full_library_mutex = RwLock::new(FullLibrary::new());
-    let blight_mutex = RwLock::new(Blights::new());
-    let status_mutex = RwLock::new(Statuses::new());
-    let panels_mutex = RwLock::new(Panels::new());
+    
+    let blights_future = Blights::import();
+    let statuses_future = Statuses::import();
+    let panels_future = Panels::import();
 
-    {
-        let mut blights = blight_mutex.write().await;
-        match blights.load().await {
-            Ok(()) => {
-                println!("blights loaded");
-            }
-            Err(e) => {
-                println!("{}", e.to_string());
-            }
-        }
-        let mut statuses = status_mutex.write().await;
-        match statuses.load().await {
-            Ok(()) => {
-                println!("statuses loaded");
-            }
-            Err(e) => {
-                println!("{}", e.to_string());
-            }
-        }
-        let mut panels = panels_mutex.write().await;
-        match panels.load().await {
-            Ok(()) => {
-                println!("panels loaded");
-            }
-            Err(e) => {
-                println!("{}", e.to_string());
-            }
-        }
-        let mut chip_library = chip_library_mutex.write().await;
-        match chip_library.load_chips(config.load_custom_chips).await {
-            Ok(s) => {
-                println!("{} chips were loaded", s);
-            }
-            Err(e) => {
-                println!("{}", e.to_string());
-            }
-        }
-        let mut ncp_library = ncp_library_mutex.write().await;
+    let (blights, statuses, panels) = tokio::try_join!(blights_future, statuses_future, panels_future).expect("import of blights, statuses, or panels failed. Aborting.");
 
-        match ncp_library.load_programs().await {
-            Ok(s) => {
-                println!("{} programs loaded", s);
-            }
-            Err(e) => {
-                println!("{}", e.to_string());
-            }
-        }
+    let mut chip_library = ChipLibrary::new(&config.chip_url, &config.custom_chip_url);
+    let mut ncp_library = NCPLibrary::new(&config.ncp_url);
+    let mut virus_library = VirusLibrary::new(&config.virus_url);
+    let mut full_library = FullLibrary::new();
 
-        // println!("{} programs loaded", ncp_count);
-        let mut virus_library = virus_library_mutex.write().await;
-        match virus_library.load_viruses().await {
-            Ok(s) => println!("{}", s),
-            Err(e) => println!("{}", e.to_string()),
-        }
+    let chip_load_fut = chip_library.load_chips(config.load_custom_chips);
+    let ncp_load_fut = ncp_library.load_programs();
+    let virus_load_fut = virus_library.load_viruses();
 
-        if let Err(why) = check_virus_drops(&virus_library, &chip_library) {
-            println!("{}", why.as_str());
-        }
 
-        let mut full_library = full_library_mutex.write().await;
-        for val in chip_library.get_collection().values() {
-            let obj = battlechip_as_lib_obj(Arc::clone(val));
-            if let Err(e) = full_library.insert(obj) {
-                println!("Found duplicate name in full library: {}", e.as_str());
+
+    let (chip_res, ncp_res, virus_res) = tokio::join!(chip_load_fut, ncp_load_fut, virus_load_fut);
+
+    let chip_count = chip_res.unwrap();
+    println!("{} chips were loaded", chip_count);
+    let ncp_count = ncp_res.unwrap();
+    println!("{} programs loaded", ncp_count);
+
+    match virus_res {
+        Ok(s) => println!("{}", s),
+        Err(e) => {
+            println!("{}", e);
+            if e.is_unrecoverable() {
+                panic!();
             }
         }
-        for val in virus_library.get_collection().values() {
-            let obj = virus_as_lib_obj(Arc::clone(val));
-            if let Err(e) = full_library.insert(obj) {
-                println!("Found duplicate name in full library: {}", e.as_str());
-            }
-        }
-        for val in ncp_library.get_collection().values() {
-            let obj = ncp_as_lib_obj(Arc::clone(val));
-            if let Err(e) = full_library.insert(obj) {
-                println!("Found duplicate name in full library: {}", e.as_str());
-            }
-        }
-        println!("Full library loaded, size is {}", full_library.len());
     }
+
+
+
+
+    for val in chip_library.get_collection().values() {
+        let obj = battlechip_as_lib_obj(Arc::clone(val));
+        if let Err(e) = full_library.insert(obj) {
+            println!("Found duplicate name in full library: {}", e.as_str());
+            panic!();
+        }
+    }
+
+    for val in virus_library.get_collection().values() {
+        let obj = virus_as_lib_obj(Arc::clone(val));
+        if let Err(e) = full_library.insert(obj) {
+            println!("Found duplicate name in full library: {}", e.as_str());
+            panic!();
+        }
+    }
+
+    for val in ncp_library.get_collection().values() {
+        let obj = ncp_as_lib_obj(Arc::clone(val));
+        if let Err(e) = full_library.insert(obj) {
+            println!("Found duplicate name in full library: {}", e.as_str());
+            panic!();
+        }
+    }
+
+    println!("Full library loaded, size is {}", full_library.len());
+
 
     let mut owners = std::collections::HashSet::new();
     let owner_id = serenity::model::id::UserId::from(config.owner);
@@ -601,11 +576,7 @@ async fn main() {
         .group(&BNBVIRUSES_GROUP)
         .group(&BNBNCPS_GROUP);
 
-    // let mut client = Client::new_with_framework(&config.token, Handler, framework)
-    // .await
-    // .expect("Err creating client");
     let mut client = Client::builder(&config.token)
-    //let mut client = Client::new(&config.token)
         .event_handler(Handler)
         .framework(framework)
         .intents(
@@ -617,31 +588,19 @@ async fn main() {
         .await
         .expect("Err creating client");
 
-    // let mut client = Client::new_with_extras(&config.token, move |f| {
-    // f.framework(framework)
-    // .intents(
-    // GatewayIntents::GUILD_MESSAGE_REACTIONS
-    // | GatewayIntents::DIRECT_MESSAGES
-    // | GatewayIntents::GUILD_MESSAGES
-    // | GatewayIntents::GUILDS,
-    // )
-    // .event_handler(Handler)
-    // })
-    // .await
-    // .expect("Err creating client");
-    // set scope to ensure that lock is released immediately
+    let warframe_data = WarframeData::new();
 
     {
         let mut data = client.data.write().await;
-        data.insert::<ChipLibrary>(chip_library_mutex);
-        data.insert::<NCPLibrary>(ncp_library_mutex);
-        data.insert::<VirusLibrary>(virus_library_mutex);
+        data.insert::<ChipLibrary>(RwLock::new(chip_library));
+        data.insert::<NCPLibrary>(RwLock::new(ncp_library));
+        data.insert::<VirusLibrary>(RwLock::new(virus_library));
         data.insert::<BotData>(config);
         data.insert::<WarframeData>(warframe_data);
-        data.insert::<FullLibrary>(full_library_mutex);
-        data.insert::<Blights>(blight_mutex);
-        data.insert::<Statuses>(status_mutex);
-        data.insert::<Panels>(panels_mutex);
+        data.insert::<FullLibrary>(RwLock::new(full_library));
+        data.insert::<Blights>(blights);
+        data.insert::<Statuses>(statuses);
+        data.insert::<Panels>(panels);
         data.insert::<ShardManagerContainer>(Arc::clone(&client.shard_manager));
         data.insert::<DmOwner>(AtomicBool::new(true));
     }

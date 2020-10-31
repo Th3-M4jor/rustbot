@@ -178,6 +178,17 @@ pub enum VirusImportError {
     DuplicateVirus(String),
 }
 
+impl VirusImportError {
+    pub(crate) fn is_unrecoverable(&self) -> bool {
+        match self {
+            VirusImportError::TextDLFailure | 
+            VirusImportError::UnexpectedEOF | 
+            VirusImportError::DuplicateVirus(_) => true,
+            _ => false,
+        }
+    }
+}
+
 impl std::fmt::Display for VirusImportError {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {

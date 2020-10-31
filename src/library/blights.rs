@@ -11,10 +11,16 @@ pub struct Blights {
 }
 
 impl Blights {
-    pub fn new() -> Blights {
-        Blights {
+    pub async fn import() -> Result<RwLock<Blights>, Box<dyn Error>> {
+        
+        let mut to_ret = Blights {
             values: serde_json::Value::Null,
-        }
+        };
+        
+        to_ret.load().await?;
+
+        Ok(RwLock::new(to_ret))
+
     }
 
     pub async fn load(&mut self) -> Result<(), Box<dyn Error>> {
@@ -57,10 +63,16 @@ pub struct Statuses {
 }
 
 impl Statuses {
-    pub fn new() -> Statuses {
-        Statuses {
+    pub async fn import() -> Result<RwLock<Statuses>, Box<dyn Error>> {
+        
+        let mut to_ret = Statuses {
             values: serde_json::Value::Null,
-        }
+        };
+
+        to_ret.load().await?;
+
+        Ok(RwLock::new(to_ret))
+
     }
 
     pub async fn load(&mut self) -> Result<(), Box<dyn Error>> {
@@ -106,10 +118,15 @@ pub struct Panels {
 }
 
 impl Panels {
-    pub fn new() -> Panels {
-        Panels {
+    pub async fn import() -> Result<RwLock<Panels>, Box<dyn Error>> {
+        let mut to_ret = Panels {
             values: serde_json::Value::Null,
-        }
+        };
+
+        to_ret.load().await?;
+
+        Ok(RwLock::new(to_ret))
+
     }
 
     pub async fn load(&mut self) -> Result<(), Box<dyn Error>> {
