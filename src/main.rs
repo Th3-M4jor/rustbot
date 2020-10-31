@@ -485,30 +485,36 @@ async fn main() {
     pretty_env_logger::init();
     let config = BotData::new();
     
+    // create futures for importing panels, blights, and statuses
     let blights_future = Blights::import();
     let statuses_future = Statuses::import();
     let panels_future = Panels::import();
 
+    // join all three futures at once, panic if any one returns an error, unrecoverable
     let (blights, statuses, panels) = tokio::try_join!(blights_future, statuses_future, panels_future).expect("import of blights, statuses, or panels failed. Aborting.");
 
+    // create library structs
     let mut chip_library = ChipLibrary::new(&config.chip_url, &config.custom_chip_url);
     let mut ncp_library = NCPLibrary::new(&config.ncp_url);
     let mut virus_library = VirusLibrary::new(&config.virus_url);
     let mut full_library = FullLibrary::new();
 
+    // create library struct import futures
     let chip_load_fut = chip_library.load_chips(config.load_custom_chips);
     let ncp_load_fut = ncp_library.load_programs();
     let virus_load_fut = virus_library.load_viruses();
 
 
-
+    // join all futures at once
     let (chip_res, ncp_res, virus_res) = tokio::join!(chip_load_fut, ncp_load_fut, virus_load_fut);
 
+    // panic if chip or ncp librarys are unusable
     let chip_count = chip_res.unwrap();
     println!("{} chips were loaded", chip_count);
     let ncp_count = ncp_res.unwrap();
     println!("{} programs loaded", ncp_count);
 
+    // some virus import errors are recoverable, panic of they aren't
     match virus_res {
         Ok(s) => println!("{}", s),
         Err(e) => {
@@ -521,7 +527,7 @@ async fn main() {
 
 
 
-
+    // load chips, viruses, ncps into the full library struct, panic on unrecoverable duplicates
     for val in chip_library.get_collection().values() {
         let obj = battlechip_as_lib_obj(Arc::clone(val));
         if let Err(e) = full_library.insert(obj) {
@@ -549,8 +555,9 @@ async fn main() {
     println!("Full library loaded, size is {}", full_library.len());
 
 
+    // configure standard framework
     let mut owners = std::collections::HashSet::new();
-    let owner_id = serenity::model::id::UserId::from(config.owner);
+    let owner_id = serenity::model::id::UserId(config.owner);
     owners.insert(owner_id);
     let prefix = config.cmd_prefix.clone();
     let framework = StandardFramework::new()
@@ -589,7 +596,7 @@ async fn main() {
         .expect("Err creating client");
 
     let warframe_data = WarframeData::new();
-
+    // insert stuff into the data Arc<RwLock>
     {
         let mut data = client.data.write().await;
         data.insert::<ChipLibrary>(RwLock::new(chip_library));
