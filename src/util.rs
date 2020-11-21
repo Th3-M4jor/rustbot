@@ -1,9 +1,8 @@
 use serenity::{
-    builder::EditMessage,
     client::bridge::gateway::ShardManager,
     framework::standard::{macros::command, Args, CommandResult},
     http::CacheHttp,
-    model::{channel::{Message, ReactionType}, id::{ChannelId, UserId}, permissions::Permissions},
+    model::{channel::{Message, ReactionType}, id::{ChannelId, UserId, MessageId}, permissions::Permissions},
     prelude::*,
 };
 
@@ -81,12 +80,20 @@ pub(crate) fn build_time_rem(now: i64, end: i64) -> String {
     }
 }
 
-pub(crate) async fn edit_message_by_id<T: ToString>(
+pub(crate) async fn edit_message_by_id<T: ToString, S: Into<ChannelId>, V: Into<MessageId>>(
     cache_http: impl CacheHttp,
-    channel_id: u64,
-    message_id: u64,
+    channel_id: S,
+    message_id: V,
     new_msg: T,
 ) -> Result<Message, serenity::Error> {
+
+    let channel: ChannelId = channel_id.into();
+
+    channel.edit_message(cache_http.http(), message_id, |e| {
+        e.content(new_msg.to_string())
+    }).await
+
+    /*
     let mut edited_text = EditMessage::default();
     edited_text.content(new_msg.to_string());
     let map = serenity::utils::hashmap_to_json_map(edited_text.0);
@@ -95,6 +102,7 @@ pub(crate) async fn edit_message_by_id<T: ToString>(
         .http()
         .edit_message(channel_id, message_id, &stringified_map)
         .await
+    */
 }
 
 /// Returns true if the bot has permission to manage messages and add reactions to the given channel
