@@ -2,7 +2,11 @@ use serenity::{
     client::bridge::gateway::ShardManager,
     framework::standard::{macros::command, Args, CommandResult},
     http::CacheHttp,
-    model::{channel::{Message, ReactionType}, id::{ChannelId, UserId, MessageId}, permissions::Permissions},
+    model::{
+        channel::{Message, ReactionType},
+        id::{ChannelId, MessageId, UserId},
+        permissions::Permissions,
+    },
     prelude::*,
 };
 
@@ -86,23 +90,22 @@ pub(crate) async fn edit_message_by_id<T: ToString, S: Into<ChannelId>, V: Into<
     message_id: V,
     new_msg: T,
 ) -> Result<Message, serenity::Error> {
-
     let channel: ChannelId = channel_id.into();
 
-    channel.edit_message(cache_http.http(), message_id, |e| {
-        e.content(new_msg.to_string())
-    }).await
-
-    /*
-    let mut edited_text = EditMessage::default();
-    edited_text.content(new_msg.to_string());
-    let map = serenity::utils::hashmap_to_json_map(edited_text.0);
-    let stringified_map = serde_json::Value::Object(map);
-    cache_http
-        .http()
-        .edit_message(channel_id, message_id, &stringified_map)
+    channel
+        .edit_message(cache_http.http(), message_id, |e| {
+            e.content(new_msg.to_string())
+        })
         .await
-    */
+
+    // let mut edited_text = EditMessage::default();
+    // edited_text.content(new_msg.to_string());
+    // let map = serenity::utils::hashmap_to_json_map(edited_text.0);
+    // let stringified_map = serde_json::Value::Object(map);
+    // cache_http
+    // .http()
+    // .edit_message(channel_id, message_id, &stringified_map)
+    // .await
 }
 
 /// Returns true if the bot has permission to manage messages and add reactions to the given channel
@@ -129,12 +132,10 @@ pub(crate) async fn has_reaction_perm(ctx: &Context, channel_id: ChannelId) -> b
     permissions.contains(Permissions::ADD_REACTIONS | Permissions::MANAGE_MESSAGES)
 }
 
-/*
-pub fn to_boxed_fut<F>(fut: impl Fn(Arc<Context>, Arc<Message>, Args) -> F) -> Pin<Box<dyn std::future::Future<Output = CommandResult>>>
-    where F: std::future::Future<Output=CommandResult> {
-        Box::pin(fut)
-}
-*/
+// pub fn to_boxed_fut<F>(fut: impl Fn(Arc<Context>, Arc<Message>, Args) -> F) -> Pin<Box<dyn std::future::Future<Output = CommandResult>>>
+// where F: std::future::Future<Output=CommandResult> {
+// Box::pin(fut)
+// }
 
 const NUMBERS: &[&str] = &[
     "\u{31}\u{fe0f}\u{20e3}", // 1
@@ -149,7 +150,12 @@ const NUMBERS: &[&str] = &[
 ];
 
 /// Panics if len is 0 or greater than 9
-pub(crate) async fn reaction_did_you_mean(ctx: &Context, msg: &Message, author_id: UserId, len: usize) -> Option<usize> {
+pub(crate) async fn reaction_did_you_mean(
+    ctx: &Context,
+    msg: &Message,
+    author_id: UserId,
+    len: usize,
+) -> Option<usize> {
     if len == 0 || len > 9 {
         panic!("Recieved invalid number for did you mean: {}", len);
     }
@@ -178,24 +184,24 @@ pub(crate) async fn reaction_did_you_mean(ctx: &Context, msg: &Message, author_i
 
     let mut reacted_number: Option<usize> = None;
     'outer: loop {
-    if let Some(reaction) = msg.await_reaction(&ctx)
-    .timeout(Duration::from_secs(30))
-    .author_id(author_id)
-    .await {
-        let emoji = &reaction.as_inner_ref().emoji.as_data();
-        let reacted_emoji = emoji.as_str();
-        for num in NUMBERS.iter().take(len).zip(0..=len) {
-            if *num.0 == reacted_emoji {
-                reacted_number = Some(num.1);
-                break 'outer;
+        if let Some(reaction) = msg
+            .await_reaction(&ctx)
+            .timeout(Duration::from_secs(30))
+            .author_id(author_id)
+            .await
+        {
+            let emoji = &reaction.as_inner_ref().emoji.as_data();
+            let reacted_emoji = emoji.as_str();
+            for num in NUMBERS.iter().take(len).zip(0..=len) {
+                if *num.0 == reacted_emoji {
+                    reacted_number = Some(num.1);
+                    break 'outer;
+                }
             }
+        } else {
+            break;
         }
-    } else {
-        break;
     }
-
-    }
-
 
     if let Err(why) = all_reactions_added.await {
         println!("{:?}", why);
@@ -207,7 +213,6 @@ pub(crate) async fn reaction_did_you_mean(ctx: &Context, msg: &Message, author_i
     }
 
     reacted_number
-
 }
 
 #[command]
@@ -267,32 +272,30 @@ async fn die(ctx: &Context, msg: &Message, _: Args) -> CommandResult {
     return Ok(());
 }
 
-/*
-struct TestStruct {
-    pub map: std::collections::HashMap<String, Box<dyn Fn() -> std::pin::Pin<Box<dyn std::future::Future<Output = usize>>>>>,
-}
-
-impl TestStruct {
-    pub fn insert<F>(&mut self, name: String, fut: &'static impl Fn() -> F) 
-        where F: 'static + std::future::Future<Output=usize> {
-        self.map.insert(name, Box::new(move ||Box::pin(fut())));
-    }
-}
-
-pub(crate) async fn test_fn() -> usize {
-    42
-}
-
-pub(crate) async fn test_struct() {
-    let mut test = TestStruct { map: std::collections::HashMap::new()};
-    test.insert("test".to_string(), &test_fn);
-    let val = test.map.get("test").unwrap();
-    
-    println!("{}", val().await);
-
-    let val_2 = test.map.get("test").unwrap();
-    println!("{}", val_2().await);
-
-    println!("{}", test_fn().await);
-}
-*/
+// struct TestStruct {
+// pub map: std::collections::HashMap<String, Box<dyn Fn() -> std::pin::Pin<Box<dyn std::future::Future<Output = usize>>>>>,
+// }
+//
+// impl TestStruct {
+// pub fn insert<F>(&mut self, name: String, fut: &'static impl Fn() -> F)
+// where F: 'static + std::future::Future<Output=usize> {
+// self.map.insert(name, Box::new(move ||Box::pin(fut())));
+// }
+// }
+//
+// pub(crate) async fn test_fn() -> usize {
+// 42
+// }
+//
+// pub(crate) async fn test_struct() {
+// let mut test = TestStruct { map: std::collections::HashMap::new()};
+// test.insert("test".to_string(), &test_fn);
+// let val = test.map.get("test").unwrap();
+//
+// println!("{}", val().await);
+//
+// let val_2 = test.map.get("test").unwrap();
+// println!("{}", val_2().await);
+//
+// println!("{}", test_fn().await);
+// }
