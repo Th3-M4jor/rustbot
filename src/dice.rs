@@ -85,32 +85,27 @@ async fn perform_roll(ctx: &Context, msg: &Message, to_roll: &str, reroll: bool)
     let repl_str = format!("{:?}", results);
     let reply = if repl_str.len() > 1850 {
         format!(
-            "{}, you rolled: {}\n[There were too many die rolls to show the result of each one]",
-            msg.author.mention(),
+            "You rolled: {}\n[There were too many die rolls to show the result of each one]",
             amt
         )
     } else {
         format!(
-            "{}, you rolled: {}\n{}",
-            msg.author.mention(),
+            "You rolled: {}\n{}",
             amt,
             repl_str
         )
     };
-    say!(ctx, msg, reply);
+    reply!(ctx, msg, reply);
 }
 
 #[command]
 /// Same as the roll command, except 1's and 2's will be re-rolled once, keeping the higher result
 async fn reroll(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
     if args.is_empty() {
-        say!(
+        reply!(
             ctx,
             msg,
-            format!(
-                "{}, you must supply a number of dice to roll",
-                msg.author.mention()
-            )
+            "You must supply a number of dice to roll"
         );
         return Ok(());
     }
@@ -124,13 +119,10 @@ async fn reroll(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
 #[example = "4d27"]
 pub(crate) async fn roll(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
     if args.is_empty() {
-        say!(
+        reply!(
             ctx,
             msg,
-            format!(
-                "{}, you must supply a number of dice to roll",
-                msg.author.mention()
-            )
+            "You must supply a number of dice to roll"
         );
         return Ok(());
     }
@@ -154,12 +146,11 @@ pub(crate) async fn roll_stats(ctx: &Context, msg: &Message, _: Args) -> Command
         *i = rolls.iter().sum();
     }
 
-    say!(
+    reply!(
         ctx,
         msg,
         format!(
-            "{}, 4d6 drop the lowest:\n{:?}",
-            msg.author.mention(),
+            "4d6 drop the lowest:\n{:?}",
             stats
         )
     );
@@ -171,13 +162,10 @@ pub(crate) async fn roll_stats(ctx: &Context, msg: &Message, _: Args) -> Command
 #[example = "20"]
 pub(crate) async fn shuffle(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
     if args.is_empty() {
-        say!(
+        reply!(
             ctx,
             msg,
-            format!(
-                "{}, you must supply a number of numbers to shuffle",
-                msg.author.mention()
-            )
+            "You must supply a number of numbers to shuffle"
         );
         return Ok(());
     }
@@ -185,20 +173,17 @@ pub(crate) async fn shuffle(ctx: &Context, msg: &Message, mut args: Args) -> Com
     let size = match args.single::<usize>() {
         Ok(size) => size,
         Err(_) => {
-            say!(
+            reply!(
                 ctx,
                 msg,
-                format!(
-                    "{}, an invalid number was provided",
-                    msg.author.mention()
-                )
+                "An invalid number was provided"
             );
             return Ok(());
         }
     };
 
     if size < 2 {
-        say!(
+        reply!(
             ctx,
             msg,
             "Cannot shuffle a number less than 2"
@@ -207,7 +192,7 @@ pub(crate) async fn shuffle(ctx: &Context, msg: &Message, mut args: Args) -> Com
     }
 
     if size > 64 {
-        say!(
+        reply!(
             ctx,
             msg,
             "Cowardly refusing to shuffle a number greater than 64"

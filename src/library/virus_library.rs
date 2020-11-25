@@ -588,7 +588,7 @@ struct BnbViruses;
 #[example = "Mettaur"]
 pub(crate) async fn send_virus(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
     if args.is_empty() {
-        say!(ctx, msg, "you must provide a name");
+        reply!(ctx, msg, "you must provide a name");
         return Ok(());
     }
     let to_search = args.rest();
@@ -606,7 +606,7 @@ pub(crate) async fn send_virus(ctx: &Context, msg: &Message, args: Args) -> Comm
 #[example = "Elec"]
 pub(crate) async fn send_virus_element(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
     if args.is_empty() {
-        say!(ctx, msg, "you must provide an element");
+        reply!(ctx, msg, "you must provide an element");
         return Ok(());
     }
 
@@ -621,7 +621,7 @@ pub(crate) async fn send_virus_element(ctx: &Context, msg: &Message, args: Args)
             let to_send = elem.iter().map(|a| a.get_name()).collect::<Vec<&str>>();
             long_say!(ctx, msg, to_send, ", ")
         },
-        None => say!(
+        None => reply!(
             ctx,
             msg,
             "nothing matched your search, are you sure you gave an element?"
@@ -635,14 +635,14 @@ pub(crate) async fn send_virus_element(ctx: &Context, msg: &Message, args: Args)
 #[example = "4"]
 pub(crate) async fn send_virus_cr(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
     if args.is_empty() {
-        say!(ctx, msg, "you must provide a CR to search for");
+        reply!(ctx, msg, "you must provide a CR to search for");
         return Ok(());
     }
 
     let cr_to_get_res = args.single::<u8>();
 
     if cr_to_get_res.is_err() {
-        say!(ctx, msg, "an invalid number was provided");
+        reply!(ctx, msg, "an invalid number was provided");
         return Ok(());
     }
     let cr_to_get = cr_to_get_res.unwrap();
@@ -656,7 +656,7 @@ pub(crate) async fn send_virus_cr(ctx: &Context, msg: &Message, mut args: Args) 
             let to_send = val.iter().map(|a| a.get_name()).collect::<Vec<&str>>();
             long_say!(ctx, msg, to_send, ", ")
         },
-        None => say!(ctx, msg, "There are currently no viruses in that CR"),
+        None => reply!(ctx, msg, "There are currently no viruses in that CR", false),
     }
     return Ok(());
 }
@@ -671,7 +671,7 @@ pub(crate) async fn send_random_encounter(
     mut args: Args,
 ) -> CommandResult {
     if args.len() < 2 {
-        say!(
+        reply!(
             ctx,
             msg,
             concat!(
@@ -687,7 +687,7 @@ pub(crate) async fn send_random_encounter(
     let second_arg = args.single::<String>().unwrap();
     let virus_count = second_arg.parse::<isize>().unwrap_or(-1);
     if virus_count <= 0 {
-        say!(ctx, msg, "an invalid number of viruses were given");
+        reply!(ctx, msg, "an invalid number of viruses were given");
         return Ok(());
     }
     let data = ctx.data.read().await;
@@ -702,7 +702,7 @@ pub(crate) async fn send_random_encounter(
     if let Ok(single_cr) = single_cr_res {
         // a single CR
         if single_cr <= 0 || single_cr > library.get_highest_cr() as isize {
-            say!(ctx, msg, "an invalid single CR was given");
+            reply!(ctx, msg, "an invalid single CR was given");
             return Ok(());
         }
         to_send = library
@@ -711,13 +711,13 @@ pub(crate) async fn send_random_encounter(
     } else {
         let cr_range: Vec<&str> = first_arg.trim().split('-').collect();
         if cr_range.len() != 2 {
-            say!(ctx, msg, "That is an invalid CR range");
+            reply!(ctx, msg, "That is an invalid CR range");
             return Ok(());
         }
         let first_cr_res = cr_range[0].parse::<u8>();
         let second_cr_res = cr_range[1].parse::<u8>();
         if first_cr_res.is_err() || second_cr_res.is_err() {
-            say!(ctx, msg, "That is an invalid CR range");
+            reply!(ctx, msg, "That is an invalid CR range");
             return Ok(());
         }
         let first_cr_num = first_cr_res.unwrap();
@@ -749,7 +749,7 @@ pub(crate) fn virus_as_lib_obj(obj: Arc<Virus>) -> Arc<dyn LibraryObject> {
 #[example = "Swordy"]
 pub(crate) async fn send_family(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
     if args.is_empty() {
-        say!(ctx, msg, "you must provide a name");
+        reply!(ctx, msg, "you must provide a name");
         return Ok(());
     }
     // let to_join = &args[1..];
@@ -764,7 +764,7 @@ pub(crate) async fn send_family(ctx: &Context, msg: &Message, args: Args) -> Com
             let to_send = res.iter().map(|val| (*val).get_name()).collect::<Vec<&str>>();
             long_say!(ctx, msg, to_send, ", ")
         },
-        None => say!(ctx, msg, "There is no family under that name"),
+        None => reply!(ctx, msg, "There is no family under that name", false),
     }
     return Ok(());
 }

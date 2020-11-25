@@ -43,7 +43,7 @@ impl TypeMapKey for Blights {
 #[example = "Fire"]
 pub(crate) async fn get_blight(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
     if args.is_empty() {
-        say!(ctx, msg, "you must provide an element");
+        reply!(ctx, msg, "you must provide an element");
         return Ok(());
     }
     let data = ctx.data.read().await;
@@ -54,7 +54,7 @@ pub(crate) async fn get_blight(ctx: &Context, msg: &Message, args: Args) -> Comm
         Some(val) => format!("```{}```", val),
         None => String::from("There is no blight with that element, perhaps you spelled it wrong?"),
     };
-    say!(ctx, msg, to_send);
+    reply!(ctx, msg, to_send);
     Ok(())
 }
 
@@ -96,7 +96,7 @@ impl TypeMapKey for Statuses {
 #[example = "Blind"]
 pub(crate) async fn get_status(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
     if args.is_empty() {
-        say!(ctx, msg, "you must provide a status");
+        reply!(ctx, msg, "you must provide a status");
         return Ok(());
     }
 
@@ -108,7 +108,8 @@ pub(crate) async fn get_status(ctx: &Context, msg: &Message, args: Args) -> Comm
         Some(val) => format!("```{}```", val),
         None => String::from("There is no status with that name, perhaps you spelled it wrong?"),
     };
-    say!(ctx, msg, to_send);
+
+    reply!(ctx, msg, to_send);
 
     Ok(())
 }
@@ -151,7 +152,7 @@ impl TypeMapKey for Panels {
 #[example = "lava"]
 pub(crate) async fn get_panels(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
     if args.is_empty() {
-        say!(ctx, msg, "you must provide a panel type");
+        reply!(ctx, msg, "you must provide a panel type");
         return Ok(());
     }
 
@@ -163,7 +164,7 @@ pub(crate) async fn get_panels(ctx: &Context, msg: &Message, args: Args) -> Comm
         Some(val) => format!("```{}```", val),
         None => String::from("There is no panel with that name, perhaps you spelled it wrong?"),
     };
-    say!(ctx, msg, to_send);
+    reply!(ctx, msg, to_send);
 
     Ok(())
 }

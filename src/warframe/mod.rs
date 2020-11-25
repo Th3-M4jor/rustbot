@@ -143,7 +143,7 @@ pub(crate) async fn get_fissures(ctx: &Context, msg: &Message, _: Args) -> Comma
 
     match warframe_dat.fissures().await {
         Some(val) => long_say!(ctx, msg, &val, "\n"),
-        None => say!(
+        None => reply!(
             ctx,
             msg,
             "could not build fissures message, inform the owner"
@@ -163,8 +163,8 @@ pub(crate) async fn get_sortie(ctx: &Context, msg: &Message, _: Args) -> Command
     let warframe_dat = data.get::<WarframeData>().expect("no warframe data found");
 
     match warframe_dat.sortie().await {
-        Some(val) => say!(ctx, msg, &val),
-        None => say!(ctx, msg, "could not build sortie message, inform the owner"),
+        Some(val) => reply!(ctx, msg, &val),
+        None => reply!(ctx, msg, "could not build sortie message, inform the owner"),
     }
     return Ok(());
 }

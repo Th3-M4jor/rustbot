@@ -10,8 +10,10 @@ use serenity::{
     async_trait,
     client::bridge::gateway::GatewayIntents,
     framework::standard::{
-        help_commands, macros::{check, command, group, help, hook}, Args, CheckResult, CommandGroup, CommandOptions,
-        CommandResult, HelpOptions, StandardFramework,
+        help_commands,
+        macros::{check, command, group, help, hook},
+        Args, CheckResult, CommandGroup, CommandOptions, CommandResult, HelpOptions,
+        StandardFramework,
     },
     model::{
         channel::Message,
@@ -20,24 +22,27 @@ use serenity::{
         id::{GuildId, UserId},
     },
     prelude::*,
-    //utils::TypeMap,
 };
 
 use crate::{
     bot_data::BotData,
     library::{
-        blights::{Blights, GET_BLIGHT_COMMAND, Statuses, GET_STATUS_COMMAND, Panels, GET_PANELS_COMMAND},
-        chip_library::{BNBCHIPS_GROUP, BNBSKILLS_GROUP, ChipLibrary, battlechip_as_lib_obj},
-        full_library::{CHIP_DROP_COMMAND, FullLibrary, check_virus_drops, search_full_library},
-        ncp_library::{BNBNCPS_GROUP, NCPLibrary, ncp_as_lib_obj},
-        virus_library::{BNBVIRUSES_GROUP, VirusLibrary, VirusImportError, virus_as_lib_obj},
-        Library,
-        LibraryObject,
+        blights::{
+            Blights, Panels, Statuses, GET_BLIGHT_COMMAND, GET_PANELS_COMMAND, GET_STATUS_COMMAND,
+        },
+        chip_library::{battlechip_as_lib_obj, ChipLibrary, BNBCHIPS_GROUP, BNBSKILLS_GROUP},
+        full_library::{check_virus_drops, search_full_library, FullLibrary, CHIP_DROP_COMMAND},
+        ncp_library::{ncp_as_lib_obj, NCPLibrary, BNBNCPS_GROUP},
+        virus_library::{virus_as_lib_obj, VirusImportError, VirusLibrary, BNBVIRUSES_GROUP},
+        Library, LibraryObject,
     },
-    warframe::{WARFRAME_GROUP, WarframeData},
+    warframe::{WarframeData, WARFRAME_GROUP},
 };
 
-use crate::{dice::DICE_GROUP, util::{AUDIT_COMMAND, DIE_COMMAND, MANAGER_COMMAND, PHB_COMMAND, ShardManagerContainer, send_long_message}};
+use crate::{
+    dice::DICE_GROUP,
+    util::{ShardManagerContainer, AUDIT_COMMAND, DIE_COMMAND, MANAGER_COMMAND, PHB_COMMAND},
+};
 use std::fs;
 
 #[macro_use]
@@ -46,7 +51,6 @@ mod bot_data;
 mod dice;
 mod library;
 mod warframe;
-
 
 type ReloadOkType = (String, Vec<Arc<dyn LibraryObject>>);
 type ReloadReturnType = Result<ReloadOkType, Box<dyn std::error::Error + Send + Sync>>;
@@ -198,7 +202,9 @@ async fn help_command(
 struct Owner;
 
 #[group]
-#[commands(manager, phb, reload, get_blight, about_bot, chip_drop, get_status, get_panels)]
+#[commands(
+    manager, phb, reload, get_blight, about_bot, chip_drop, get_status, get_panels
+)]
 /// Misc. commands related to BnB
 struct BnbGeneral;
 
@@ -248,25 +254,19 @@ async fn reload_viruses(data: Arc<RwLock<TypeMap>>) -> ReloadReturnType {
     let mut virus_library: RwLockWriteGuard<VirusLibrary> = virus_library_lock.write().await;
     let str_to_ret = match virus_library.load_viruses().await {
         Ok(val) => val,
-        Err(err) => {
-            match err {
-                VirusImportError::TextDLFailure => {
-                    return Err(Box::new(err));
-                }
-                VirusImportError::CRParseErr(msg) => {
-                    msg
-                }
-                VirusImportError::VirusParseErr(msg) => {
-                    msg
-                }
-                VirusImportError::UnexpectedEOF => {
-                    return Err(Box::new(err));
-                }
-                VirusImportError::DuplicateVirus(_) => {
-                    return Err(Box::new(err));
-                }
+        Err(err) => match err {
+            VirusImportError::TextDLFailure => {
+                return Err(Box::new(err));
             }
-        }
+            VirusImportError::CRParseErr(msg) => msg,
+            VirusImportError::VirusParseErr(msg) => msg,
+            VirusImportError::UnexpectedEOF => {
+                return Err(Box::new(err));
+            }
+            VirusImportError::DuplicateVirus(_) => {
+                return Err(Box::new(err));
+            }
+        },
     };
 
     vec_to_ret.reserve(virus_library.get_collection().len());
@@ -320,7 +320,6 @@ async fn reload(ctx: &Context, msg: &Message, _: Args) -> CommandResult {
     let ncp_res;
     let virus_res;
 
-    
     let res: Result<
         (ReloadOkType, ReloadOkType, ReloadOkType),
         Box<dyn std::error::Error + Send + Sync>,
@@ -332,18 +331,19 @@ async fn reload(ctx: &Context, msg: &Message, _: Args) -> CommandResult {
             virus_res = val.2;
         }
         Err(e) => {
-            say!(
+            reply!(
                 ctx,
                 msg,
                 format!(
                     "An error occurred, library is not guaranteed to be in a usable state:\n{}",
                     e.to_string()
-                )
+                ),
+                true
             );
             return Err(e);
         }
     }
-    
+
     let data = ctx.data.read().await;
     let blight_string;
     {
@@ -472,26 +472,27 @@ async fn default_message(ctx: &Context, msg: &Message) {
 async fn prefix_only_message(ctx: &Context, msg: &Message) {
     #[cfg(debug_assertions)]
     println!("I recieved only a prefix");
-    say!(
+    reply!(
         ctx,
         msg,
         "You gave me only my prefix, Try my help command for how I work"
     );
 }
 
-
 #[tokio::main]
 async fn main() {
     pretty_env_logger::init();
     let config = BotData::new();
-    
+
     // create futures for importing panels, blights, and statuses
     let blights_future = Blights::import();
     let statuses_future = Statuses::import();
     let panels_future = Panels::import();
 
     // join all three futures at once, panic if any one returns an error, unrecoverable
-    let (blights, statuses, panels) = tokio::try_join!(blights_future, statuses_future, panels_future).expect("import of blights, statuses, or panels failed. Aborting.");
+    let (blights, statuses, panels) =
+        tokio::try_join!(blights_future, statuses_future, panels_future)
+            .expect("import of blights, statuses, or panels failed. Aborting.");
 
     // create library structs
     let mut chip_library = ChipLibrary::new(&config.chip_url, &config.custom_chip_url);
@@ -503,7 +504,6 @@ async fn main() {
     let chip_load_fut = chip_library.load_chips(config.load_custom_chips);
     let ncp_load_fut = ncp_library.load_programs();
     let virus_load_fut = virus_library.load_viruses();
-
 
     // join all futures at once
     let (chip_res, ncp_res, virus_res) = tokio::join!(chip_load_fut, ncp_load_fut, virus_load_fut);
@@ -524,8 +524,6 @@ async fn main() {
             }
         }
     }
-
-
 
     // load chips, viruses, ncps into the full library struct, panic on unrecoverable duplicates
     for val in chip_library.get_collection().values() {
@@ -553,7 +551,6 @@ async fn main() {
     }
 
     println!("Full library loaded, size is {}", full_library.len());
-
 
     // configure standard framework
     let mut owners = std::collections::HashSet::new();

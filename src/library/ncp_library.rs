@@ -194,7 +194,7 @@ struct BnbNcps;
 #[example = "Undershirt"]
 pub(crate) async fn send_ncp(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
     if args.is_empty() {
-        say!(ctx, msg, "you must provide a name");
+        reply!(ctx, msg, "you must provide a name");
         return Ok(());
     }
     let to_get = args.current().unwrap();
@@ -202,7 +202,7 @@ pub(crate) async fn send_ncp(ctx: &Context, msg: &Message, args: Args) -> Comman
     let library_lock = data.get::<NCPLibrary>().expect("NCP library not found");
     let library = library_lock.read().await;
     library.reaction_name_search(ctx, msg, to_get).await;
-    // say!(ctx, msg, search_lib_obj(args.current().unwrap(), library));
+    
     return Ok(());
 }
 
@@ -212,7 +212,7 @@ pub(crate) async fn send_ncp(ctx: &Context, msg: &Message, args: Args) -> Comman
 #[example = "pink"]
 pub(crate) async fn send_ncp_color(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
     if args.is_empty() {
-        say!(
+        reply!(
             ctx,
             msg,
             format!("you must provide a color\nValid colors are: `{:?}`", COLORS)
@@ -224,7 +224,7 @@ pub(crate) async fn send_ncp_color(ctx: &Context, msg: &Message, args: Args) -> 
     let library = library_lock.read().await;
     match library.search_color(args.current().unwrap()) {
         Some(list) => long_say!(ctx, msg, list, "\n"),
-        None => say!(
+        None => reply!(
             ctx,
             msg,
             format!(

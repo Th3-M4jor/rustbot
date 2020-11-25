@@ -3,7 +3,7 @@ use tokio::sync::{RwLock, RwLockReadGuard};
 
 use crate::{
     library::{Library, LibraryObject},
-    util::{edit_message_by_id, has_reaction_perm, reaction_did_you_mean},
+    util::{edit_message_by_id, has_reaction_perm, reaction_did_you_mean, send_reply},
     ChipLibrary, VirusLibrary,
 };
 
@@ -140,16 +140,17 @@ pub(crate) async fn search_full_library(ctx: &Context, msg: &Message, args: &[&s
     // let item: Option<&FullLibraryType> = library.get(&to_search);
 
     if let Some(val) = library.get(&to_search) {
-        say!(ctx, msg, val);
+        reply!(ctx, msg, val);
         return;
     }
     // else nothing directly matching that name
 
     if !has_reaction_perm(ctx, msg.channel_id).await {
-        match library.search_lib_obj(&to_search) {
-            Ok(val) => say!(ctx, msg, val),
-            Err(val) => say!(ctx, msg, format!("Did you mean: {}", val.iter().map(|a| format!("{} ({})",a.get_name(), a.get_kind())).collect::<Vec<String>>().join(", "))),
-        }
+        let to_say = match library.search_lib_obj(&to_search) {
+            Ok(val) => val.to_string(),
+            Err(val) => format!("Did you mean: {}", val.iter().map(|a| format!("{} ({})",a.get_name(), a.get_kind())).collect::<Vec<String>>().join(", ")),
+        };
+        reply!(ctx, msg, to_say, false);
         return;
     }
 
@@ -162,7 +163,7 @@ pub(crate) async fn search_full_library(ctx: &Context, msg: &Message, args: &[&s
 
     // only one item was returned, print it
     if res.len() == 1 {
-        say!(ctx, msg, res[0]);
+        reply!(ctx, msg, res[0]);
         return;
     }
 
@@ -181,10 +182,10 @@ pub(crate) async fn search_full_library(ctx: &Context, msg: &Message, args: &[&s
     msg_string.pop();
     msg_string.pop();
 
-    let msg_to_await= match msg.channel_id.say(ctx, msg_string).await {
+    let msg_to_await = match send_reply(ctx, msg, &msg_string, false).await {
         Ok(val) => val,
         Err(why) => {
-            println!("Could not send message: {:?}", why);
+            println!("Could not send reply: {:?}", why);
             return;
         }
     };
@@ -201,7 +202,7 @@ pub(crate) async fn search_full_library(ctx: &Context, msg: &Message, args: &[&s
 /// Returns a list of viruses who drop the given chip
 async fn chip_drop(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
     if args.is_empty() {
-        say!(ctx, msg, "You must provide a chip name");
+        reply!(ctx, msg, "You must provide a chip name");
         return Ok(());
     }
     let chip_name = args.current().unwrap();
@@ -210,15 +211,16 @@ async fn chip_drop(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
     let chip_library_lock = data.get::<ChipLibrary>().expect("No chip library");
     let chip_library: RwLockReadGuard<ChipLibrary> = chip_library_lock.read().await;
     let chip_res = chip_library.search_lib_obj(chip_name);
+
     let chip = match chip_res {
         Ok(chip) => chip,
         Err(chips) => {
-            //say!(ctx, msg, format!("Did you mean: {}", chips.join(", ")));
             let to_say = chips.iter().map(|a| a.get_name()).collect::<Vec<&str>>().join(", ");
-            say!(ctx, msg, format!("Did you mean: {}", to_say));
+            reply!(ctx, msg, format!("Did you mean: {}", to_say));
             return Ok(());
         }
     };
+
     let virus_libary_lock = data.get::<VirusLibrary>().expect("No virus library");
     let virus_libary: RwLockReadGuard<VirusLibrary> = virus_libary_lock.read().await;
     let mut dropped_by: Vec<&str> = vec![];
@@ -231,13 +233,13 @@ async fn chip_drop(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
     }
 
     if dropped_by.is_empty() {
-        say!(
+        reply!(
             ctx,
             msg,
             format!("No known virus currently drops {}", chip.name)
         );
     } else {
-        say!(
+        reply!(
             ctx,
             msg,
             format!("{} is dropped by: {}", chip.name, dropped_by.join(", "))

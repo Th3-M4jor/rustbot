@@ -55,7 +55,7 @@ async fn make_request(name: &str) -> Result<Vec<String>, SimpleError> {
 #[example = "wukong prime"]
 pub(crate) async fn market(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
     if args.is_empty() {
-        say!(
+        reply!(
             ctx,
             msg,
             "you must provide an item to search the market for"
@@ -75,7 +75,7 @@ pub(crate) async fn market(ctx: &Context, msg: &Message, args: Args) -> CommandR
 
     match make_request(&to_search).await {
         Ok(res) => long_say!(ctx, msg, res, "\n"),
-        Err(e) => say!(
+        Err(e) => reply!(
             ctx,
             msg,
             format!(

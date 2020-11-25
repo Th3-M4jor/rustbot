@@ -31,9 +31,22 @@ macro_rules! say {
     };
 }
 
+macro_rules! reply {
+    ($ctx: ident, $msg: ident, $say: expr) => {
+        reply!($ctx, $msg, $say, false)
+    };
+
+    ($ctx: ident, $msg: ident, $say: expr, $ping: expr) => {
+        if let Err(why) = $crate::util::send_reply(&$ctx, &$msg, $say, $ping).await {
+            println!("Could not send reply: {:?}", why);
+        }
+    };
+    
+}
+
 macro_rules! long_say {
-    ($ctx: ident,  $msg: ident, $say: expr, $sep: expr) => {
-        if let Err(why) = $crate::send_long_message(&$ctx, &$msg, $say, $sep).await {
+    ($ctx: ident, $msg: ident, $say: expr, $sep: expr) => {
+        if let Err(why) = $crate::util::send_long_message(&$ctx, &$msg, $say, $sep).await {
             println!("Could not send message: {:?}", why);
         }
     };
@@ -67,6 +80,34 @@ where
         reply.pop();
     }
     msg.channel_id.say(&ctx.http, &reply).await
+}
+
+pub(crate) async fn send_reply<T>(
+    ctx: &Context,
+    msg_to_reply_to: &Message,
+    reply_msg: T,
+    mention_author: bool
+) -> Result<Message, serenity::Error>
+where
+    T: std::fmt::Display,
+{
+    let channel_id = msg_to_reply_to.channel_id;
+    let msg_id = msg_to_reply_to.id.to_string();
+
+    let reply_txt = reply_msg.to_string();
+
+    let content = serde_json::json!({
+        "content": reply_txt,
+        "tts": false,
+        "message_reference": {
+           "message_id":  msg_id
+        },
+        "allowed_mentions": {
+            "replied_user": mention_author
+        }
+    });
+
+    ctx.http.send_message(channel_id.0, &content).await
 }
 
 pub(crate) fn build_time_rem(now: i64, end: i64) -> String {
@@ -244,7 +285,7 @@ pub(crate) async fn audit(ctx: &Context, msg: &Message, _: Args) -> CommandResul
 async fn manager(ctx: &Context, msg: &Message, _: Args) -> CommandResult {
     let data = ctx.data.read().await;
     let config = data.get::<BotData>().expect("could not get config");
-    say!(ctx, msg, &config.manager);
+    reply!(ctx, msg, &config.manager);
     return Ok(());
 }
 
@@ -253,7 +294,7 @@ async fn manager(ctx: &Context, msg: &Message, _: Args) -> CommandResult {
 async fn phb(ctx: &Context, msg: &Message, _: Args) -> CommandResult {
     let data = ctx.data.read().await;
     let config = data.get::<BotData>().expect("could not get config");
-    say!(ctx, msg, &config.phb);
+    reply!(ctx, msg, &config.phb);
     return Ok(());
 }
 

@@ -14,7 +14,7 @@ use async_trait::async_trait;
 
 use strsim::jaro_winkler;
 
-use crate::util::{reaction_did_you_mean, has_reaction_perm, edit_message_by_id};
+use crate::util::{reaction_did_you_mean, has_reaction_perm, edit_message_by_id, send_reply};
 
 use std::ops::Deref;
 
@@ -134,13 +134,14 @@ pub trait Library: TypeMapKey {
     async fn reaction_name_search(&self, ctx: &Context, msg: &Message, to_get: &str) {
         let list = match self.search_lib_obj(to_get) {
             Ok(val) => {
-                say!(ctx, msg, val); 
+                reply!(ctx, msg, val);
                 return;
             },
-            Err(val) => val,//say!(ctx, msg, format!("Did you mean: {}", val.iter().map(|a| a.get_name()).collect::<Vec<&str>>().join(", "))),
+            Err(val) => val,
         };
+        
         if !has_reaction_perm(ctx, msg.channel_id).await {
-            say!(ctx, msg, format!("Did you mean: {}", list.iter().map(|a| a.get_name()).collect::<Vec<&str>>().join(", ")));
+            reply!(ctx, msg, format!("Did you mean: {}", list.iter().map(|a| a.get_name()).collect::<Vec<&str>>().join(", ")));
             return;
         }
     
@@ -149,19 +150,18 @@ pub trait Library: TypeMapKey {
         for obj in list.iter() {
             msg_string.push_str(&num.to_string());
             msg_string.push_str(": ");
-            // msg_string.push_str(&(*obj).format_name());
+            
             msg_string.push_str(&(*obj).get_name());
             msg_string.push_str(", ");
             num += 1;
         }
     
-        // remove last ", "
         msg_string.pop();
         msg_string.pop();
     
     
         
-        let msg_to_await= match msg.channel_id.say(ctx, msg_string).await {
+        let msg_to_await= match send_reply(ctx, msg, msg_string, true).await {
             Ok(val) => val,
             Err(why) => {
                 println!("Could not send message: {:?}", why);

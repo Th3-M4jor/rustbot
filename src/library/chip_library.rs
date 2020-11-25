@@ -214,7 +214,7 @@ struct BnBSkills;
 #[example = "Airshot"]
 async fn send_chip(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
     if args.is_empty() {
-        say!(ctx, msg, "you must provide a name");
+        reply!(ctx, msg, "you must provide a name");
         return Ok(());
     };
 
@@ -232,7 +232,7 @@ async fn send_chip(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
 #[example = "Sense"]
 async fn send_chip_skill(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
     if args.is_empty() {
-        say!(ctx, msg, "you must provide a skill");
+        reply!(ctx, msg, "you must provide a skill");
         return Ok(());
     }
     let skill = args.single::<String>()?;
@@ -244,7 +244,7 @@ async fn send_chip_skill(ctx: &Context, msg: &Message, mut args: Args) -> Comman
             let to_send = chips.iter().map(|a| a.get_name()).collect::<Vec<&str>>();
             long_say!(ctx, msg, to_send, ", ")
         },
-        None => say!(ctx, msg, "nothing matched your search"),
+        None => reply!(ctx, msg, "nothing matched your search", false),
     }
     return Ok(());
 }
@@ -254,7 +254,7 @@ async fn send_chip_skill(ctx: &Context, msg: &Message, mut args: Args) -> Comman
 #[example = "Strength"]
 async fn send_chip_skill_user(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
     if args.is_empty() {
-        say!(ctx, msg, "you must provide a skill");
+        reply!(ctx, msg, "you must provide a skill");
         return Ok(());
     }
     let skill = args.single::<String>()?;
@@ -266,7 +266,7 @@ async fn send_chip_skill_user(ctx: &Context, msg: &Message, mut args: Args) -> C
             let to_send = chips.iter().map(|a| a.get_name()).collect::<Vec<&str>>();
             long_say!(ctx, msg, to_send, ", ")
         },
-        None => say!(ctx, msg, "nothing matched your search"),
+        None => reply!(ctx, msg, "nothing matched your search", false),
     }
     return Ok(());
 }
@@ -276,7 +276,7 @@ async fn send_chip_skill_user(ctx: &Context, msg: &Message, mut args: Args) -> C
 #[example = "Speed"]
 async fn send_chip_skill_target(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
     if args.is_empty() {
-        say!(ctx, msg, "you must provide a skill");
+        reply!(ctx, msg, "you must provide a skill");
         return Ok(());
     }
     let skill = args.single::<String>()?;
@@ -288,7 +288,7 @@ async fn send_chip_skill_target(ctx: &Context, msg: &Message, mut args: Args) ->
             let to_send = chips.iter().map(|a| a.get_name()).collect::<Vec<&str>>();
             long_say!(ctx, msg, to_send, ", ")
         },
-        None => say!(ctx, msg, "nothing matched your search"),
+        None => reply!(ctx, msg, "nothing matched your search", false),
     }
     Ok(())
 }
@@ -298,7 +298,7 @@ async fn send_chip_skill_target(ctx: &Context, msg: &Message, mut args: Args) ->
 #[example = "Bravery"]
 async fn send_chip_skill_check(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
     if args.is_empty() {
-        say!(ctx, msg, "you must provide a skill");
+        reply!(ctx, msg, "you must provide a skill");
         return Ok(());
     }
     let skill = args.single::<String>()?;
@@ -310,7 +310,7 @@ async fn send_chip_skill_check(ctx: &Context, msg: &Message, mut args: Args) -> 
             let to_send = chips.iter().map(|a| a.get_name()).collect::<Vec<&str>>();
             long_say!(ctx, msg, to_send, ", ")
         },
-        None => say!(ctx, msg, "nothing matched your search"),
+        None => reply!(ctx, msg, "nothing matched your search", false),
     }
     Ok(())
 }
@@ -320,7 +320,7 @@ async fn send_chip_skill_check(ctx: &Context, msg: &Message, mut args: Args) -> 
 #[example = "Aqua"]
 async fn send_chip_element(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
     if args.is_empty() {
-        say!(ctx, msg, "you must provide an element");
+        reply!(ctx, msg, "you must provide an element");
         return Ok(());
     }
     let data = ctx.data.read().await;
@@ -334,10 +334,11 @@ async fn send_chip_element(ctx: &Context, msg: &Message, args: Args) -> CommandR
             let to_send = chips.iter().map(|a| a.get_name()).collect::<Vec<&str>>();
             long_say!(ctx, msg, to_send, ", ")
         },
-        None => say!(
+        None => reply!(
             ctx,
             msg,
-            "nothing matched your search, are you sure you gave an element?"
+            "nothing matched your search, are you sure you gave an element?",
+            false
         ),
     }
     Ok(())
@@ -348,7 +349,7 @@ async fn send_chip_element(ctx: &Context, msg: &Message, args: Args) -> CommandR
 #[example = "Sword"]
 async fn send_chip_blight(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
     if args.is_empty() {
-        say!(ctx, msg, "you must provide an element");
+        reply!(ctx, msg, "you must provide an element");
         return Ok(());
     }
 
@@ -356,7 +357,7 @@ async fn send_chip_blight(ctx: &Context, msg: &Message, args: Args) -> CommandRe
     let element = match Elements::from_str(element_str) {
         Ok(element) => element,
         Err(_) => {
-            say!(ctx, msg, "That could not be parsed as an element, perhaps you spelled it wrong?");
+            reply!(ctx, msg, "That could not be parsed as an element, perhaps you spelled it wrong?", false);
             return Ok(());
         }
     };
@@ -381,7 +382,7 @@ async fn send_chip_blight(ctx: &Context, msg: &Message, args: Args) -> CommandRe
     list.sort_unstable();
 
     if list.is_empty() {
-        say!(ctx, msg, "No known chips cause a blight of that element");
+        reply!(ctx, msg, "No known chips cause a blight of that element", false);
     } else {
         long_say!(ctx, msg, list, ", ");
     }
@@ -396,14 +397,14 @@ async fn send_chip_blight(ctx: &Context, msg: &Message, args: Args) -> CommandRe
 async fn chip_drop_cr(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
     
     if args.is_empty() {
-        say!(ctx, msg, "You must provide a CR to search for");
+        reply!(ctx, msg, "You must provide a CR to search for");
         return Ok(());
     }
     
     let cr_to_get = match args.single::<u8>() {
         Ok(cr) => cr,
         Err(_) => {
-            say!(ctx, msg, "An invalid number was provided");
+            reply!(ctx, msg, "An invalid number was provided");
             return Ok(());
         }
     };
@@ -415,7 +416,7 @@ async fn chip_drop_cr(ctx: &Context, msg: &Message, mut args: Args) -> CommandRe
     let cr_list = match virus_library.get_cr(cr_to_get) {
         Some(list) => list,
         None => {
-            say!(ctx, msg, "There are no viruses in that CR");
+            reply!(ctx, msg, "There are no viruses in that CR", false);
             return Ok(());
         }
     };
