@@ -313,30 +313,34 @@ async fn die(ctx: &Context, msg: &Message, _: Args) -> CommandResult {
     return Ok(());
 }
 
-// struct TestStruct {
-// pub map: std::collections::HashMap<String, Box<dyn Fn() -> std::pin::Pin<Box<dyn std::future::Future<Output = usize>>>>>,
-// }
-//
-// impl TestStruct {
-// pub fn insert<F>(&mut self, name: String, fut: &'static impl Fn() -> F)
-// where F: 'static + std::future::Future<Output=usize> {
-// self.map.insert(name, Box::new(move ||Box::pin(fut())));
-// }
-// }
-//
-// pub(crate) async fn test_fn() -> usize {
-// 42
-// }
-//
-// pub(crate) async fn test_struct() {
-// let mut test = TestStruct { map: std::collections::HashMap::new()};
-// test.insert("test".to_string(), &test_fn);
-// let val = test.map.get("test").unwrap();
-//
-// println!("{}", val().await);
-//
-// let val_2 = test.map.get("test").unwrap();
-// println!("{}", val_2().await);
-//
-// println!("{}", test_fn().await);
-// }
+#[command]
+/// Tests the length of time it takes the bot to send a message
+async fn ping(ctx: &Context, msg: &Message, _: Args) -> CommandResult {
+    let instant = std::time::Instant::now();
+
+    let res = send_reply(ctx, msg, "Loading response times, please wait...", false).await;
+
+    let duration = instant.elapsed();
+    
+    let mut to_edit = match res {
+      Ok(to_reply) => to_reply,
+      Err(why) => {
+        println!("Could not send message: {:?}", why);
+        return Ok(());
+      }
+    };
+
+    let ms = (duration.as_micros() as f64) / 1000f64;
+
+    let new_text = format!("\u{1F3D3} Pong!, that took {:.2} ms", ms);
+
+    let res = to_edit.edit(&ctx, |m| {
+        m.content(&new_text)
+    }).await;
+
+    if let Err(why) = res {
+        println!("Could not edit message: {:?}", why);
+    }
+
+    Ok(())
+}

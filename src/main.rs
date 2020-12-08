@@ -41,7 +41,7 @@ use crate::{
 
 use crate::{
     dice::DICE_GROUP,
-    util::{ShardManagerContainer, AUDIT_COMMAND, DIE_COMMAND, MANAGER_COMMAND, PHB_COMMAND},
+    util::{ShardManagerContainer, AUDIT_COMMAND, DIE_COMMAND, MANAGER_COMMAND, PHB_COMMAND, PING_COMMAND},
 };
 use std::fs;
 
@@ -203,7 +203,7 @@ struct Owner;
 
 #[group]
 #[commands(
-    manager, phb, reload, get_blight, about_bot, chip_drop, get_status, get_panels
+    manager, phb, reload, get_blight, about_bot, chip_drop, get_status, get_panels, ping
 )]
 /// Misc. commands related to BnB
 struct BnbGeneral;
