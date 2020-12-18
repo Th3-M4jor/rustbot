@@ -1,21 +1,31 @@
-use serenity::{model::channel::Message, prelude::*};
+use serenity::{
+    framework::standard::{macros::command, Args, CommandResult},
+    model::channel::Message,
+    prelude::*,
+};
 
 use serde_json::Value;
 use simple_error::SimpleError;
 use std::f64::NAN;
 
-//https://docs.google.com/document/d/1121cjBNN4BeZdMBGil6Qbuqse-sWpEXPpitQH5fb_Fo/edit#heading=h.yi84u2lickud
-//URL for warframe market API
+// https://docs.google.com/document/d/1121cjBNN4BeZdMBGil6Qbuqse-sWpEXPpitQH5fb_Fo/edit#heading=h.yi84u2lickud
+// URL for warframe market API
 
-fn make_request(name: &str) -> Result<Vec<String>, Box<dyn std::error::Error>> {
+async fn make_request(name: &str) -> Result<Vec<String>, SimpleError> {
     let url = format!("https://api.warframe.market/v1/items/{}/orders", name);
 
-    let text = reqwest::blocking::get(&url)?.text()?;
+    let text = reqwest::get(&url)
+        .await
+        .map_err(|_| SimpleError::new("Could not make market request"))?
+        .text()
+        .await
+        .map_err(|_| SimpleError::new("Could not parse response of market request"))?;
 
-    let mut json: serde_json::Value = serde_json::from_str(&text)?;
+    let mut json: serde_json::Value = serde_json::from_str(&text)
+        .map_err(|_| SimpleError::new("Could not parse market json data"))?;
     let orders = json["payload"]["orders"]
         .as_array_mut()
-        .ok_or(SimpleError::new("could not convert to array"))?;
+        .ok_or_else(|| SimpleError::new("could not convert to array"))?;
     let mut res: Vec<&Value> = orders
         .iter()
         .filter(|val| {
@@ -36,31 +46,36 @@ fn make_request(name: &str) -> Result<Vec<String>, Box<dyn std::error::Error>> {
         to_ret.push(format!("{} is selling for {:.0} platinum", poster, price));
     }
 
-    return Ok(to_ret);
+    Ok(to_ret)
 }
 
-pub(crate) fn get_market_info(ctx: Context, msg: &Message, args: &[&str]) {
-    if args.len() < 2 {
-        say!(
+#[command]
+#[bucket = "Warframe_Market"]
+/// Search warframe.market for people selling a given item
+#[example = "wukong prime"]
+pub(crate) async fn market(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
+    if args.is_empty() {
+        reply!(
             ctx,
             msg,
             "you must provide an item to search the market for"
         );
-        return;
+        return Ok(());
     }
 
-    let last_word = args[args.len() - 1].to_lowercase();
+    let new_args = args.rest().split(' ').collect::<Vec<&str>>();
 
-    let to_join = &args[1..];
-    let mut to_search: String = to_join.join("_").to_lowercase();
+    let last_word = new_args[new_args.len() - 1].to_lowercase();
+
+    let mut to_search: String = new_args.join("_").to_lowercase();
 
     if last_word == "prime" {
         to_search.push_str("_set");
     }
 
-    match make_request(&to_search) {
+    match make_request(&to_search).await {
         Ok(res) => long_say!(ctx, msg, res, "\n"),
-        Err(e) => say!(
+        Err(e) => reply!(
             ctx,
             msg,
             format!(
@@ -69,4 +84,5 @@ pub(crate) fn get_market_info(ctx: Context, msg: &Message, args: &[&str]) {
             )
         ),
     }
+    return Ok(());
 }

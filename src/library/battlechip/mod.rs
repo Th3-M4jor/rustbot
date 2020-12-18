@@ -1,11 +1,15 @@
-use crate::library::battlechip::chip_type::ChipType;
-use crate::library::battlechip::ranges::Ranges;
-use crate::library::battlechip::skills::Skills;
-use crate::library::elements::Elements;
+use crate::library::{
+    battlechip::{chip_type::ChipType, ranges::Ranges, skills::Skills},
+    elements::Elements,
+};
+use lazy_static::lazy_static;
 use regex::{Captures, Regex};
-use serde::{Serialize};
-use std::cmp::{Ord, Ordering};
-use std::str::FromStr;
+use serde::Serialize;
+use std::{
+    cmp::{Ord, Ordering},
+    str::FromStr,
+    borrow::Cow,
+};
 use unicode_normalization::UnicodeNormalization;
 
 use crate::library::LibraryObject;
@@ -26,6 +30,8 @@ pub struct BattleChip {
     pub damage: String,
     #[serde(rename(serialize = "Type"))]
     pub class: ChipType,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub blight: Option<Elements>,
     pub hits: String,
     pub description: String,
     pub all: String,
@@ -55,53 +61,53 @@ impl Eq for BattleChip {}
 
 impl std::fmt::Display for BattleChip {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
-        return write!(f, "```{}```", self.all);
+        
+        let damage = if self.damage == "--" {
+            Cow::Borrowed("--")
+        } else {
+            Cow::Owned(format!("{} damage", self.damage))
+        };
+
+        let hits = if self.hits == "1" {
+            Cow::Borrowed("1 hit.")
+        } else {
+            Cow::Owned(format!("{} hits.", self.hits))
+        };
+
+        let skills = self.skills.iter().map(|s| s.abbreviation()).collect::<Vec<&str>>().join(", ");
+        let elements = self.element.iter().map(|e| e.to_string()).collect::<Vec<String>>().join(", ");
+
+        if self.class == ChipType::Standard {
+            write!(f, "```{} - {} | {} | {} | {} | {}\n{}```", self.name, elements, skills, self.range, damage, hits, self.description)
+        } else {
+            write!(f, "```{} - {} | {} | {} | {} | {} | {}\n{}```", self.name, elements, skills, self.range, damage, self.class, hits, self.description)
+        }
+
+        //write!(f, "```{} - {} | {} | {}```");
+        
+        //return write!(f, "```{}```", self.all);
     }
 }
 
 impl LibraryObject for BattleChip {
     #[inline]
     fn get_name(&self) -> &str {
-        return &self.name;
+        &self.name
+    }
+
+    fn get_kind(&self) -> &str {
+        "Chip"
     }
 }
 
 impl BattleChip {
-    pub fn new<T: Into<String>>(
-        name: T,
-        elements: Vec<Elements>,
-        skills: Option<Vec<Skills>>,
-        range: Ranges,
-        damage: T,
-        class: Option<ChipType>,
-        hits: T,
-        description: T,
-        all: T,
-        skill_target: Option<Skills>,
-        skill_user: Option<Skills>,
-    ) -> BattleChip {
-        BattleChip {
-            name: name.into().nfc().collect::<String>(),
-            element: elements,
-            skills: skills.unwrap_or(std::vec![Skills::None]),
-            range,
-            damage: damage.into().nfc().collect::<String>(),
-            class: class.unwrap_or(ChipType::Standard),
-            hits: hits.into().nfc().collect::<String>(),
-            description: description.into().nfc().collect::<String>(),
-            all: all.into().nfc().collect::<String>(),
-            skill_target: skill_target.unwrap_or(Skills::None),
-            skill_user: skill_user.unwrap_or(Skills::None),
-        }
-    }
-
     fn parse_elements(elem_str: &str) -> Result<Vec<Elements>, SimpleError> {
         let mut to_ret = vec![];
         for elem in elem_str.split(", ") {
             to_ret.push(Elements::from_str(elem)?);
         }
         to_ret.shrink_to_fit();
-        return Ok(to_ret);
+        Ok(to_ret)
     }
 
     fn parse_skills(skills_str: &str) -> Result<Vec<Skills>, SimpleError> {
@@ -110,51 +116,48 @@ impl BattleChip {
             to_ret.push(Skills::from_str(skill)?);
         }
         to_ret.shrink_to_fit();
-        return Ok(to_ret);
+        Ok(to_ret)
     }
 
     pub fn from_chip_string(
         first_line: &str,
         second_line: &str,
-    ) -> Result<Box<BattleChip>, SimpleError> {
+    ) -> Result<BattleChip, SimpleError> {
         lazy_static! {
-            static ref RE: Regex = Regex::new(r"(.+?)\s-\s(.+?)\s\|\s(.+?)\s\|\s(.+?)\s\|\s(\d+d\d+|--)\s?(?:damage)?\s?\|?\s?(Mega|Giga)?\s\|\s(\d+|\d+-\d+|--)\s?(?:hits?)\.?").expect("could not compile chip regex");
+            static ref RE: Regex = Regex::new(r"(.+?)\s-\s(.+?)\s\|\s(.+?)\s\|\s(.+?)\s\|\s(\d+d\d+|--)\s?(?:damage)?\s?\|?\s?(Mega|Giga|Dark|Support)?\s\|\s(\d+|\d+-\d+|--)\s?(?:hits?)\.?").expect("could not compile chip regex");
             static ref R_SAVE : Regex = Regex::new(r"an?\s(\w+)\scheck\sof\s\[DC\s\d+\s\+\s(\w+)]").expect("could not compile save regex");
+            static ref R_BLIGHT : Regex = Regex::new(r"[bB]light\s\((\w+)\)").expect("could not compile blight regex");
         }
 
-        //let RE : Regex = Regex::new(r"(.+?)\s-\s(.+?)\s\|\s(.+?)\s\|\s(.+?)\s\|\s(\d+d\d+|--)\s?(?:damage)?\s?\|?\s?(Mega|Giga)?\s\|\s(\d+|\d+-\d+|--)\s?(?:hits?)\.?").unwrap();
-        //let R_SAVE : Regex = Regex::new(r"an?\s(\w+)\scheck\sof\s\[DC\s\d+\s\+\s(\w+)]").unwrap();
+        // let RE : Regex = Regex::new(r"(.+?)\s-\s(.+?)\s\|\s(.+?)\s\|\s(.+?)\s\|\s(\d+d\d+|--)\s?(?:damage)?\s?\|?\s?(Mega|Giga)?\s\|\s(\d+|\d+-\d+|--)\s?(?:hits?)\.?").unwrap();
+        // let R_SAVE : Regex = Regex::new(r"an?\s(\w+)\scheck\sof\s\[DC\s\d+\s\+\s(\w+)]").unwrap();
         let chip_val: Captures = RE
             .captures(first_line)
-            .ok_or(SimpleError::new("Failed at capture stage"))?;
+            .ok_or_else(|| SimpleError::new("Failed at capture stage"))?;
 
         let chip_name = chip_val
             .get(1)
-            .ok_or(SimpleError::new("Could not get name"))?
+            .ok_or_else(|| SimpleError::new("Could not get name"))?
             .as_str()
             .trim();
         let chip_range = Ranges::from_str(
             chip_val
                 .get(4)
-                .ok_or(SimpleError::new("Failed to convert range"))?
+                .ok_or_else(|| SimpleError::new("Failed to convert range"))?
                 .as_str(),
         )?;
         let chip_damage = chip_val
             .get(5)
-            .ok_or(SimpleError::new("failed to get damage"))?
+            .ok_or_else(|| SimpleError::new("failed to get damage"))?
             .as_str();
         let chip_hits = chip_val
             .get(7)
-            .ok_or(SimpleError::new("failed to get hits"))?
+            .ok_or_else(|| SimpleError::new("failed to get hits"))?
             .as_str();
         let chip_type: ChipType;
-        if chip_val.get(6).is_some() {
-            chip_type = ChipType::from_str(
-                chip_val
-                    .get(6)
-                    .ok_or(SimpleError::new("failed to get type"))?
-                    .as_str(),
-            )?;
+
+        if let Some(chip_type_str) = chip_val.get(6) {
+            chip_type = ChipType::from_str(chip_type_str.as_str())?;
         } else {
             chip_type = ChipType::Standard;
         }
@@ -162,53 +165,64 @@ impl BattleChip {
         let parsed_elements = BattleChip::parse_elements(
             chip_val
                 .get(2)
-                .ok_or(SimpleError::new("failed to parse element"))?
+                .ok_or_else(|| SimpleError::new("failed to parse element"))?
                 .as_str(),
         )?;
-        //let skills : Vec<&str> = chip_val.get(3).unwrap().as_str().split(", ").collect();
+        // let skills : Vec<&str> = chip_val.get(3).unwrap().as_str().split(", ").collect();
         let parsed_skills = BattleChip::parse_skills(
             chip_val
                 .get(3)
-                .ok_or(SimpleError::new("failed to parse skills"))?
+                .ok_or_else(|| SimpleError::new("failed to parse skills"))?
                 .as_str(),
         )?;
 
         let skill_user: Skills;
         let skill_target: Skills;
-        let skill_res = R_SAVE.captures(second_line);
-        if skill_res.is_none() {
+        // let skill_res = R_SAVE.captures(second_line);
+        if let Some(skill_res) = R_SAVE.captures(second_line) {
+            let skill_user_res = skill_res
+                .get(2)
+                .ok_or_else(|| SimpleError::new("failed to get skill user"))?
+                .as_str();
+            let skill_target_res = skill_res
+                .get(1)
+                .ok_or_else(|| SimpleError::new("failed to get skill target"))?
+                .as_str();
+            skill_user = Skills::from_str(skill_user_res).unwrap_or_default();
+            skill_target = Skills::from_str(skill_target_res).unwrap_or_default();
+        } else {
             skill_user = Skills::None;
             skill_target = Skills::None;
-        } else {
-            let skill_res_unwrapped = skill_res.expect("Something went wrong");
-            let skill_user_res = skill_res_unwrapped
-                .get(2)
-                .ok_or(SimpleError::new("failed to get skill user"))?
-                .as_str();
-            let skill_target_res = skill_res_unwrapped
-                .get(1)
-                .ok_or(SimpleError::new("failed to get skill target"))?
-                .as_str();
-            skill_user = Skills::from_str(skill_user_res).unwrap_or(Skills::None);
-            skill_target = Skills::from_str(skill_target_res).unwrap_or(Skills::None);
         }
+
+        let blight: Option<Elements> =
+        if let Some(blight_res) = R_BLIGHT.captures(second_line) {
+            let blight_elem_str = blight_res
+                .get(1)
+                .ok_or_else(|| SimpleError::new("failed to get blight"))?
+                .as_str();
+            Some(Elements::from_str(blight_elem_str).unwrap_or(Elements::Null))
+        } else {
+            None
+        };
 
         let chip_all = format!("{}\n{}", first_line, second_line);
 
-        let to_ret = Box::new(BattleChip::new(
-            chip_name,
-            parsed_elements,
-            Option::from(parsed_skills),
-            chip_range,
-            chip_damage,
-            Option::from(chip_type),
-            chip_hits,
-            second_line,
-            &chip_all,
-            Option::from(skill_target),
-            Option::from(skill_user),
-        ));
+        let to_ret = BattleChip {
+            name: chip_name.nfc().collect::<String>(),
+            element: parsed_elements,
+            skills: parsed_skills,
+            range: chip_range,
+            damage: chip_damage.nfc().collect::<String>(),
+            class: chip_type,
+            blight,
+            hits: chip_hits.nfc().collect::<String>(),
+            description: second_line.nfc().collect::<String>(),
+            all: chip_all.nfc().collect::<String>(),
+            skill_target,
+            skill_user,
+        };
 
-        return Ok(to_ret);
+        Ok(to_ret)
     }
 }

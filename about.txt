@@ -1,4 +1,4 @@
-BnBBot version 3.2
+BnBBot version 4.0
 
 Language: Rust
 Framework: Serenity.rs
