@@ -12,7 +12,7 @@ reqwest = { version = "^0.10" }
 serde_json = "*"
 serde = { version = "*", features = ["rc"] }
 regex = "*"
-lazy_static = "*"
+once_cell = "*"
 simple-error = "*"
 unicode-normalization = "*"
 #serenity = { version = "*", features = ["framework", "standard_framework"]}
@@ -24,7 +24,6 @@ serenity = { version = "^0.9.0", features = ["framework", "standard_framework", 
 futures = "*"
 log = "*"
 pretty_env_logger = "*"
-async-trait = "*"
 
 [profile.release]
 lto = true

@@ -1,10 +1,11 @@
-use lazy_static::lazy_static;
-
 use std::sync::{
     atomic::{AtomicBool, Ordering},
     Arc,
 };
+
 use tokio::sync::{RwLock, RwLockWriteGuard};
+
+use once_cell::sync::Lazy;
 
 use serenity::{
     async_trait,
@@ -55,10 +56,13 @@ mod warframe;
 type ReloadOkType = (String, Vec<Arc<dyn LibraryObject>>);
 type ReloadReturnType = Result<ReloadOkType, Box<dyn std::error::Error + Send + Sync>>;
 
-lazy_static! {
-    static ref ABOUT_BOT: String = fs::read_to_string("./about.txt")
-        .unwrap_or_else(|_| "about text is missing, bug the owner".to_string());
-}
+static ABOUT_BOT: Lazy<String> = Lazy::new(|| 
+    fs::read_to_string("./about.txt")
+    .unwrap_or_else(|_| "about text is missing, bug the owner".to_string())
+);
+
+static FIRST_LOGIN: Lazy<AtomicBool> = Lazy::new(|| AtomicBool::new(true));
+static FIRST_CACHE_READY: Lazy<AtomicBool> = Lazy::new(|| AtomicBool::new(false));
 
 struct Handler;
 
@@ -66,11 +70,6 @@ struct DmOwner;
 
 impl TypeMapKey for DmOwner {
     type Value = AtomicBool;
-}
-
-lazy_static! {
-    static ref FIRST_LOGIN: AtomicBool = AtomicBool::new(true);
-    static ref FIRST_CACHE_READY: AtomicBool = AtomicBool::new(false);
 }
 
 #[async_trait]

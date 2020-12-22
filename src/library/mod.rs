@@ -7,10 +7,11 @@ pub(crate) mod ncp_library;
 pub(crate) mod virus_library;
 use std::{collections::HashMap, sync::Arc};
 
-use serenity::{prelude::*, model::channel::Message};
-
-use async_trait::async_trait;
-
+use serenity::{
+    prelude::*, 
+    model::channel::Message,
+    async_trait
+};
 
 use strsim::jaro_winkler;
 
