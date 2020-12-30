@@ -75,7 +75,7 @@ impl TypeMapKey for DmOwner {
 #[async_trait]
 impl EventHandler for Handler {
     async fn cache_ready(&self, ctx: Context, _: Vec<GuildId>) {
-        if FIRST_CACHE_READY.compare_and_swap(false, true, Ordering::AcqRel) {
+        if FIRST_CACHE_READY.compare_exchange(false, true, Ordering::AcqRel, Ordering::Relaxed).is_err() {
             // previous value was already true, return
             return;
         }
@@ -97,7 +97,7 @@ impl EventHandler for Handler {
 
     async fn ready(&self, ctx: Context, ready: Ready) {
         let message_to_owner;
-        if FIRST_LOGIN.compare_and_swap(true, false, Ordering::AcqRel) {
+        if FIRST_LOGIN.compare_exchange(true, false, Ordering::AcqRel, Ordering::Relaxed).is_ok() {
             println!(
                 "{} : {} is connected!",
                 chrono::Local::now(),
@@ -414,16 +414,16 @@ async fn about_bot(ctx: &Context, msg: &Message, _: Args) -> CommandResult {
 #[command("shut_up")]
 /// Makes the bot stop DMing the owner on certain events
 async fn shut_up(ctx: &Context, msg: &Message, _: Args) -> CommandResult {
-    {
-        let data = ctx.data.read().await;
+    let data = ctx.data.read().await;
 
-        // fetch and xor means fewer operations, true ^ true is false, and true ^ false is true;
-        data.get::<DmOwner>()
-            .expect("No DM Owner setting found")
-            .fetch_xor(true, Ordering::Relaxed);
-    }
+    // fetch and xor means fewer operations, true ^ true is false, and true ^ false is true;
+    data.get::<DmOwner>()
+        .expect("No DM Owner setting found")
+        .fetch_xor(true, Ordering::AcqRel);
+    
     msg.react(ctx, '\u{1f44d}').await?;
-    return Ok(());
+    
+    Ok(())
 }
 
 // #[hook]
