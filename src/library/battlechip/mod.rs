@@ -2,7 +2,7 @@ use crate::library::{
     battlechip::{chip_type::ChipType, ranges::Ranges, skills::Skills},
     elements::Elements,
 };
-use lazy_static::lazy_static;
+
 use regex::{Captures, Regex};
 use serde::Serialize;
 use std::{
@@ -10,11 +10,14 @@ use std::{
     str::FromStr,
     borrow::Cow,
 };
+
 use unicode_normalization::UnicodeNormalization;
 
 use crate::library::LibraryObject;
 use serde::export::Formatter;
 use simple_error::SimpleError;
+
+use once_cell::sync::Lazy;
 
 mod chip_type;
 mod ranges;
@@ -100,6 +103,10 @@ impl LibraryObject for BattleChip {
     }
 }
 
+static RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"(.+?)\s-\s(.+?)\s\|\s(.+?)\s\|\s(.+?)\s\|\s(\d+d\d+|--)\s?(?:damage)?\s?\|?\s?(Mega|Giga|Dark|Support)?\s\|\s(\d+|\d+-\d+|--)\s?(?:hits?)\.?").expect("could not compile chip regex"));
+static R_SAVE : Lazy<Regex> = Lazy::new(|| Regex::new(r"an?\s(\w+)\scheck\sof\s\[DC\s\d+\s\+\s(\w+)]").expect("could not compile save regex"));
+static R_BLIGHT : Lazy<Regex> = Lazy::new(|| Regex::new(r"[bB]light\s\((\w+)\)").expect("could not compile blight regex"));
+
 impl BattleChip {
     fn parse_elements(elem_str: &str) -> Result<Vec<Elements>, SimpleError> {
         let mut to_ret = vec![];
@@ -123,14 +130,7 @@ impl BattleChip {
         first_line: &str,
         second_line: &str,
     ) -> Result<BattleChip, SimpleError> {
-        lazy_static! {
-            static ref RE: Regex = Regex::new(r"(.+?)\s-\s(.+?)\s\|\s(.+?)\s\|\s(.+?)\s\|\s(\d+d\d+|--)\s?(?:damage)?\s?\|?\s?(Mega|Giga|Dark|Support)?\s\|\s(\d+|\d+-\d+|--)\s?(?:hits?)\.?").expect("could not compile chip regex");
-            static ref R_SAVE : Regex = Regex::new(r"an?\s(\w+)\scheck\sof\s\[DC\s\d+\s\+\s(\w+)]").expect("could not compile save regex");
-            static ref R_BLIGHT : Regex = Regex::new(r"[bB]light\s\((\w+)\)").expect("could not compile blight regex");
-        }
-
-        // let RE : Regex = Regex::new(r"(.+?)\s-\s(.+?)\s\|\s(.+?)\s\|\s(.+?)\s\|\s(\d+d\d+|--)\s?(?:damage)?\s?\|?\s?(Mega|Giga)?\s\|\s(\d+|\d+-\d+|--)\s?(?:hits?)\.?").unwrap();
-        // let R_SAVE : Regex = Regex::new(r"an?\s(\w+)\scheck\sof\s\[DC\s\d+\s\+\s(\w+)]").unwrap();
+         
         let chip_val: Captures = RE
             .captures(first_line)
             .ok_or_else(|| SimpleError::new("Failed at capture stage"))?;

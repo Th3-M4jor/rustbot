@@ -1,7 +1,7 @@
 use serenity::{
     client::bridge::gateway::ShardManager,
     framework::standard::{macros::command, Args, CommandResult},
-    http::CacheHttp,
+    http::{CacheHttp, Http},
     model::{
         channel::{Message, ReactionType},
         id::{ChannelId, MessageId, UserId},
@@ -13,7 +13,10 @@ use serenity::{
 use std::{sync::Arc, time::Duration};
 
 use crate::bot_data::BotData;
+
 use tokio::fs;
+
+use once_cell::sync::Lazy;
 
 /// fn say(ctx: Context, msg: Message, say: an expression returning a string)
 
@@ -178,6 +181,22 @@ pub(crate) async fn has_reaction_perm(ctx: &Context, channel_id: ChannelId) -> b
 // Box::pin(fut)
 // }
 
+
+const NUMBERS : Lazy<Vec<ReactionType>> = Lazy::new(|| {
+    vec![
+        ReactionType::Unicode("\u{31}\u{fe0f}\u{20e3}".into()), // 1
+        ReactionType::Unicode("\u{32}\u{fe0f}\u{20e3}".into()),
+        ReactionType::Unicode("\u{33}\u{fe0f}\u{20e3}".into()),
+        ReactionType::Unicode("\u{34}\u{fe0f}\u{20e3}".into()),
+        ReactionType::Unicode("\u{35}\u{fe0f}\u{20e3}".into()),
+        ReactionType::Unicode("\u{36}\u{fe0f}\u{20e3}".into()),
+        ReactionType::Unicode("\u{37}\u{fe0f}\u{20e3}".into()),
+        ReactionType::Unicode("\u{38}\u{fe0f}\u{20e3}".into()),
+        ReactionType::Unicode("\u{39}\u{fe0f}\u{20e3}".into()),
+    ]
+});
+
+/*
 const NUMBERS: &[&str] = &[
     "\u{31}\u{fe0f}\u{20e3}", // 1
     "\u{32}\u{fe0f}\u{20e3}", // 2
@@ -189,6 +208,9 @@ const NUMBERS: &[&str] = &[
     "\u{38}\u{fe0f}\u{20e3}", // 8
     "\u{39}\u{fe0f}\u{20e3}", // 9
 ];
+*/
+
+const REACTION_TIMEOUT: Duration = Duration::from_secs(30);
 
 /// Panics if len is 0 or greater than 9
 pub(crate) async fn reaction_did_you_mean(
@@ -197,49 +219,39 @@ pub(crate) async fn reaction_did_you_mean(
     author_id: UserId,
     len: usize,
 ) -> Option<usize> {
+    
     if len == 0 || len > 9 {
         panic!("Recieved invalid number for did you mean: {}", len);
     }
+
     if !has_reaction_perm(&ctx, msg.channel_id).await {
         return None;
     }
+
     let http_clone = Arc::clone(&ctx.http);
     let msg_id = msg.id.0;
     let channel_id = msg.channel_id.0;
-    let all_reactions_added = tokio::spawn(async move {
-        for number in NUMBERS.iter().take(len) {
-            if let Err(why) = http_clone
-                .create_reaction(
-                    channel_id,
-                    msg_id,
-                    &ReactionType::Unicode((*number).to_string()),
-                )
-                .await
-            {
-                println!("Could not react to message: {:?}", why);
-                return false;
-            }
-        }
-        return true;
-    });
+    let all_reactions_added = tokio::spawn(add_reactions(http_clone, len, channel_id, msg_id));
 
     let mut reacted_number: Option<usize> = None;
-    'outer: loop {
-        if let Some(reaction) = msg
-            .await_reaction(&ctx)
-            .timeout(Duration::from_secs(30))
-            .author_id(author_id)
-            .await
-        {
-            let emoji = &reaction.as_inner_ref().emoji.as_data();
-            let reacted_emoji = emoji.as_str();
-            for num in NUMBERS.iter().take(len).zip(0..=len) {
-                if *num.0 == reacted_emoji {
-                    reacted_number = Some(num.1);
-                    break 'outer;
-                }
-            }
-        } else {
+
+    // using a closure here just to make code cleaner looking
+    // optimizer probably inlines anyway
+    let reaction_collector = || { 
+        msg.await_reaction(
+            &ctx
+        ).timeout(
+            REACTION_TIMEOUT
+        ).author_id(
+            author_id
+        )
+    };
+    
+    while let Some(reaction) = reaction_collector().await {
+        let emoji = &reaction.as_inner_ref().emoji;
+        let res = get_number_pos(emoji, len);
+        if let Some(num) = res {
+            reacted_number = Some(num);
             break;
         }
     }
@@ -254,6 +266,32 @@ pub(crate) async fn reaction_did_you_mean(
     }
 
     reacted_number
+}
+
+fn get_number_pos(reaction: &ReactionType, len: usize) -> Option<usize> {
+    for (emoji, num) in NUMBERS.iter().zip(0..=len) {
+        if emoji == reaction {
+            return Some(num)
+        }
+    }
+    None
+}
+
+async fn add_reactions(http: Arc<Http>, len: usize, channel_id: u64, msg_id: u64) -> bool {
+    for number in NUMBERS.iter().take(len) {
+        if let Err(why) = http
+            .create_reaction(
+                channel_id,
+                msg_id,
+                number,
+            )
+            .await
+        {
+            println!("Could not react to message: {:?}", why);
+            return false;
+        }
+    }
+    return true;
 }
 
 #[command]
