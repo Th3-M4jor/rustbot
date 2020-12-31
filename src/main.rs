@@ -569,7 +569,6 @@ async fn main() {
         .await
         .help(&HELP_COMMAND)
         .group(&OWNER_GROUP)
-        .group(&WARFRAME_GROUP)
         .group(&DICE_GROUP)
         .group(&BNBGENERAL_GROUP)
         .group(&BNBCHIPS_GROUP)
@@ -589,7 +588,6 @@ async fn main() {
         .await
         .expect("Err creating client");
 
-    let warframe_data = WarframeData::new();
     // insert stuff into the data Arc<RwLock>
     {
         let mut data = client.data.write().await;
@@ -597,7 +595,6 @@ async fn main() {
         data.insert::<NCPLibrary>(RwLock::new(ncp_library));
         data.insert::<VirusLibrary>(RwLock::new(virus_library));
         data.insert::<BotData>(config);
-        data.insert::<WarframeData>(warframe_data);
         data.insert::<FullLibrary>(RwLock::new(full_library));
         data.insert::<Blights>(blights);
         data.insert::<Statuses>(statuses);

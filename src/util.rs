@@ -113,7 +113,7 @@ where
     ctx.http.send_message(channel_id.0, &content).await
 }
 
-pub(crate) fn build_time_rem(now: i64, end: i64) -> String {
+pub(crate) fn _build_time_rem(now: i64, end: i64) -> String {
     let time_rem = end - now;
     if time_rem < 0 {
         return String::from("Expired");
