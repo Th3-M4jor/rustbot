@@ -37,7 +37,6 @@ use crate::{
         virus_library::{virus_as_lib_obj, VirusImportError, VirusLibrary, BNBVIRUSES_GROUP},
         Library, LibraryObject,
     },
-    warframe::{WarframeData, WARFRAME_GROUP},
 };
 
 use crate::{
@@ -51,7 +50,6 @@ mod util;
 mod bot_data;
 mod dice;
 mod library;
-mod warframe;
 
 type ReloadOkType = (String, Vec<Arc<dyn LibraryObject>>);
 type ReloadReturnType = Result<ReloadOkType, Box<dyn std::error::Error + Send + Sync>>;
