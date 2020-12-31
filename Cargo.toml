@@ -15,12 +15,12 @@ regex = "*"
 once_cell = "*"
 simple-error = "*"
 unicode-normalization = "*"
-#serenity = { version = "*", features = ["framework", "standard_framework"]}
+serenity = { git = "https://github.com/serenity-rs/serenity", features = ["framework", "standard_framework"], branch = "current"}
 rand = "*"
 strsim = "*"
 chrono = "*"
 tokio  = { version = "^0.2", features = ["rt-threaded", "time", "sync", "fs", "macros", "rt-util", "blocking"] }
-serenity = { version = "^0.9.0", features = ["framework", "standard_framework", "collector", ] }
+#serenity = { version = "^0.9.0", features = ["framework", "standard_framework", "collector", ] }
 futures = "*"
 log = "*"
 pretty_env_logger = "*"
