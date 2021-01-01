@@ -3,6 +3,8 @@ use std::sync::{
     Arc,
 };
 
+use std::borrow::Cow;
+
 use tokio::sync::{RwLock, RwLockWriteGuard};
 
 use once_cell::sync::Lazy;
@@ -41,7 +43,7 @@ use crate::{
 
 use crate::{
     dice::DICE_GROUP,
-    util::{ShardManagerContainer, AUDIT_COMMAND, DIE_COMMAND, MANAGER_COMMAND, PHB_COMMAND, PING_COMMAND},
+    util::{ShardManagerContainer, AUDIT_COMMAND, DIE_COMMAND, MANAGER_COMMAND, PHB_COMMAND, PING_COMMAND, SHUT_UP_COMMAND, dm_owner},
 };
 use std::fs;
 
@@ -63,12 +65,6 @@ static FIRST_LOGIN: Lazy<AtomicBool> = Lazy::new(|| AtomicBool::new(true));
 static FIRST_CACHE_READY: Lazy<AtomicBool> = Lazy::new(|| AtomicBool::new(false));
 
 struct Handler;
-
-struct DmOwner;
-
-impl TypeMapKey for DmOwner {
-    type Value = AtomicBool;
-}
 
 #[async_trait]
 impl EventHandler for Handler {
@@ -137,34 +133,6 @@ impl EventHandler for Handler {
             resumed.trace
         );
     }
-}
-
-async fn dm_owner<T>(
-    ctx: &Context,
-    to_send: T,
-) -> Result<(), Box<dyn std::error::Error + Send + Sync>>
-where
-    T: std::fmt::Display,
-{
-    let data = ctx.data.read().await;
-
-    let should_dm_owner = data.get::<DmOwner>().expect("No DM Owner setting found");
-
-    if !should_dm_owner.load(Ordering::Relaxed) {
-        return Ok(());
-    }
-
-    let config = data.get::<BotData>().expect("no bot data, panicking");
-
-    let owner_id = UserId::from(config.owner);
-
-    if let Some(owner) = ctx.cache.user(&owner_id).await {
-        let _ = owner.dm(ctx, |m| m.content(format!("{}", to_send))).await?;
-    } else {
-        let owner = ctx.http.get_user(config.owner).await?;
-        let _ = owner.dm(ctx, |m| m.content(format!("{}", to_send))).await?;
-    }
-    Ok(())
 }
 
 #[help]
@@ -311,7 +279,6 @@ async fn reload(ctx: &Context, msg: &Message, _: Args) -> CommandResult {
     let ncp_data = Arc::clone(&ctx.data);
     let virus_data = Arc::clone(&ctx.data);
 
-    let mut str_to_send = String::new();
     let chip_future = reload_chips(chip_data);
     let ncp_future = reload_ncps(ncp_data);
     let virus_future = reload_viruses(virus_data);
@@ -336,7 +303,7 @@ async fn reload(ctx: &Context, msg: &Message, _: Args) -> CommandResult {
                 msg,
                 format!(
                     "An error occurred, library is not guaranteed to be in a usable state:\n{}",
-                    e.to_string()
+                    e
                 ),
                 true
             );
@@ -345,47 +312,34 @@ async fn reload(ctx: &Context, msg: &Message, _: Args) -> CommandResult {
     }
 
     let data = ctx.data.read().await;
-    let blight_string;
+    let blight_string =
     {
         let blight_lock = data.get::<Blights>().expect("Blights not found");
         let mut blights = blight_lock.write().await;
         match blights.load().await {
-            Ok(()) => blight_string = String::from("blights reloaded successfully\n"),
-            Err(e) => blight_string = format!("{}\n", e.to_string()),
+            Ok(()) => Cow::Borrowed("blights reloaded successfully\n"),
+            Err(e) => Cow::Owned(format!("{}\n", e.to_string())),
         }
-    }
+    };
 
     let full_library_lock = data.get::<FullLibrary>().expect("full library not found");
     let mut full_library = full_library_lock.write().await;
-    let mut full_duplicates: Vec<String> = vec![];
+    let mut full_duplicates: Vec<String> = Vec::new();
     full_library.clear();
-    for chip in chip_res.1 {
-        if let Err(e) = full_library.insert(chip) {
+
+    let full_iter = chip_res.1.iter().chain(ncp_res.1.iter()).chain(virus_res.1.iter());
+
+    for lib_obj in full_iter {
+        if let Err(e) = full_library.insert(Arc::clone(lib_obj)) {
             full_duplicates.push(e.to_string());
         }
     }
 
-    for ncp in ncp_res.1 {
-        if let Err(e) = full_library.insert(ncp) {
-            full_duplicates.push(e.to_string());
-        }
-    }
-
-    for virus in virus_res.1 {
-        if let Err(e) = full_library.insert(virus) {
-            full_duplicates.push(e.to_string());
-        }
-    }
-
-    str_to_send.push_str(&chip_res.0);
-    str_to_send.push_str(&ncp_res.0);
-    str_to_send.push_str(&virus_res.0);
-    str_to_send.push('\n');
-    str_to_send.push_str(&blight_string);
-
-    if full_duplicates.len() > 0 {
-        str_to_send.push_str(&format!("\nfull duplicates: {:?}", full_duplicates));
-    }
+    let mut str_to_send = if full_duplicates.len() > 0 {
+        format!("{}{}{}\n{}\nfull duplicates: {:?}", chip_res.0, ncp_res.0, virus_res.0, blight_string, full_duplicates)
+    } else {
+        format!("{}{}{}\n{}", chip_res.0, ncp_res.0, virus_res.0, blight_string)
+    };
 
     let virus_lib_lock = data.get::<VirusLibrary>().expect("virus library not found");
     let chip_lib_lock = data.get::<ChipLibrary>().expect("chip library not found");
@@ -412,20 +366,6 @@ async fn about_bot(ctx: &Context, msg: &Message, _: Args) -> CommandResult {
     Ok(())
 }
 
-#[command("shut_up")]
-/// Makes the bot stop DMing the owner on certain events
-async fn shut_up(ctx: &Context, msg: &Message, _: Args) -> CommandResult {
-    let data = ctx.data.read().await;
-
-    // fetch and xor means fewer operations, true ^ true is false, and true ^ false is true;
-    data.get::<DmOwner>()
-        .expect("No DM Owner setting found")
-        .fetch_xor(true, Ordering::AcqRel);
-    
-    msg.react(ctx, '\u{1f44d}').await?;
-    
-    Ok(())
-}
 
 // #[hook]
 // async fn search_everything_command(ctx: &mut Context, msg: &Message, _: &str) {
@@ -603,7 +543,6 @@ async fn main() {
         data.insert::<Statuses>(statuses);
         data.insert::<Panels>(panels);
         data.insert::<ShardManagerContainer>(Arc::clone(&client.shard_manager));
-        data.insert::<DmOwner>(AtomicBool::new(true));
     }
 
     // Finally, start a single shard, and start listening to events.

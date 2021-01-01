@@ -10,7 +10,7 @@ use serenity::{
     prelude::*,
 };
 
-use std::{sync::Arc, time::Duration};
+use std::{sync::{Arc, atomic::{AtomicBool, Ordering}}, time::Duration};
 
 use crate::bot_data::BotData;
 
@@ -297,19 +297,20 @@ async fn add_reactions(http: Arc<Http>, len: usize, channel_id: u64, msg_id: u64
 #[command]
 /// Get the last few lines of the server log file
 pub(crate) async fn audit(ctx: &Context, msg: &Message, _: Args) -> CommandResult {
-    let data = ctx.data.read().await;
-    let config = data.get::<BotData>().expect("config not found");
-
-    if msg.author.id != config.owner {
-        return Ok(());
-    }
 
     let res = fs::read_to_string("./nohup.out").await;
     match res {
         Ok(val) => {
             let lines: Vec<&str> = val.split('\n').filter(|&i| !i.trim().is_empty()).collect();
-            let len = lines.len() - 11;
-            long_say!(ctx, msg, &lines[len..], "\n");
+            
+            if lines.len() == 0 {
+                say!(ctx, msg, "Log is empty");
+            } else if lines.len() < 11 {
+                long_say!(ctx, msg, &lines, "\n");
+            } else {
+                let len = lines.len() - 11;
+                long_say!(ctx, msg, &lines[len..], "\n");
+            }
         }
         Err(err) => {
             say!(ctx, msg, format!("unable to get log, {}", err.to_string()));
@@ -380,5 +381,44 @@ async fn ping(ctx: &Context, msg: &Message, _: Args) -> CommandResult {
         println!("Could not edit message: {:?}", why);
     }
 
+    Ok(())
+}
+
+static SHOULD_DM_OWNER: Lazy<AtomicBool> = Lazy::new(|| AtomicBool::new(true));
+
+pub(crate) async fn dm_owner<T>(
+    ctx: &Context,
+    to_send: T,
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>>
+where
+    T: std::fmt::Display,
+{
+    let data = ctx.data.read().await;
+
+    if !SHOULD_DM_OWNER.load(Ordering::Relaxed) {
+        return Ok(());
+    }
+
+    let config = data.get::<BotData>().expect("no bot data, panicking");
+
+    let owner_id = UserId::from(config.owner);
+
+    if let Some(owner) = ctx.cache.user(&owner_id).await {
+        let _ = owner.dm(ctx, |m| m.content(format!("{}", to_send))).await?;
+    } else {
+        let owner = ctx.http.get_user(config.owner).await?;
+        let _ = owner.dm(ctx, |m| m.content(format!("{}", to_send))).await?;
+    }
+    Ok(())
+}
+
+#[command("shut_up")]
+/// Makes the bot stop DMing the owner on certain events
+async fn shut_up(ctx: &Context, msg: &Message, _: Args) -> CommandResult {
+    
+    SHOULD_DM_OWNER.fetch_xor(true, Ordering::Relaxed);
+    
+    msg.react(ctx, '\u{1f44d}').await?;
+    
     Ok(())
 }
