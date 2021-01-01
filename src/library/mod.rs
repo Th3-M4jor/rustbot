@@ -15,7 +15,7 @@ use serenity::{
 
 use strsim::jaro_winkler;
 
-use crate::util::{reaction_did_you_mean, has_reaction_perm, edit_message_by_id, send_reply};
+use crate::util::{reaction_did_you_mean, has_reaction_perm, edit_message_by_id};
 
 use std::ops::Deref;
 
@@ -148,6 +148,7 @@ pub trait Library: TypeMapKey {
     
         let mut msg_string = String::from("Did you mean: ");
         let mut num: isize = 1;
+
         for obj in list.iter() {
             msg_string.push_str(&num.to_string());
             msg_string.push_str(": ");
@@ -160,9 +161,7 @@ pub trait Library: TypeMapKey {
         msg_string.pop();
         msg_string.pop();
     
-    
-        
-        let msg_to_await= match send_reply(ctx, msg, msg_string, true).await {
+        let msg_to_await= match msg.reply(&ctx, msg_string).await {
             Ok(val) => val,
             Err(why) => {
                 println!("Could not send message: {:?}", why);
@@ -176,9 +175,6 @@ pub trait Library: TypeMapKey {
             }
         }
     }
-
-
-
 }
 
 // pub(crate) fn search_lib_obj<'b, U, T>(search: &str, lib: &'b T) -> Result<String, Vec<&'b str>>

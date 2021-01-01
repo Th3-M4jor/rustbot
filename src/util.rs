@@ -94,23 +94,12 @@ pub(crate) async fn send_reply<T>(
 where
     T: std::fmt::Display,
 {
-    let channel_id = msg_to_reply_to.channel_id;
-    let msg_id = msg_to_reply_to.id.to_string();
 
-    let reply_txt = reply_msg.to_string();
-
-    let content = serde_json::json!({
-        "content": reply_txt,
-        "tts": false,
-        "message_reference": {
-           "message_id":  msg_id
-        },
-        "allowed_mentions": {
-            "replied_user": mention_author
-        }
-    });
-
-    ctx.http.send_message(channel_id.0, &content).await
+    if mention_author {
+        msg_to_reply_to.reply_ping(&ctx, reply_msg).await
+    } else {
+        msg_to_reply_to.reply(&ctx, reply_msg).await
+    }
 }
 
 pub(crate) fn _build_time_rem(now: i64, end: i64) -> String {

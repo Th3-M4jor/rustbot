@@ -11,7 +11,10 @@ use serenity::{
 #[cfg(not(debug_assertions))]
 use serde_json;
 
-use crate::library::{Library, LibraryObject};
+use crate::{
+    library::{Library, LibraryObject},
+    ReloadReturnType,
+};
 use regex::Regex;
 use std::fmt::Formatter;
 
@@ -85,6 +88,23 @@ impl NCPLibrary {
             library: HashMap::new(),
             ncp_url: Arc::new(String::from(url)),
         }
+    }
+
+    pub async fn reload(data: Arc<RwLock<TypeMap>>) -> ReloadReturnType {
+        let str_to_ret: String;
+        let mut vec_to_ret: Vec<Arc<dyn LibraryObject>> = vec![];
+        let data_lock = data.read().await;
+        let ncp_library_lock = data_lock
+            .get::<NCPLibrary>()
+            .expect("ncp library not found");
+        let mut ncp_library = ncp_library_lock.write().await;
+        let count = ncp_library.load_programs().await?;
+        str_to_ret = format!("{} NCPs loaded\n", count);
+        vec_to_ret.reserve(count);
+        for val in ncp_library.get_collection().values() {
+            vec_to_ret.push(ncp_as_lib_obj(Arc::clone(val)));
+        }
+        Ok((str_to_ret, vec_to_ret))
     }
 
     pub async fn load_programs(

@@ -18,7 +18,10 @@ use serde_json;
 
 use regex::Regex;
 
-use crate::library::{battlechip::skills::Skills, elements::Elements, Library, LibraryObject};
+use crate::{
+    library::{battlechip::skills::Skills, elements::Elements, Library, LibraryObject},
+    ReloadReturnType,
+};
 use simple_error::SimpleError;
 use std::fmt::Formatter;
 
@@ -229,6 +232,38 @@ impl VirusLibrary {
             )
             .expect("could not compile mbs regex"),
         }
+    }
+
+    pub async fn reload(data: Arc<RwLock<TypeMap>>) -> ReloadReturnType {
+        let mut vec_to_ret: Vec<Arc<dyn LibraryObject>> = vec![];
+        let data_lock = data.read().await;
+        let virus_library_lock = data_lock
+            .get::<VirusLibrary>()
+            .expect("virus library not found");
+        let mut virus_library = virus_library_lock.write().await;
+        let str_to_ret = match virus_library.load_viruses().await {
+            Ok(val) => val,
+            Err(err) => match err {
+                VirusImportError::TextDLFailure => {
+                    return Err(Box::new(err));
+                }
+                VirusImportError::CRParseErr(msg) => msg,
+                VirusImportError::VirusParseErr(msg) => msg,
+                VirusImportError::UnexpectedEOF => {
+                    return Err(Box::new(err));
+                }
+                VirusImportError::DuplicateVirus(_) => {
+                    return Err(Box::new(err));
+                }
+            },
+        };
+    
+        vec_to_ret.reserve(virus_library.get_collection().len());
+        for val in virus_library.get_collection().values() {
+            vec_to_ret.push(virus_as_lib_obj(Arc::clone(val)));
+        }
+    
+        Ok((str_to_ret, vec_to_ret))
     }
 
     pub async fn load_viruses(

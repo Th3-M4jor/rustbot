@@ -1,16 +1,13 @@
-use std::sync::{
-    atomic::{AtomicBool, Ordering},
-    Arc,
+use std::{
+    borrow::Cow,
+    sync::Arc
 };
-
-use std::borrow::Cow;
 
 use tokio::sync::{RwLock, RwLockWriteGuard};
 
 use once_cell::sync::Lazy;
 
 use serenity::{
-    async_trait,
     client::bridge::gateway::GatewayIntents,
     framework::standard::{
         help_commands,
@@ -20,15 +17,15 @@ use serenity::{
     },
     model::{
         channel::Message,
-        event::ResumedEvent,
-        gateway::{Activity, Ready},
-        id::{GuildId, UserId},
+        id::UserId,
     },
     prelude::*,
 };
 
 use crate::{
     bot_data::BotData,
+    dice::DICE_GROUP,
+    handler::Handler,
     library::{
         blights::{
             Blights, Panels, Statuses, GET_BLIGHT_COMMAND, GET_PANELS_COMMAND, GET_STATUS_COMMAND,
@@ -39,101 +36,23 @@ use crate::{
         virus_library::{virus_as_lib_obj, VirusImportError, VirusLibrary, BNBVIRUSES_GROUP},
         Library, LibraryObject,
     },
+    util::{ShardManagerContainer, AUDIT_COMMAND, DIE_COMMAND, MANAGER_COMMAND, PHB_COMMAND, PING_COMMAND, SHUT_UP_COMMAND},
 };
-
-use crate::{
-    dice::DICE_GROUP,
-    util::{ShardManagerContainer, AUDIT_COMMAND, DIE_COMMAND, MANAGER_COMMAND, PHB_COMMAND, PING_COMMAND, SHUT_UP_COMMAND, dm_owner},
-};
-use std::fs;
 
 #[macro_use]
 mod util;
 mod bot_data;
 mod dice;
 mod library;
+mod handler;
 
 type ReloadOkType = (String, Vec<Arc<dyn LibraryObject>>);
 type ReloadReturnType = Result<ReloadOkType, Box<dyn std::error::Error + Send + Sync>>;
 
 static ABOUT_BOT: Lazy<String> = Lazy::new(|| 
-    fs::read_to_string("./about.txt")
+    std::fs::read_to_string("./about.txt")
     .unwrap_or_else(|_| "about text is missing, bug the owner".to_string())
 );
-
-static FIRST_LOGIN: Lazy<AtomicBool> = Lazy::new(|| AtomicBool::new(true));
-static FIRST_CACHE_READY: Lazy<AtomicBool> = Lazy::new(|| AtomicBool::new(false));
-
-struct Handler;
-
-#[async_trait]
-impl EventHandler for Handler {
-    async fn cache_ready(&self, ctx: Context, _: Vec<GuildId>) {
-        if FIRST_CACHE_READY.compare_exchange(false, true, Ordering::AcqRel, Ordering::Relaxed).is_err() {
-            // previous value was already true, return
-            return;
-        }
-
-        println!("{} : Cache Ready", chrono::Local::now());
-
-        {
-            let data = ctx.data.read().await;
-            let config = data.get::<BotData>().expect("no bot data, panicking");
-
-            let action = config.cmd_prefix.clone() + "help for a list of commands";
-            ctx.set_activity(Activity::playing(&action)).await;
-        }
-
-        if let Err(why) = dm_owner(&ctx, "logged in, and cache ready").await {
-            println!("{:?}", why);
-        }
-    }
-
-    async fn ready(&self, ctx: Context, ready: Ready) {
-        let message_to_owner;
-        if FIRST_LOGIN.compare_exchange(true, false, Ordering::AcqRel, Ordering::Relaxed).is_ok() {
-            println!(
-                "{} : {} is connected!",
-                chrono::Local::now(),
-                ready.user.name
-            );
-            return;
-        } else {
-            message_to_owner = "ready event re-emitted";
-            println!(
-                "{} : ready event re-emitted:\n{:?}",
-                chrono::Local::now(),
-                ready.trace
-            );
-        }
-
-        {
-            let data = ctx.data.read().await;
-            let config = data.get::<BotData>().expect("no bot data, panicking");
-
-            let action = config.cmd_prefix.clone() + "help for a list of commands";
-            ctx.set_activity(Activity::playing(&action)).await;
-        }
-
-        if let Err(why) = dm_owner(&ctx, message_to_owner).await {
-            println!("{:?}", why);
-        }
-    }
-
-    async fn resume(&self, ctx: Context, resumed: ResumedEvent) {
-        let message_to_owner = "resume event was emitted";
-
-        if let Err(why) = dm_owner(&ctx, message_to_owner).await {
-            println!("{:?}", why);
-        }
-
-        println!(
-            "{} : resume event emitted:\n{:?}",
-            chrono::Local::now(),
-            resumed.trace
-        );
-    }
-}
 
 #[help]
 #[max_levenshtein_distance(3)]
@@ -173,75 +92,6 @@ struct Owner;
 /// Misc. commands related to BnB
 struct BnbGeneral;
 
-async fn reload_chips(data: Arc<RwLock<TypeMap>>) -> ReloadReturnType {
-    let str_to_ret;
-    let mut vec_to_ret: Vec<Arc<dyn LibraryObject>> = vec![];
-    let data_lock = data.read().await;
-    let chip_library_lock = data_lock
-        .get::<ChipLibrary>()
-        .expect("chip library not found");
-    let config = data_lock.get::<BotData>().expect("bot data not found");
-    let mut chip_library: RwLockWriteGuard<ChipLibrary> = chip_library_lock.write().await;
-    let chip_reload_str = chip_library.load_chips(config.load_custom_chips).await?;
-    str_to_ret = format!("{} chips loaded\n", chip_reload_str);
-    vec_to_ret.reserve(chip_library.get_collection().len());
-    for val in chip_library.get_collection().values() {
-        let trait_obj = battlechip_as_lib_obj(Arc::clone(val));
-
-        vec_to_ret.push(trait_obj);
-    }
-    Ok((str_to_ret, vec_to_ret))
-}
-
-async fn reload_ncps(data: Arc<RwLock<TypeMap>>) -> ReloadReturnType {
-    let str_to_ret: String;
-    let mut vec_to_ret: Vec<Arc<dyn LibraryObject>> = vec![];
-    let data_lock = data.read().await;
-    let ncp_library_lock = data_lock
-        .get::<NCPLibrary>()
-        .expect("ncp library not found");
-    let mut ncp_library = ncp_library_lock.write().await;
-    let count = ncp_library.load_programs().await?;
-    str_to_ret = format!("{} NCPs loaded\n", count);
-    vec_to_ret.reserve(count);
-    for val in ncp_library.get_collection().values() {
-        vec_to_ret.push(ncp_as_lib_obj(Arc::clone(val)));
-    }
-    Ok((str_to_ret, vec_to_ret))
-}
-
-async fn reload_viruses(data: Arc<RwLock<TypeMap>>) -> ReloadReturnType {
-    let mut vec_to_ret: Vec<Arc<dyn LibraryObject>> = vec![];
-    let data_lock = data.read().await;
-    let virus_library_lock = data_lock
-        .get::<VirusLibrary>()
-        .expect("virus library not found");
-    let mut virus_library: RwLockWriteGuard<VirusLibrary> = virus_library_lock.write().await;
-    let str_to_ret = match virus_library.load_viruses().await {
-        Ok(val) => val,
-        Err(err) => match err {
-            VirusImportError::TextDLFailure => {
-                return Err(Box::new(err));
-            }
-            VirusImportError::CRParseErr(msg) => msg,
-            VirusImportError::VirusParseErr(msg) => msg,
-            VirusImportError::UnexpectedEOF => {
-                return Err(Box::new(err));
-            }
-            VirusImportError::DuplicateVirus(_) => {
-                return Err(Box::new(err));
-            }
-        },
-    };
-
-    vec_to_ret.reserve(virus_library.get_collection().len());
-    for val in virus_library.get_collection().values() {
-        vec_to_ret.push(virus_as_lib_obj(Arc::clone(val)));
-    }
-
-    Ok((str_to_ret, vec_to_ret))
-}
-
 #[check]
 #[name = "Admin"]
 async fn admin_check(
@@ -279,9 +129,9 @@ async fn reload(ctx: &Context, msg: &Message, _: Args) -> CommandResult {
     let ncp_data = Arc::clone(&ctx.data);
     let virus_data = Arc::clone(&ctx.data);
 
-    let chip_future = reload_chips(chip_data);
-    let ncp_future = reload_ncps(ncp_data);
-    let virus_future = reload_viruses(virus_data);
+    let chip_future = ChipLibrary::reload(chip_data);
+    let ncp_future = NCPLibrary::reload(ncp_data);
+    let virus_future = VirusLibrary::reload(virus_data);
 
     let chip_res;
     let ncp_res;
