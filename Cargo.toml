@@ -15,7 +15,7 @@ regex = "*"
 once_cell = "*"
 simple-error = "*"
 unicode-normalization = "*"
-serenity = { git = "https://github.com/serenity-rs/serenity", features = ["framework", "standard_framework"], branch = "current"}
+serenity = { git = "https://github.com/serenity-rs/serenity", features = ["framework", "standard_framework", "collector"], branch = "current"}
 rand = "*"
 strsim = "*"
 chrono = "*"

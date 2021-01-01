@@ -13,7 +13,7 @@ use serenity::{
     framework::standard::{
         help_commands,
         macros::{check, command, group, help, hook},
-        Args, CheckResult, CommandGroup, CommandOptions, CommandResult, HelpOptions,
+        Args, Reason, CommandGroup, CommandOptions, CommandResult, HelpOptions,
         StandardFramework,
     },
     model::{
@@ -281,12 +281,15 @@ async fn admin_check(
     msg: &Message,
     _: &mut Args,
     _: &CommandOptions,
-) -> CheckResult {
+) -> Result<(), Reason> {
     let data = ctx.data.read().await;
     let config = data.get::<BotData>().expect("could not get config");
 
-    return (msg.author.id == config.owner || config.admins.contains(msg.author.id.as_u64()))
-        .into();
+    if msg.author.id == config.owner || config.admins.contains(&msg.author.id.0) {
+        Ok(())
+    } else {
+        Err(Reason::User(format!("{} lacks permission for this command", &msg.author.name)))
+    }
 }
 
 #[command]
