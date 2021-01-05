@@ -1,4 +1,6 @@
 use std::{cmp::Ordering, collections::HashMap, sync::Arc,};
+use itertools::Itertools;
+use once_cell::sync::Lazy;
 use tokio::sync::{RwLock, RwLockReadGuard};
 
 use rand::distributions::{Distribution, Uniform};
@@ -34,8 +36,8 @@ use unicode_normalization::UnicodeNormalization;
 #[serde(rename_all(serialize = "PascalCase"))]
 pub struct Virus {
     pub name: String,
-    pub element: Elements,
-    pub skills: HashMap<Skills, u8>,
+    pub element: Vec<Elements>,
+    pub skills: VirusSkills,
     pub h_p: usize,
     pub a_c: usize,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -48,26 +50,52 @@ pub struct Virus {
     pub description: String,
 }
 
-pub struct VirusDrops {
-    pub table: Vec<(String, String)>,
+#[derive(Serialize)]
+#[serde(transparent)]
+#[repr(transparent)]
+pub struct VirusSkills(HashMap<Skills, u8>);
+
+impl std::fmt::Display for VirusSkills {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
+        let mut skills = self.0.iter().collect_vec();
+        skills.sort_unstable_by(|a, b| {
+            a.0.cmp(b.0)
+        });
+
+        let skill_str = skills.iter().format_with(" | ", 
+        |(skill, ct), f| f(&format_args!("{}: {}", skill.abbreviation(), ct))
+        );
+
+        write!(f, "{}", skill_str)
+
+    }
 }
+
+#[repr(transparent)]
+pub struct VirusDrops (pub Vec<(String, String)>);
 
 impl Serialize for VirusDrops {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
-        let mut map = serializer.serialize_map(Some(self.table.len()))?;
-        for drop in &self.table {
+        let mut map = serializer.serialize_map(Some(self.0.len()))?;
+        for drop in &self.0 {
             map.serialize_entry(&drop.0, &drop.1)?;
         }
         map.end()
     }
 }
 
-impl VirusDrops {
-    pub fn iter(&self) -> std::slice::Iter<(String, String)> {
-        self.table.iter()
+impl std::fmt::Display for VirusDrops {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
+    
+        let drop_str = self.0.iter().format_with(" | ", 
+        |(range, item), f| f(&format_args!("{}: {}", range, item))
+        );
+
+        write!(f, "{}", drop_str)
+
     }
 }
 
@@ -85,55 +113,41 @@ impl LibraryObject for Virus {
 
 impl std::fmt::Display for Virus {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
-        let first_line = format!("{} ({}) - CR {}", self.name, self.element, self.c_r);
-        let second_line = format!("HP: {} | AC: {}", self.h_p, self.a_c);
-        let third_line = format!(
-            "Mind: {} | Body: {} | Spirit: {}",
+
+        let elements = self.element.iter().format(", ");
+        //write name, elements, CR line
+        write!(f, "```\n{} ({}) - CR {}\n", &self.name, elements, self.c_r)?;
+
+        //write HP/AC line
+        write!(f, "HP: {} | AC: {}\n", self.h_p, self.a_c)?;
+
+        //write stats line
+        write!(
+            f,
+            "Mind: {} | Body: {} | Spirit: {}\n",
             self.mind, self.body, self.spirit
-        );
+        )?;
 
-        let mut skills = self.skills.iter().collect::<Vec<(&Skills, &u8)>>();
-        skills.sort_unstable_by(|a, b| {
-            a.0.cmp(b.0)
-        });
+        //write skills line
+        write!(f, "{}\n", self.skills)?;
 
-        let skill_line = skills.iter().map( |skill|
-            format!("{}: {}", skill.0.abbreviation(), skill.1)
-        ).collect::<Vec<String>>().join(" | ");
+        //write abilities line
+        match &self.abilities {
+            Some(abilities) => write!(f, "Abilities: {}\n", abilities.join(", ")),
+            None => write!(f, "Abilities: None\n"),
+        }?;
 
-        /*
-        let skill_line = self
-            .skills
-            .iter()
-            .map(|skill| format!("{}: {}", skill.0.abbreviation(), skill.1))
-            .collect::<Vec<String>>()
-            .join(" | ");
-        */
-        let abilities_line = match &self.abilities {
-            Some(abilities) => format!("Abilities: {}", abilities.join(", ")),
-            None => String::from("Abilities: None"),
-        };
-
-        let mut drops_line = String::from("Drops: ");
+        //write drops line
+        
         let drop_list = self
-            .drops
-            .table
+            .drops.0
             .iter()
             .map(|drop| format!("{}: {}", drop.0, drop.1))
-            .collect::<Vec<String>>();
-        drops_line.push_str(&drop_list.join(" | "));
+            .collect::<Vec<String>>().join(" | ");
 
-        return write!(
-            f,
-            "```{}\n{}\n{}\n{}\n{}\n{}\n{}```",
-            first_line,
-            second_line,
-            third_line,
-            skill_line,
-            abilities_line,
-            drops_line,
-            self.description
-        );
+        write!(f, "Drops: {}\n", drop_list)?;
+
+        write!(f, "{}\n```", self.description)
     }
 }
 
@@ -141,17 +155,13 @@ pub struct VirusLibrary {
     library: HashMap<String, Arc<Virus>>,
     highest_cr: u8,
     virus_url: String,
-    virus_regex: Regex,
-    cr_regex: Regex,
-    hp_ac_regex: Regex,
-    m_b_s_regex: Regex,
 }
 
 struct VirusSats {
     hp: usize,
     ac: usize,
     abilities: Option<Vec<String>>,
-    skills: HashMap<Skills, u8>,
+    skills: VirusSkills,
     mind: u8,
     body: u8,
     spirit: u8,
@@ -216,26 +226,29 @@ impl std::fmt::Display for VirusImportError {
 
 impl std::error::Error for VirusImportError {}
 
+#[derive(Default)]
+struct VirusReloadResult {
+    lib: HashMap<String, Arc<Virus>>,
+    highest_cr: u8,
+    reload_error: Option<VirusImportError>,
+}
+
+
+static VIRUS_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r"^\s*(.+)\s+\((\w+)\)\s*$").expect("could not compile virus regex"));
+static CR_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r"^CR\s+(\d+)$").expect("could not compile CR regex"));
+static HP_AC_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r"(?i)hp:\s+(\d+)\s+\|\s+ac:\s+(\d+)").expect("could not compile HP regex"));
+static M_B_S_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r"(?i)mind:\s+(\d+)\s+\|\s+body:\s+(\d+)\s+\|\sspirit:\s+(\d+)").expect("could not compile mbs regex"));
+
 impl VirusLibrary {
     pub fn new(url: &str) -> VirusLibrary {
         VirusLibrary {
             library: HashMap::new(),
             highest_cr: 0,
             virus_url: String::from(url),
-            virus_regex: Regex::new(r"^\s*(.+)\s+\((\w+)\)\s*$")
-                .expect("could not compile virus regex"),
-            cr_regex: Regex::new(r"^CR\s+(\d+)$").expect("could not compile CR regex"),
-            hp_ac_regex: Regex::new(r"(?i)hp:\s+(\d+)\s+\|\s+ac:\s+(\d+)")
-                .expect("could not compile HP regex"),
-            m_b_s_regex: Regex::new(
-                r"(?i)mind:\s+(\d+)\s+\|\s+body:\s+(\d+)\s+\|\sspirit:\s+(\d+)",
-            )
-            .expect("could not compile mbs regex"),
         }
     }
 
     pub async fn reload(data: Arc<RwLock<TypeMap>>) -> ReloadReturnType {
-        let mut vec_to_ret: Vec<Arc<dyn LibraryObject>> = vec![];
         let data_lock = data.read().await;
         let virus_library_lock = data_lock
             .get::<VirusLibrary>()
@@ -257,8 +270,7 @@ impl VirusLibrary {
                 }
             },
         };
-    
-        vec_to_ret.reserve(virus_library.get_collection().len());
+        let mut vec_to_ret: Vec<Arc<dyn LibraryObject>> = Vec::with_capacity(virus_library.get_collection().len());
         for val in virus_library.get_collection().values() {
             vec_to_ret.push(virus_as_lib_obj(Arc::clone(val)));
         }
@@ -270,6 +282,7 @@ impl VirusLibrary {
         &mut self,
     ) -> Result<String, VirusImportError> {
         self.library.clear();
+        self.library.shrink_to_fit();
         // let virus_regex : Regex = Regex::new(r"((.+)\s\((\w+)\))").expect("could not compile virus regex");
         // let cr_regex : Regex = Regex::new(r"CR\s+(\d+)").expect("could not compile CR regex");
 
@@ -281,105 +294,18 @@ impl VirusLibrary {
             .replace("\u{e2}\u{20ac}\u{2122}", "'")
             .replace("\u{FEFF}", "")
             .replace("\r", "");
-        let virus_text_arr: Vec<&str> = virus_text
-            .split('\n')
-            .filter(|&i| !i.trim().is_empty())
-            .collect();
-        // let mut curr_cr: u8 = 0;
-        let mut index: usize = 1;
-        let mut premature_eof = None;
-        let cr_cap = self
-            .cr_regex
-            .captures(virus_text_arr[0])
-            .ok_or_else(|| VirusImportError::CRParseErr("Failed to capture first Virus CR".to_owned()))?;
-        let mut curr_cr = cr_cap[1]
-            .parse::<u8>()
-            .map_err(|_| VirusImportError::CRParseErr("Failed to parse first Virus CR".to_owned()))?;
-
-        while virus_text_arr.len() > index {
-            if let Some(cr_cap) = self.cr_regex.captures(virus_text_arr[index]) {
-                curr_cr = cr_cap[1].parse::<u8>().map_err(|_| {
-                    VirusImportError::VirusParseErr(format!(
-                        "Could not parse \"{}\" into CR",
-                        virus_text_arr[index]
-                    ))
-                })?;
-                index += 1;
-            }
-
-            let name_res = self
-                .virus_regex
-                .captures(virus_text_arr[index])
-                .ok_or_else(|| {
-                    VirusImportError::VirusParseErr(format!(
-                        "Failed to parse virus name:\n{}",
-                        virus_text_arr[index]
-                    ))
-                })?;
-            let virus_name = &name_res[1];
-            // println!("{}", virus_name);
-            // println!("{}", &name_res[2]);
-            let virus_element = name_res[2].parse::<Elements>().map_err(|_| {
-                VirusImportError::VirusParseErr(format!(
-                    "Failed to parse virus element:\n{}",
-                    virus_text_arr[index]
-                ))
-            })?;
-            index += 1;
-            let stat_chunk = if let Some(val) = virus_text_arr.get(index..=(index + 4)) {
-                val
-            } else {
-                premature_eof = Some(VirusImportError::UnexpectedEOF);
-                break;
-            };
-            let stat_res = self.parse_stats(stat_chunk).map_err(|e| {
-                VirusImportError::VirusParseErr(format!(
-                    "Error at {}:\n{}\n{}",
-                    virus_name,
-                    e.as_str(),
-                    virus_text_arr[index]
-                ))
-            })?;
-            index += 5;
-            let mut description = String::new();
-            while virus_text_arr.len() > index
-                && !self.cr_regex.is_match(virus_text_arr[index])
-                && !self.virus_regex.is_match(virus_text_arr[index])
-            {
-                description.push_str(virus_text_arr[index]);
-                index += 1;
-            }
-            let virus = Arc::new(Virus {
-                name: virus_name.nfc().collect(),
-                h_p: stat_res.hp,
-                a_c: stat_res.ac,
-                c_r: curr_cr,
-                element: virus_element.to_owned(),
-                mind: stat_res.mind,
-                body: stat_res.body,
-                spirit: stat_res.spirit,
-                skills: stat_res.skills,
-                abilities: stat_res.abilities,
-                drops: stat_res.drops,
-                description,
-            });
-
-            if self
-                .library
-                .insert(virus.name.to_ascii_lowercase(), virus)
-                .is_some()
-            {
-                return Err(VirusImportError::DuplicateVirus(format!(
-                    "Duplicate virus name found: {}",
-                    virus_name
-                )));
-            }
-            //yield to other tasks on each iteration
-            tokio::task::yield_now().await;
-            self.highest_cr = curr_cr;
-        }
+        
+        let res = tokio::task::spawn_blocking(|| VirusLibrary::reload_inner(virus_text)).await.unwrap();
 
         //self.highest_cr = curr_cr;
+
+        self.library = res.lib;
+        self.highest_cr = res.highest_cr;
+
+        let to_ret = match res.reload_error {
+            Some(e) => Err(e),
+            None => Ok(format!("{} viruses were loaded\n", self.library.len()))
+        };
 
         #[cfg(not(debug_assertions))]
         {
@@ -393,14 +319,158 @@ impl VirusLibrary {
                 .expect("could not write to virusCompendium.json");
         }
 
+        to_ret
+
+        /*
         if let Some(err) = premature_eof {
             Err(err)
         } else {
             Ok(format!("{} viruses were loaded\n", self.library.len()))
         }
+        */
     }
 
-    fn parse_stats(&self, lines: &[&str]) -> Result<VirusSats, SimpleError> {
+    fn reload_inner(text: String) -> VirusReloadResult {
+
+        let mut to_ret = VirusReloadResult::default();
+        let virus_text_arr: Vec<&str> = text
+            .split('\n')
+            .filter(|&i| !i.trim().is_empty())
+            .collect();
+        // let mut curr_cr: u8 = 0;
+        let mut index: usize = 1;
+
+        let cr_res = CR_REGEX.captures(virus_text_arr[0]).map(|cap| cap[1].parse::<u8>().ok()).flatten();
+
+        match cr_res {
+            Some(c) => to_ret.highest_cr = c,
+            None => {
+                to_ret.reload_error = Some(VirusImportError::CRParseErr("Failed to capture first Virus CR".to_owned()));
+                return to_ret;
+            }
+        }
+
+        while virus_text_arr.len() > index {
+            //start by checking to see if there is a new CR
+            let cr_cap_res = CR_REGEX.captures(virus_text_arr[index]).map(|c| c[1].parse::<u8>());
+
+            match cr_cap_res {
+                Some(Ok(v)) => {
+                    to_ret.highest_cr = v;
+                    index += 1;
+                },
+                Some(Err(_)) => {
+                    let err = format!(
+                        "Failed to parse virus name:\n{}",
+                        virus_text_arr[index]
+                    );
+                    to_ret.reload_error = Some(VirusImportError::VirusParseErr(err));
+                    return to_ret;
+                },
+                None => {},
+            }
+
+            // try to get a name and element
+            let name_res = match VIRUS_REGEX.captures(virus_text_arr[index]) {
+                Some(n) => n,
+                None => {
+                    let err = format!(
+                        "Failed to parse virus name:\n{}",
+                        virus_text_arr[index]
+                    );
+                    to_ret.reload_error = Some(VirusImportError::VirusParseErr(err));
+                    return to_ret;
+                }
+            };
+
+            let virus_name = &name_res[1];
+            // println!("{}", virus_name);
+            // println!("{}", &name_res[2]);
+
+            let virus_element = match VirusLibrary::parse_elements(&name_res[2]) {
+                Ok(e) => e,
+                Err(_) => {
+                    let err = format!(
+                        "Failed to parse virus element:\n{}",
+                        virus_text_arr[index]
+                    );
+                    to_ret.reload_error = Some(VirusImportError::VirusParseErr(err));
+                    return to_ret;
+                }
+            };
+
+            index += 1;
+            let stat_chunk = if let Some(val) = virus_text_arr.get(index..=(index + 4)) {
+                val
+            } else {
+                to_ret.reload_error = Some(VirusImportError::UnexpectedEOF);
+                return to_ret;
+            };
+
+            let stat_res = match VirusLibrary::parse_stats(stat_chunk) {
+                Ok(v) => v,
+                Err(why) => {
+                    let err = format!(
+                        "Error at {}:\n{}\n{}",
+                        virus_name,
+                        why.as_str(),
+                        virus_text_arr[index],
+                    );
+                    to_ret.reload_error = Some(VirusImportError::VirusParseErr(err));
+                    return to_ret;
+                }
+            };
+            index += 5;
+            let mut description = String::new();
+            while virus_text_arr.len() > index
+                && !CR_REGEX.is_match(virus_text_arr[index])
+                && !VIRUS_REGEX.is_match(virus_text_arr[index])
+            {
+                description.push_str(virus_text_arr[index]);
+                index += 1;
+            }
+            let virus = Arc::new(Virus {
+                name: virus_name.nfc().collect(),
+                h_p: stat_res.hp,
+                a_c: stat_res.ac,
+                c_r: to_ret.highest_cr,
+                element: virus_element,
+                mind: stat_res.mind,
+                body: stat_res.body,
+                spirit: stat_res.spirit,
+                skills: stat_res.skills,
+                abilities: stat_res.abilities,
+                drops: stat_res.drops,
+                description,
+            });
+
+            if to_ret.lib
+                .insert(virus.name.to_ascii_lowercase(), virus)
+                .is_some()
+            {
+
+                to_ret.reload_error = Some(VirusImportError::DuplicateVirus(format!(
+                    "Duplicate virus name found: {}",
+                    virus_name
+                )));
+                return to_ret;
+            }
+        }
+
+        to_ret
+
+    }
+
+    fn parse_elements(elem_str: &str) -> Result<Vec<Elements>, SimpleError> {
+        let mut to_ret = Vec::with_capacity(2);
+        for elem in elem_str.split(", ") {
+            to_ret.push(Elements::from_str(elem)?);
+        }
+        to_ret.shrink_to_fit();
+        Ok(to_ret)
+    }
+
+    fn parse_stats(lines: &[&str]) -> Result<VirusSats, SimpleError> {
         if lines.len() < 4 {
             return Err(SimpleError::new("unexpected end of file"));
         }
@@ -408,8 +478,7 @@ impl VirusLibrary {
         // let HP_AC_Regex = Regex::new(r"(?i)hp:\s+(\d+)\s+\|\s+ac:\s+(\d+)").expect("could not compile HP regex");
         // let m_b_s_Regex = Regex::new(r"(?i)mind:\s+(\d+)\s+\|\s+body:\s+(\d+)\s+\|\sspirit:\s+(\d+)").expect("could not compile mbs regex");
 
-        let hp_ac_res = self
-            .hp_ac_regex
+        let hp_ac_res = HP_AC_REGEX
             .captures(lines[0])
             .ok_or_else(|| SimpleError::new("Failed to parse HP or AC"))?;
 
@@ -420,8 +489,7 @@ impl VirusLibrary {
             .parse::<usize>()
             .map_err(|_| SimpleError::new("Failed to parse AC"))?;
 
-        let m_b_s_res = self
-            .m_b_s_regex
+        let m_b_s_res = M_B_S_REGEX
             .captures(lines[1])
             .ok_or_else(|| SimpleError::new("Failed to parse Mind, Body, or Spirit"))?;
 
@@ -451,7 +519,7 @@ impl VirusLibrary {
         })
     }
 
-    fn convert_skills(line: &str) -> Result<HashMap<Skills, u8>, SimpleError> {
+    fn convert_skills(line: &str) -> Result<VirusSkills, SimpleError> {
         let mut to_ret: HashMap<Skills, u8> = HashMap::new();
         for skill in line.split('|') {
             let name_skill = skill.trim().split(':').collect::<Vec<&str>>();
@@ -474,7 +542,7 @@ impl VirusLibrary {
             }
         }
 
-        Ok(to_ret)
+        Ok(VirusSkills(to_ret))
     }
 
     fn convert_drops(line: &str) -> Result<VirusDrops, SimpleError> {
@@ -498,7 +566,7 @@ impl VirusLibrary {
             let value = drop[1].trim().to_string();
             table.push((range, value));
         }
-        Ok(VirusDrops { table })
+        Ok(VirusDrops(table))
     }
 
     fn convert_abilities(line: &str) -> Result<Option<Vec<String>>, SimpleError> {
@@ -540,7 +608,7 @@ impl VirusLibrary {
     pub fn search_element(&self, elem: &str) -> Option<Vec<&Arc<Virus>>> {
         let elem_to_get = Elements::from_str(elem).ok()?;
 
-        self.search_any(elem_to_get, |a, b| a.element == b)
+        self.search_any(elem_to_get, |a, b| a.element.contains(&b))
     }
 
     pub fn get_highest_cr(&self) -> u8 {

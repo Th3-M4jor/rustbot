@@ -24,6 +24,7 @@ tokio  = { version = "^0.2", features = ["rt-threaded", "time", "sync", "fs", "m
 futures = "*"
 log = "*"
 pretty_env_logger = "*"
+itertools = "*"
 
 [profile.release]
 lto = true

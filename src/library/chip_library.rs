@@ -444,7 +444,7 @@ async fn chip_drop_cr(ctx: &Context, msg: &Message, mut args: Args) -> CommandRe
 
     for virus in cr_list {
         //skip 1 because first is always zenny
-        for drop in virus.drops.iter().skip(1) {
+        for drop in virus.drops.0.iter().skip(1) {
             drop_list.push(drop.1.as_str());
         }
     }

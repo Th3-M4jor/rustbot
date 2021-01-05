@@ -3,6 +3,8 @@ use crate::library::{
     elements::Elements,
 };
 
+use itertools::Itertools;
+
 use regex::{Captures, Regex};
 use serde::Serialize;
 use std::{
@@ -77,8 +79,8 @@ impl std::fmt::Display for BattleChip {
             Cow::Owned(format!("{} hits.", self.hits))
         };
 
-        let skills = self.skills.iter().map(|s| s.abbreviation()).collect::<Vec<&str>>().join(", ");
-        let elements = self.element.iter().map(|e| e.to_string()).collect::<Vec<String>>().join(", ");
+        let skills = self.skills.iter().format_with(", ", |s, f| f(&format_args!("{}", s.abbreviation())));
+        let elements = self.element.iter().format(", ");
 
         if self.class == ChipType::Standard {
             write!(f, "```{} - {} | {} | {} | {} | {}\n{}```", self.name, elements, skills, self.range, damage, hits, self.description)
