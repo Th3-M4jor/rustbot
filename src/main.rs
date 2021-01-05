@@ -3,7 +3,7 @@ use std::{
     sync::Arc
 };
 
-use tokio::sync::{RwLock, RwLockWriteGuard};
+use tokio::sync::RwLock;
 
 use once_cell::sync::Lazy;
 
@@ -33,7 +33,7 @@ use crate::{
         chip_library::{battlechip_as_lib_obj, ChipLibrary, BNBCHIPS_GROUP, BNBSKILLS_GROUP},
         full_library::{check_virus_drops, search_full_library, FullLibrary, CHIP_DROP_COMMAND},
         ncp_library::{ncp_as_lib_obj, NCPLibrary, BNBNCPS_GROUP},
-        virus_library::{virus_as_lib_obj, VirusImportError, VirusLibrary, BNBVIRUSES_GROUP},
+        virus_library::{virus_as_lib_obj, VirusLibrary, BNBVIRUSES_GROUP},
         Library, LibraryObject,
     },
     util::{ShardManagerContainer, AUDIT_COMMAND, DIE_COMMAND, MANAGER_COMMAND, PHB_COMMAND, PING_COMMAND, SHUT_UP_COMMAND},
