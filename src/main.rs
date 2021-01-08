@@ -36,6 +36,7 @@ use crate::{
         virus_library::{virus_as_lib_obj, VirusLibrary, BNBVIRUSES_GROUP},
         Library, LibraryObject,
     },
+    slash_cmds::create::CREATE_COMMANDS_COMMAND,
     util::{ShardManagerContainer, AUDIT_COMMAND, DIE_COMMAND, MANAGER_COMMAND, PHB_COMMAND, PING_COMMAND, SHUT_UP_COMMAND},
 };
 
@@ -45,6 +46,7 @@ mod bot_data;
 mod dice;
 mod library;
 mod handler;
+mod slash_cmds;
 
 type ReloadOkType = (String, Vec<Arc<dyn LibraryObject>>);
 type ReloadReturnType = Result<ReloadOkType, Box<dyn std::error::Error + Send + Sync>>;
@@ -81,7 +83,7 @@ async fn help_command(
 #[group]
 #[owners_only]
 #[help_available(false)]
-#[commands(die, audit, shut_up)]
+#[commands(die, audit, shut_up, create_commands)]
 /// Administrative commands for the bot
 struct Owner;
 

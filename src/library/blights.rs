@@ -5,6 +5,7 @@ use serenity::{
 };
 use std::error::Error;
 use tokio::sync::RwLock;
+use serde_json::json;
 
 pub struct Blights {
     values: serde_json::Value,
@@ -136,8 +137,24 @@ impl Panels {
         Ok(())
     }
 
-    pub fn get(&self, status: &str) -> Option<&str> {
-        self.values.as_object()?.get(&status.to_lowercase())?.as_str()
+    pub fn get(&self, kind: &str) -> Option<&str> {
+        self.values.as_object()?.get(&kind.to_lowercase())?.as_str()
+    }
+
+    pub fn to_slash_opts(&self) -> Option<Vec<serde_json::Value>> {
+        let mut list = self.values.as_object()?.keys().collect::<Vec<&String>>();
+
+        list.sort_unstable();
+
+        let res = list.iter().map(|v| {
+            json!({
+                "name": v,
+                "value": v,
+            })
+        }).collect::<Vec<serde_json::Value>>();
+
+        Some(res)
+
     }
 
 }

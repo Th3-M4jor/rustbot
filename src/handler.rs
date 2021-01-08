@@ -5,6 +5,7 @@ use serenity::{
         event::ResumedEvent,
         gateway::{Activity, Ready},
         id::GuildId,
+        interactions::Interaction,
     },
 };
 
@@ -14,6 +15,7 @@ use once_cell::sync::Lazy;
 use crate::{
     bot_data::BotData,
     util::dm_owner,
+    slash_cmds::handle_interaction,
 };
 
 static FIRST_LOGIN: Lazy<AtomicBool> = Lazy::new(|| AtomicBool::new(true));
@@ -87,5 +89,9 @@ impl EventHandler for Handler {
             chrono::Local::now(),
             resumed.trace
         );
+    }
+
+    async fn interaction_create(&self, ctx: Context, interaction: Interaction) {
+        handle_interaction(&ctx, &interaction).await;
     }
 }
