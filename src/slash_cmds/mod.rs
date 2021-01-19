@@ -5,7 +5,11 @@ use serenity::{
 };
 
 use crate::{
-    library::blights::Panels,
+    library::blights::{
+        Panels,
+        Blights,
+        Statuses,
+    },
     dice::DieRoll,
 };
 
@@ -36,8 +40,11 @@ async fn handle_command_call(ctx: &Context, interaction: &Interaction, data: &Ap
 
     let resp = match data.name.as_str() {
 
+        "blight" => blight_command(ctx, data).await,
         "panels" => panel_command(ctx, data).await,
-        "roll" => roll_command(data),
+        "roll" => roll_command(data).await,
+        "shuffle" => shuffle_command(data).await,
+        "status" => status_command(ctx, data).await,
         _ => {
             eprintln!("unknown slash command used with name: {}", data.name);
             json!({
@@ -56,18 +63,9 @@ async fn handle_command_call(ctx: &Context, interaction: &Interaction, data: &Ap
 }
 
 async fn panel_command(ctx: &Context, data: &ApplicationCommandInteractionData) -> serde_json::Value {
-    let panel_opt = match data.options.get(0).and_then(|d| d.value.as_ref()) {
-        Some(panel) => panel.as_str(),
-        None => {
-            // 4 is the type that means show command and show response message
-            return json!({
-                "type": 4,
-                "data": {
-                    "content": "No panel type was provided"
-                }
-            });
-        }
-    };
+    let panel_opt = data.options.get(0).and_then(
+        |d| d.value.as_ref()
+    ).and_then(|p| p.as_str());
 
     let panel = match panel_opt {
         Some(panel) => panel,
@@ -101,30 +99,158 @@ async fn panel_command(ctx: &Context, data: &ApplicationCommandInteractionData) 
     })
 }
 
-fn roll_command(data: &ApplicationCommandInteractionData) -> serde_json::Value {
-    let to_roll = data.options.get(0).and_then(|d| d.value.as_ref()).and_then(|o| o.as_str()).unwrap_or("1d20");
+async fn roll_command(data: &ApplicationCommandInteractionData) -> serde_json::Value {
+    let to_roll = data.options.get(0).and_then(|d| d.value.as_ref()).and_then(|o| o.as_str()).unwrap_or("1d20").to_owned();
 
-    let (amt, results) = DieRoll::roll_dice(to_roll, false);
+    let result = tokio::task::spawn_blocking(move || {
+        let (amt, results) = DieRoll::roll_dice(&to_roll, false);
 
-    let repl_str = format!("{:?}", results);
-    let reply = if repl_str.len() > 1850 {
-        format!(
-            "You rolled: {}\n[There were too many die rolls to show the result of each one]",
-            amt
-        )
-    } else {
-        format!(
-            "You rolled: {}\n{}",
-            amt,
-            repl_str
-        )
+        let repl_str = format!("{:?}", results);
+        let reply = if repl_str.len() > 1850 {
+            format!(
+                "You rolled: {}\n[There were too many die rolls to show the result of each one]",
+                amt
+            )
+        } else {
+            format!(
+                "You rolled: {}\n{}",
+                amt,
+                repl_str
+            )
+        };
+
+        json!({
+            "type": 4,
+            "data": {
+                "content": reply
+            }
+        })
+
+    }).await;
+
+    match result {
+        Ok(val) => val,
+        Err(why) => {
+            eprintln!("Spawn Blocking panicked\n{:?}", why);
+            json!({
+                "type": 4,
+                "data": {
+                    "content": "An error occurred while rolling, too many dice maybe?"
+                }
+            })
+        }
+    }
+
+}
+
+async fn shuffle_command(data: &ApplicationCommandInteractionData) -> serde_json::Value {
+    let to_shuffle_opt = data.options.get(0).and_then(|d| d.value.as_ref()).and_then(|o| o.as_u64());
+    let val = match to_shuffle_opt {
+        Some(val) => val,
+        None => {
+            return json!({
+                "type": 4,
+                "data": {
+                    "content": "Unable to parse number to shuffle, inform Major"
+                }
+            });
+        }
+    };
+
+    let res = tokio::task::spawn_blocking(move || crate::dice::perform_shuffle(val as usize)).await;
+
+    match res {
+        Ok(reply) => {
+            json!({
+                "type": 4,
+                "data": {
+                    "content": reply
+                }
+            })
+        }
+        Err(why) => {
+            eprintln!("Thread panicked, {:?}", why);
+            json!({
+                "type": 4,
+                "data": {
+                    "content": "Error occurred while shuffling, too many numbers maybe?"
+                },
+            })
+        }
+    }
+
+
+}
+
+async fn blight_command(ctx: &Context, data: &ApplicationCommandInteractionData) -> serde_json::Value {
+
+    let blight_opt = data.options.get(0).and_then(
+        |d| d.value.as_ref()
+    ).and_then(|b| b.as_str());
+
+    let blight = match blight_opt {
+        Some(blight) => blight,
+        None => {
+            return json!({
+                "type": 4,
+                "data": {
+                    "content": "No blight element was provided"
+                }
+            });
+        }
+    };
+    
+    let data = ctx.data.read().await;
+    let blight_lock = data.get::<Blights>().expect("panels not found");
+    let blight_list = blight_lock.read().await;
+
+    let to_send = match blight_list.get(blight) {
+        Some(val) => {
+            format!("```{}```", val)
+        }
+        None => format!("There is no blight of the element {}, perhaps you spelled it wrong?", blight),
     };
 
     json!({
         "type": 4,
         "data": {
-            "content": reply
+            "content": to_send
         }
     })
+}
 
+async fn status_command(ctx: &Context, data: &ApplicationCommandInteractionData) -> serde_json::Value {
+    let status_opt = data.options.get(0).and_then(
+        |d| d.value.as_ref()
+    ).and_then(|s| s.as_str());
+
+    let status = match status_opt {
+        Some(status) => status.to_ascii_lowercase(),
+        None => {
+            return json!({
+                "type": 4,
+                "data": {
+                    "content": "No status was provided"
+                }
+            });
+        }
+    };
+    
+    let data = ctx.data.read().await;
+    let status_lock = data.get::<Statuses>().expect("statuses not found");
+    let status_list = status_lock.read().await;
+
+    let to_send = match status_list.get(&status) {
+        Some(val) => {
+            format!("```{}```", val)
+        }
+        None => format!("There is no status of the type {}, perhaps you spelled it incorrectly?", status),
+    };
+
+    json!({
+        "type": 4,
+        "data": {
+            "content": to_send
+        }
+    })
 }

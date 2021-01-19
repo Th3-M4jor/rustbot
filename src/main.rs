@@ -37,7 +37,7 @@ use crate::{
         Library, LibraryObject,
     },
     slash_cmds::create::CREATE_COMMANDS_COMMAND,
-    util::{ShardManagerContainer, AUDIT_COMMAND, DIE_COMMAND, MANAGER_COMMAND, PHB_COMMAND, PING_COMMAND, SHUT_UP_COMMAND},
+    util::{ShardManagerContainer, AUDIT_COMMAND, DIE_COMMAND, MANAGER_COMMAND, PHB_COMMAND, PING_COMMAND, SHUT_UP_COMMAND, GROUPS_COMMAND},
 };
 
 #[macro_use]
@@ -89,7 +89,7 @@ struct Owner;
 
 #[group]
 #[commands(
-    manager, phb, reload, get_blight, about_bot, chip_drop, get_status, get_panels, ping
+    manager, phb, reload, get_blight, about_bot, chip_drop, get_status, get_panels, ping, groups
 )]
 /// Misc. commands related to BnB
 struct BnbGeneral;
@@ -360,8 +360,6 @@ async fn main() {
         //.unrecognised_command(search_everything_command)
         .normal_message(default_message)
         .prefix_only(prefix_only_message)
-        .bucket("Warframe_Market", |b| b.delay(5))
-        .await
         .help(&HELP_COMMAND)
         .group(&OWNER_GROUP)
         .group(&DICE_GROUP)

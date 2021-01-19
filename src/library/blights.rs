@@ -5,10 +5,43 @@ use serenity::{
 };
 use std::error::Error;
 use tokio::sync::RwLock;
-use serde_json::json;
+use serde_json::{Value, json};
+
+
+pub trait StatusLike {
+    fn get_values(&self) -> &Value;
+
+    fn to_slash_opts(&self) -> Value {
+
+        let obj = match self.get_values().as_object() {
+            Some(list) => list,
+            None => return serde_json::Value::Null,
+        };
+
+        let mut list = obj.keys().collect::<Vec<&String>>();
+
+        list.sort_unstable();
+
+        let res = list.iter().map(|v| {
+            json!({
+                "name": v,
+                "value": v,
+            })
+        }).collect::<Vec<Value>>();
+
+        Value::Array(res)
+    }
+}
+
 
 pub struct Blights {
-    values: serde_json::Value,
+    values: Value,
+}
+
+impl StatusLike for Blights {
+    fn get_values(&self) -> &Value {
+        &self.values
+    }
 }
 
 impl Blights {
@@ -60,14 +93,20 @@ pub(crate) async fn get_blight(ctx: &Context, msg: &Message, args: Args) -> Comm
 }
 
 pub struct Statuses {
-    values: serde_json::Value,
+    values: Value,
+}
+
+impl StatusLike for Statuses {
+    fn get_values(&self) -> &Value {
+        &self.values
+    }
 }
 
 impl Statuses {
     pub async fn import() -> Result<RwLock<Statuses>, Box<dyn Error>> {
         
         let mut to_ret = Statuses {
-            values: serde_json::Value::Null,
+            values: Value::Null,
         };
 
         to_ret.load().await?;
@@ -119,10 +158,16 @@ pub struct Panels {
     values: serde_json::Value,
 }
 
+impl StatusLike for Panels {
+    fn get_values(&self) -> &Value {
+        &self.values
+    }
+}
+
 impl Panels {
     pub async fn import() -> Result<RwLock<Panels>, Box<dyn Error>> {
         let mut to_ret = Panels {
-            values: serde_json::Value::Null,
+            values: Value::Null,
         };
 
         to_ret.load().await?;
@@ -139,22 +184,6 @@ impl Panels {
 
     pub fn get(&self, kind: &str) -> Option<&str> {
         self.values.as_object()?.get(&kind.to_lowercase())?.as_str()
-    }
-
-    pub fn to_slash_opts(&self) -> Option<Vec<serde_json::Value>> {
-        let mut list = self.values.as_object()?.keys().collect::<Vec<&String>>();
-
-        list.sort_unstable();
-
-        let res = list.iter().map(|v| {
-            json!({
-                "name": v,
-                "value": v,
-            })
-        }).collect::<Vec<serde_json::Value>>();
-
-        Some(res)
-
     }
 
 }

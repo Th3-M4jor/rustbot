@@ -16,7 +16,6 @@ use std::{
 use unicode_normalization::UnicodeNormalization;
 
 use crate::library::LibraryObject;
-use serde::export::Formatter;
 use simple_error::SimpleError;
 
 use once_cell::sync::Lazy;
@@ -65,7 +64,7 @@ impl PartialEq for BattleChip {
 impl Eq for BattleChip {}
 
 impl std::fmt::Display for BattleChip {
-    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
         
         let damage = if self.damage == "--" {
             Cow::Borrowed("--")

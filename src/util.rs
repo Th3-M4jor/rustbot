@@ -373,6 +373,44 @@ async fn ping(ctx: &Context, msg: &Message, _: Args) -> CommandResult {
     Ok(())
 }
 
+#[command]
+async fn groups(ctx: &Context, msg: &Message, _: Args) -> CommandResult {
+    let res = reqwest::get("http://spartan364.hopto.org/groups").await;
+    let error_msg = "Error occurred checking open folder groups, please try again later. If the problem persists inform Major";
+    let resp = match res {
+        Ok(resp) => resp,
+        Err(why) => {
+            eprintln!("Failed to make reqwest to get groups\n{:?}", why);
+            reply!(ctx, msg, error_msg);
+            return Ok(());
+        }
+    };
+
+    let resp_code = resp.status().as_u16();
+
+    // 204 is the empty response code
+    if resp_code == 204 {
+        reply!(ctx, msg, "There are currently no open folder groups.");
+    } else if resp_code == 200 {
+        let data_res = resp.json::<Vec<String>>().await;
+        match data_res {
+            Ok(val) => {
+                let text = val.join(", ");
+                reply!(ctx, msg, format!("The groups currently open are:\n```{}```", text));
+            }
+            Err(why) => {
+                eprintln!("Failed to deserialize response\n{:?}", why);
+                reply!(ctx, msg, error_msg);
+            }
+        }
+    } else {
+        eprintln!("Unknown response code {} recieved", resp_code);
+        reply!(ctx, msg, error_msg);
+    }
+
+    Ok(())
+}
+
 static SHOULD_DM_OWNER: Lazy<AtomicBool> = Lazy::new(|| AtomicBool::new(true));
 
 pub(crate) async fn dm_owner<T>(

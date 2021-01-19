@@ -15,7 +15,7 @@ regex = "*"
 once_cell = "*"
 simple-error = "*"
 unicode-normalization = "*"
-#serenity = { git = "https://github.com/Lakelezz/serenity", features = ["framework", "standard_framework", "collector", "rustls_tokio_0_2_backend"], branch = "tokio-0.2-compat"}
+#serenity = { git = "https://github.com/serenity-rs/serenity", features = ["framework", "standard_framework", "collector", "unstable_discord_api"], branch = "current"}
 rand = "*"
 strsim = "*"
 chrono = "*"
