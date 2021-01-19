@@ -2,11 +2,14 @@ use rand::{
     distributions::{Distribution, Uniform},
     rngs::ThreadRng,
 };
+use itertools::Itertools;
 use serenity::{
     framework::standard::{macros::{command, group}, Args, CommandResult},
     model::channel::Message,
     prelude::*,
 };
+
+use std::borrow::Cow;
 
 pub struct DieRoll;
 
@@ -115,8 +118,8 @@ async fn reroll(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
 
 #[command]
 /// Roll a number of dice, using the format XdY where X is the number of dice, and Y is the number of sides on the die to roll
-#[example = "1d20"]
-#[example = "4d27"]
+#[example("1d20")]
+#[example("4d27")]
 pub(crate) async fn roll(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
     if args.is_empty() {
         reply!(
@@ -157,6 +160,32 @@ pub(crate) async fn roll_stats(ctx: &Context, msg: &Message, _: Args) -> Command
     return Ok(());
 }
 
+pub(crate) fn perform_shuffle(size: usize) -> Cow<'static, str> {
+    if size < 2 {
+        return Cow::Borrowed("Cannot shuffle a number less than 2");
+    }
+
+    if size > 64 {
+        return Cow::Borrowed("Cowardly refusing to shuffle a number greater than 64");
+    }
+
+    let mut list: Vec<usize> = Vec::with_capacity(size);
+
+    for num in 1..(size + 1) {
+        list.push(num);
+    }
+
+    let shuffler = Uniform::from(0..size);
+    let mut rng = ThreadRng::default();
+    for index in 0..list.len() {
+        let rand_index = shuffler.sample(&mut rng);
+        list.swap(rand_index, index);
+    }
+
+    Cow::Owned(format!("{}",list.iter().format(", ")))
+
+}
+
 #[command]
 /// shuffle a series of numbers from 1 to the given argument (inclusive)
 #[example = "20"]
@@ -182,47 +211,14 @@ pub(crate) async fn shuffle(ctx: &Context, msg: &Message, mut args: Args) -> Com
         }
     };
 
-    if size < 2 {
-        reply!(
-            ctx,
-            msg,
-            "Cannot shuffle a number less than 2"
-        );
-        return Ok(());
-    }
+    let typing_fut = msg.channel_id.broadcast_typing(ctx);
+    let shuffle_handle = tokio::task::spawn_blocking(move || {
+        perform_shuffle(size)
+    });
 
-    if size > 64 {
-        reply!(
-            ctx,
-            msg,
-            "Cowardly refusing to shuffle a number greater than 64"
-        );
-        return Ok(());
-    }
+    let (_, shuffle_res) = tokio::join!(typing_fut, shuffle_handle);
 
-    let _ = msg.channel_id.broadcast_typing(ctx).await;
-
-    let list = tokio::task::spawn_blocking( move || {
-        let mut list: Vec<usize> = Vec::new();
-
-        list.reserve(size);
-
-        for num in 1..(size + 1) {
-            list.push(num);
-        }
-
-        let shuffler = Uniform::from(0..size);
-        let mut rng = ThreadRng::default();
-        for index in 0..list.len() {
-            let rand_index = shuffler.sample(&mut rng);
-            let temp = list[rand_index];
-            list[rand_index] = list[index];
-            list[index] = temp;
-        }
-        list
-    }).await?;
-
-    long_say!(ctx, msg, list, ", ");
+    reply!(ctx, msg, shuffle_res?);
 
     Ok(())
 

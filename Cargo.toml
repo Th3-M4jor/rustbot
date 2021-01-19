@@ -1,6 +1,6 @@
 [package]
 name = "rustbot"
-version = "0.4.0"
+version = "0.5.0"
 authors = ["Michael Lingo <spartan364@gmail.com>"]
 edition = "2018"
 
@@ -8,22 +8,30 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-reqwest = { version = "^0.10" }
+reqwest = { version = "^0.11" }
 serde_json = "*"
 serde = { version = "*", features = ["rc"] }
 regex = "*"
 once_cell = "*"
 simple-error = "*"
 unicode-normalization = "*"
-#serenity = { version = "*", features = ["framework", "standard_framework"]}
+#serenity = { git = "https://github.com/serenity-rs/serenity", features = ["framework", "standard_framework", "collector", "unstable_discord_api"], branch = "current"}
 rand = "*"
 strsim = "*"
 chrono = "*"
-tokio  = { version = "^0.2", features = ["rt-threaded", "time", "sync", "fs", "macros", "rt-util", "blocking"] }
-serenity = { version = "^0.9.0", features = ["framework", "standard_framework", "collector", ] }
+tokio  = { version = "^1.0.1", features = ["rt-multi-thread", "time", "sync", "fs", "macros", "io-util"] }
+serenity = { version = "^0.10.0", features = ["framework", "standard_framework", "collector", "unstable_discord_api"] }
 futures = "*"
 log = "*"
 pretty_env_logger = "*"
+itertools = "*"
+
+#[dependencies.serenity]
+#git = "https://github.com/Lakelezz/serenity"
+#branch = "tokio-0.2-compat"
+#default-features = false
+#features = ["builder", "cache", "client", "framework", "gateway", "model", "http", "standard_framework", "utils", "rustls_tokio_0_2_backend", "collector"]
+
 
 [profile.release]
 lto = true

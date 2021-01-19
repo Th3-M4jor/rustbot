@@ -225,7 +225,7 @@ async fn chip_drop(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
     let virus_libary: RwLockReadGuard<VirusLibrary> = virus_libary_lock.read().await;
     let mut dropped_by: Vec<&str> = vec![];
     for virus in virus_libary.get_collection().values() {
-        for drop in virus.drops.iter() {
+        for drop in virus.drops.0.iter() {
             if drop.1 == chip.name {
                 dropped_by.push(&virus.name);
             }
@@ -254,7 +254,7 @@ pub(crate) fn check_virus_drops(
     chip_lib: &ChipLibrary,
 ) -> Result<(), SimpleError> {
     for virus in virus_lib.get_collection().values() {
-        for drop in virus.drops.iter() {
+        for drop in virus.drops.0.iter() {
             if drop.1.to_ascii_lowercase().contains("zenny") {
                 continue;
             }

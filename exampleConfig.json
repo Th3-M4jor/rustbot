@@ -2,6 +2,7 @@
     "token": "Bot_Token_Here",
     "owner": 0,
     "admins": [0],
+    "primary_guild": 0,
     "cmd_prefix": "!",
     "manager" : " ",
     "phb": "https://docs.google.com/document/d/1cPLJ2tAUebIVZU4k7SVnyABpR9jQd7jarzix7oVys9M/edit?usp=sharing",

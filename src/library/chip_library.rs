@@ -11,6 +11,7 @@ use tokio::sync::{RwLock, RwLockReadGuard};
 use simple_error::SimpleError;
 
 use crate::{
+    bot_data::BotData,
     library::{
         battlechip::{skills::Skills, BattleChip},
         elements::Elements,
@@ -18,12 +19,10 @@ use crate::{
         virus_library::VirusLibrary,
     },
     LibraryObject,
+    ReloadReturnType,
 };
-use std::borrow::BorrowMut;
 
 use std::str::FromStr;
-
-// const CHIP_URL: &'static str = "https://docs.google.com/feeds/download/documents/export/Export?id=1lvAKkymOplIJj6jS-N5__9aLIDXI6bETIMz01MK9MfY&exportFormat=txt";
 
 pub struct ChipLibrary {
     chips: HashMap<String, Arc<BattleChip>>,
@@ -34,7 +33,6 @@ pub struct ChipLibrary {
 impl Library for ChipLibrary {
     type LibObj = Arc<BattleChip>;
 
-    #[inline]
     fn get_collection(&self) -> &HashMap<String, Arc<BattleChip>> {
         &self.chips
     }
@@ -47,6 +45,26 @@ impl ChipLibrary {
             chip_url: String::from(url),
             custom_chip_url: String::from(custom_url),
         }
+    }
+
+    pub async fn reload(data: Arc<RwLock<TypeMap>>) -> ReloadReturnType {
+        let str_to_ret;
+        let mut vec_to_ret: Vec<Arc<dyn LibraryObject>> = vec![];
+        let data_lock = data.read().await;
+        let chip_library_lock = data_lock
+            .get::<ChipLibrary>()
+            .expect("chip library not found");
+        let config = data_lock.get::<BotData>().expect("bot data not found");
+        let mut chip_library = chip_library_lock.write().await;
+        let chip_reload_str = chip_library.load_chips(config.load_custom_chips).await?;
+        str_to_ret = format!("{} chips loaded\n", chip_reload_str);
+        vec_to_ret.reserve(chip_library.get_collection().len());
+        for val in chip_library.get_collection().values() {
+            let trait_obj = battlechip_as_lib_obj(Arc::clone(val));
+
+            vec_to_ret.push(trait_obj);
+        }
+        Ok((str_to_ret, vec_to_ret))
     }
 
     // returns number of chips loaded or a simple error
@@ -72,7 +90,7 @@ impl ChipLibrary {
                 .split('\n')
                 .filter(|&i| !i.trim().is_empty())
                 .collect();
-            chip_text_arr.append(special_chip_arr.borrow_mut());
+            chip_text_arr.append(&mut special_chip_arr);
         }
             let mut chips: Vec<BattleChip> = vec![];
             for val in chip_text_arr
@@ -186,6 +204,7 @@ impl TypeMapKey for ChipLibrary {
     type Value = RwLock<ChipLibrary>;
 }
 
+#[inline]
 pub(crate) fn battlechip_as_lib_obj(obj: Arc<BattleChip>) -> Arc<dyn LibraryObject> {
     obj
 }
@@ -425,7 +444,7 @@ async fn chip_drop_cr(ctx: &Context, msg: &Message, mut args: Args) -> CommandRe
 
     for virus in cr_list {
         //skip 1 because first is always zenny
-        for drop in virus.drops.iter().skip(1) {
+        for drop in virus.drops.0.iter().skip(1) {
             drop_list.push(drop.1.as_str());
         }
     }
