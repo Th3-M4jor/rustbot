@@ -8,6 +8,13 @@ use serenity::{
 use std::{collections::HashMap, sync::Arc};
 use tokio::sync::{RwLock, RwLockReadGuard};
 
+use rand::{
+    distributions::{Distribution, Uniform},
+    rngs::ThreadRng,
+};
+
+use itertools::Itertools;
+
 use simple_error::SimpleError;
 
 use crate::{
@@ -212,7 +219,7 @@ pub(crate) fn battlechip_as_lib_obj(obj: Arc<BattleChip>) -> Arc<dyn LibraryObje
 #[group]
 #[prefixes("c", "chip")]
 #[default_command(send_chip)]
-#[commands(send_chip, send_chip_element, chip_drop_cr, send_chip_blight)]
+#[commands(send_chip, send_chip_element, chip_drop_cr, send_chip_blight, random_chip)]
 /// A group of commands related to Navi-Customizer Parts, see `c chip` for the get chip command help
 struct BnbChips;
 
@@ -243,6 +250,37 @@ async fn send_chip(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
     let library = library_lock.read().await;
 
     library.reaction_name_search(ctx, msg, to_get).await;
+    Ok(())
+}
+
+#[command("random")]
+/// get a random chip from the library
+async fn random_chip(ctx: &Context, msg: &Message, _: Args) -> CommandResult {
+    let data = ctx.data.read().await;
+    let library_lock = data.get::<ChipLibrary>().expect("chip library not found");
+    let library = library_lock.read().await;
+
+    let lib_col = library.get_collection();
+
+    let chip_arr = lib_col.values().collect_vec();
+
+    // separate block because send/sync issues
+    let index = {
+        let len = chip_arr.len();
+        let mut rng = ThreadRng::default();
+        let unif = Uniform::from(0..len);
+        unif.sample(&mut rng)
+    };
+
+    let resp = match chip_arr.get(index) {
+        Some(chip) => {
+            &chip.name
+        },
+        None => "An unknown error occurred, inform Major",
+    };
+
+    reply!(ctx, msg, resp);
+
     Ok(())
 }
 
