@@ -100,10 +100,10 @@ async fn panel_command(ctx: &Context, data: &ApplicationCommandInteractionData) 
 }
 
 async fn roll_command(data: &ApplicationCommandInteractionData) -> serde_json::Value {
-    let to_roll = data.options.get(0).and_then(|d| d.value.as_ref()).and_then(|o| o.as_str()).unwrap_or("1d20").to_owned();
-
+    let to_roll = data.options.get(0).and_then(|d| d.value.as_ref()).and_then(|o| o.as_str()).unwrap_or("1d20");
+    let owned_to_roll = to_roll.to_owned();
     let result = tokio::task::spawn_blocking(move || {
-        let (amt, results) = DieRoll::roll_dice(&to_roll, false);
+        let (amt, results) = DieRoll::roll_dice(&owned_to_roll, false)?;
 
         let repl_str = format!("{:?}", results);
         let reply = if repl_str.len() > 1850 {
@@ -119,17 +119,26 @@ async fn roll_command(data: &ApplicationCommandInteractionData) -> serde_json::V
             )
         };
 
-        json!({
+        Some(json!({
             "type": 4,
             "data": {
                 "content": reply
             }
-        })
+        }))
 
     }).await;
 
     match result {
-        Ok(val) => val,
+        Ok(Some(val)) => val,
+        Ok(None) => {
+            eprintln!("Too man die rolls: {}", to_roll);
+            json!({
+                "type": 4,
+                "data": {
+                    "content": "An error occurred while rolling, too many dice maybe?"
+                }
+            })
+        }
         Err(why) => {
             eprintln!("Spawn Blocking panicked\n{:?}", why);
             json!({

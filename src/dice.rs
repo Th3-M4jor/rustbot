@@ -9,20 +9,25 @@ use serenity::{
     prelude::*,
 };
 
-use std::borrow::Cow;
+use simple_error::simple_error;
+
+use std::{borrow::Cow, i16};
 
 pub struct DieRoll;
 
 impl DieRoll {
-    pub fn roll_dice(to_roll: &str, reroll: bool) -> (i64, Vec<i64>) {
+    pub fn roll_dice(to_roll: &str, reroll: bool) -> Option<(i64, Vec<i16>)> {
         let mut to_ret: i64 = 0;
-        let mut rolls: Vec<i64> = vec![];
+        let mut rolls: Vec<i16> = vec![];
         let a: Vec<&str> = to_roll.split('+').collect();
         if a.len() > 1 {
             for b in a {
-                let (res, mut vec_to_push) = DieRoll::roll_dice(b, reroll);
+                let (res, mut vec_to_push) = DieRoll::roll_dice(b, reroll)?;
                 to_ret += res;
                 rolls.append(&mut vec_to_push);
+                if rolls.len() >= u16::MAX as usize {
+                    return None; // too many rolls asked for
+                }
             }
         } else {
             let d: Vec<&str> = a[0].split('d').collect();
@@ -30,34 +35,21 @@ impl DieRoll {
                 let res = d[0].trim().parse::<i64>();
 
                 if let Ok(val) = res {
-                    rolls.push(val);
-                    return (val, rolls);
+                    rolls.push(val as i16);
+                    return Some((val, rolls));
                 } else {
-                    return (-1, vec![]);
+                    return None;
                 }
             }
-            let amt_to_roll: i64;
-            let res = d[0].trim().parse::<i64>();
-            match res {
-                Ok(val) => amt_to_roll = val,
-                Err(_) => amt_to_roll = 1,
-            }
+            let amt_to_roll = d[0].trim().parse::<i16>().ok()?;
             let mut rng = ThreadRng::default();
             for i in d.iter().skip(1) {
-                let f: i64;
-                let res = i.trim().parse::<i64>();
-                match res {
-                    Ok(val) => {
-                        if val <= 1 {
-                            f = 6;
-                        } else {
-                            f = val;
-                        }
-                    }
-                    Err(_) => f = 6,
+                let mut f = i.trim().parse::<i16>().ok()?;
+                if f <= 1 {
+                    f = 6;
                 }
                 let die = Uniform::from(1..=f);
-                let mut u: i64 = 0;
+                let mut u: i16 = 0;
                 for _ in 0..amt_to_roll {
                     let mut to_add = die.sample(&mut rng);
                     if reroll && to_add < 2 {
@@ -67,13 +59,18 @@ impl DieRoll {
                         }
                     }
                     rolls.push(to_add);
+
+                    if rolls.len() >= u16::MAX as usize {
+                        return None;
+                    }
+
                     u += to_add;
                 }
-                to_ret += u;
+                to_ret += u as i64;
             }
         }
 
-        (to_ret, rolls)
+        Some((to_ret, rolls))
     }
 }
 
@@ -84,7 +81,17 @@ struct Dice;
 
 async fn perform_roll(ctx: &Context, msg: &Message, to_roll: &str, reroll: bool) {
     // let mut results: Vec<i64> = vec![];
-    let (amt, results) = DieRoll::roll_dice(&to_roll, reroll);
+    let owned_to_roll = to_roll.to_owned();
+    let res = tokio::task::spawn_blocking(move || DieRoll::roll_dice(&owned_to_roll, reroll)).await;
+
+    let (amt, results) = match res {
+        Ok(Some(val)) => val,
+        _ => {
+            eprintln!("Error occurred trying to roll dice... {}", to_roll);
+            reply!(ctx, msg, "Error occurred, you probably tried to roll way too many dice");
+            return;
+        }
+    };
     let repl_str = format!("{:?}", results);
     let reply = if repl_str.len() > 1850 {
         format!(
@@ -136,11 +143,11 @@ pub(crate) async fn roll(ctx: &Context, msg: &Message, args: Args) -> CommandRes
 #[command("rollstats")]
 /// Roll character stats for D&D 5e by rolling 4d6 and dropping the lowest 6 times
 pub(crate) async fn roll_stats(ctx: &Context, msg: &Message, _: Args) -> CommandResult {
-    let mut stats: [i64; 6] = [0; 6];
+    let mut stats: [i16; 6] = [0; 6];
     // let mut rolls: Vec<i64> = vec![];
     for i in &mut stats {
         // rolls.clear();
-        let (_, mut rolls) = DieRoll::roll_dice("4d6", false);
+        let (_, mut rolls) = DieRoll::roll_dice("4d6", false).ok_or_else(|| simple_error!("Error rolling 4d6, how???"))?;
 
         // sort reverse to put lowest at the end
         rolls.sort_unstable_by(|a, b| b.cmp(a));
