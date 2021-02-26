@@ -217,9 +217,7 @@ pub(crate) fn battlechip_as_lib_obj(obj: Arc<BattleChip>) -> Arc<dyn LibraryObje
 }
 
 #[group]
-#[prefixes("c", "chip")]
-#[default_command(send_chip)]
-#[commands(send_chip, send_chip_element, chip_drop_cr, send_chip_blight, random_chip)]
+#[commands(send_chip)]
 /// A group of commands related to Navi-Customizer Parts, see `c chip` for the get chip command help
 struct BnbChips;
 
@@ -237,6 +235,8 @@ struct BnBSkills;
 
 #[command("chip")]
 /// get the description of a chip with the specified name, or suggestions if there is not a chip with that name
+#[aliases("c")]
+#[sub_commands(send_chip_element, chip_drop_cr, send_chip_blight, random_chip)]
 #[example = "Airshot"]
 async fn send_chip(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
     if args.is_empty() {

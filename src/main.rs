@@ -63,6 +63,7 @@ static ABOUT_BOT: Lazy<String> = Lazy::new(||
 #[command_not_found_text = "Could not find: `{}`."]
 #[strikethrough_commands_tip_in_dm(" ")]
 #[strikethrough_commands_tip_in_guild(" ")]
+#[indention_prefix("-")]
 #[individual_command_tip = "If you want more information about a specific command, just pass the \
                             command as an argument.\nIf an unknown command name is given, all \
                             Battlechips, Navi-Customizer Parts, and Viruses are searched for that \

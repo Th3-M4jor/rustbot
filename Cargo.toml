@@ -15,12 +15,12 @@ regex = "*"
 once_cell = "*"
 simple-error = "*"
 unicode-normalization = "*"
-#serenity = { git = "https://github.com/Th3-M4jor/serenity", features = ["framework", "standard_framework", "collector", "unstable_discord_api"], branch = "current"}
+serenity = { git = "https://github.com/Lakelezz/serenity", features = ["framework", "standard_framework", "collector", "unstable_discord_api"], branch = "sub-command-nesting"}
 rand = "*"
 strsim = "*"
 chrono = "*"
 tokio  = { version = "^1.0.1", features = ["rt-multi-thread", "time", "sync", "fs", "macros", "io-util"] }
-serenity = { version = "^0.10.0", features = ["framework", "standard_framework", "collector", "unstable_discord_api"] }
+#serenity = { version = "^0.10.0", features = ["framework", "standard_framework", "collector", "unstable_discord_api"] }
 futures = "*"
 log = "*"
 pretty_env_logger = "*"
