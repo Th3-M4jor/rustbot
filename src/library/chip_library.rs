@@ -286,7 +286,7 @@ async fn random_chip(ctx: &Context, msg: &Message, _: Args) -> CommandResult {
 
 #[command("skill")]
 /// get a list of chips that use the specified skill in it's attack roll
-#[example = "Sense"]
+#[example = "Perception"]
 async fn send_chip_skill(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
     if args.is_empty() {
         reply!(ctx, msg, "you must provide a skill");
@@ -330,7 +330,7 @@ async fn send_chip_skill_user(ctx: &Context, msg: &Message, mut args: Args) -> C
 
 #[command("target")]
 /// get a list of chips where the specified skill is used to make the save by the target
-#[example = "Speed"]
+#[example = "Agility"]
 async fn send_chip_skill_target(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
     if args.is_empty() {
         reply!(ctx, msg, "you must provide a skill");
@@ -352,7 +352,7 @@ async fn send_chip_skill_target(ctx: &Context, msg: &Message, mut args: Args) ->
 
 #[command("check")]
 /// get a list of chips where the specified skill is used either to determine the save DC or to make the save
-#[example = "Bravery"]
+#[example = "Valor"]
 async fn send_chip_skill_check(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
     if args.is_empty() {
         reply!(ctx, msg, "you must provide a skill");

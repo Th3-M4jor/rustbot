@@ -1,4 +1,5 @@
 use std::{collections::HashMap, sync::Arc};
+use ncp_library::NCPLibrary;
 use tokio::sync::{RwLock, RwLockReadGuard};
 
 use crate::{
@@ -12,9 +13,11 @@ use serenity::{
     model::channel::Message,
     prelude::*,
 };
-use simple_error::SimpleError;
+use simple_error::{simple_error, SimpleError};
 
 use strsim::jaro_winkler;
+
+use super::ncp_library;
 
 pub struct FullLibrary {
     library: HashMap<String, Arc<dyn LibraryObject>>,
@@ -253,20 +256,69 @@ pub(crate) fn check_virus_drops(
     virus_lib: &VirusLibrary,
     chip_lib: &ChipLibrary,
 ) -> Result<(), SimpleError> {
+
+    let missing_drop = virus_lib.get_collection().values().find_map(|virus| {
+        let drop_value = virus.drops.0.iter().find(|drop| {
+            
+            if drop.1.to_ascii_lowercase().contains("zenny") {
+                // ignore zenny drops
+                return false;
+            }
+            
+            chip_lib.get(&drop.1).is_none()
+        })?;
+        Some((virus, drop_value))
+    });
+
+    match missing_drop {
+        Some((virus, (busting_level, chip_name))) => {
+            Err(simple_error!(
+                "Warning, {} drops {} at {}, however it is not in the chip library",
+                virus.name, chip_name, busting_level
+            ))
+        }
+        None => Ok(())
+    }
+
+    /*
     for virus in virus_lib.get_collection().values() {
         for drop in virus.drops.0.iter() {
             if drop.1.to_ascii_lowercase().contains("zenny") {
                 continue;
             }
             if chip_lib.get(&drop.1).is_none() {
-                return Err(SimpleError::new(format!(
+                return Err(simple_error!(
                     "Warning, {} drops {} at {}, however it is not in the chip library",
                     virus.name, drop.1, drop.0
-                )));
+                ));
             }
         }
     }
     Ok(())
+    */
+}
+
+pub(crate) fn check_virus_abilities(
+    virus_lib: &VirusLibrary,
+    ncp_lib: &NCPLibrary,
+) -> Result<(), SimpleError> {
+    let virus_missing_ability = virus_lib.get_collection().values().find_map(|virus| {
+        let missing_ability = virus.abilities.as_ref()?.iter().find(|ability| {
+            ncp_lib.get(&ability).is_none()
+        })?;
+
+        Some((virus, missing_ability))
+    });
+
+    match virus_missing_ability {
+        Some((virus, missing_ability)) => {
+            Err(simple_error!(
+                "Warning, {} has {}, however it is not in the ncp database",
+                virus.name, missing_ability
+            ))
+        }
+        None => Ok(())
+    }
 }
 
 impl TypeMapKey for FullLibrary {

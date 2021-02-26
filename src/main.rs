@@ -31,7 +31,7 @@ use crate::{
             Blights, Panels, Statuses, GET_BLIGHT_COMMAND, GET_PANELS_COMMAND, GET_STATUS_COMMAND,
         },
         chip_library::{battlechip_as_lib_obj, ChipLibrary, BNBCHIPS_GROUP, BNBSKILLS_GROUP},
-        full_library::{check_virus_drops, search_full_library, FullLibrary, CHIP_DROP_COMMAND},
+        full_library::{check_virus_abilities, check_virus_drops, search_full_library, FullLibrary, CHIP_DROP_COMMAND},
         ncp_library::{ncp_as_lib_obj, NCPLibrary, BNBNCPS_GROUP},
         virus_library::{virus_as_lib_obj, VirusLibrary, BNBVIRUSES_GROUP},
         Library, LibraryObject,
@@ -195,12 +195,19 @@ async fn reload(ctx: &Context, msg: &Message, _: Args) -> CommandResult {
 
     let virus_lib_lock = data.get::<VirusLibrary>().expect("virus library not found");
     let chip_lib_lock = data.get::<ChipLibrary>().expect("chip library not found");
+    let ncp_lib_lock = data.get::<NCPLibrary>().expect("ncp library not found");
     let chip_lib = chip_lib_lock.read().await;
     let virus_lib = virus_lib_lock.read().await;
+    let ncp_lib = ncp_lib_lock.read().await;
 
     if let Err(why) = check_virus_drops(&virus_lib, &chip_lib) {
-        str_to_send.push_str(&why.to_string());
+        str_to_send.push_str(why.as_str());
     }
+
+    if let Err(why) = check_virus_abilities(&virus_lib, &ncp_lib) {
+        str_to_send.push_str(why.as_str());
+    }
+
     say!(ctx, msg, str_to_send);
     return Ok(());
 }
