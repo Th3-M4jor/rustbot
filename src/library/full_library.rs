@@ -226,14 +226,14 @@ async fn chip_drop(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
 
     let virus_libary_lock = data.get::<VirusLibrary>().expect("No virus library");
     let virus_libary: RwLockReadGuard<VirusLibrary> = virus_libary_lock.read().await;
-    let mut dropped_by: Vec<&str> = vec![];
-    for virus in virus_libary.get_collection().values() {
-        for drop in virus.drops.0.iter() {
-            if drop.1 == chip.name {
-                dropped_by.push(&virus.name);
-            }
+
+    let dropped_by = virus_libary.get_collection().values().filter_map(|v| {
+        if v.drops.0.iter().any(|d| d.1.eq_ignore_ascii_case(&chip.name)) {
+            Some(v.name.as_str())
+        } else {
+            None
         }
-    }
+    }).collect::<Vec<&str>>();
 
     if dropped_by.is_empty() {
         reply!(
