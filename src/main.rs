@@ -201,10 +201,12 @@ async fn reload(ctx: &Context, msg: &Message, _: Args) -> CommandResult {
     let ncp_lib = ncp_lib_lock.read().await;
 
     if let Err(why) = check_virus_drops(&virus_lib, &chip_lib) {
+        str_to_send.push('\n');
         str_to_send.push_str(why.as_str());
     }
 
     if let Err(why) = check_virus_abilities(&virus_lib, &ncp_lib) {
+        str_to_send.push('\n');
         str_to_send.push_str(why.as_str());
     }
 
