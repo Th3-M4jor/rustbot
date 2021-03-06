@@ -234,7 +234,7 @@ struct VirusReloadResult {
 }
 
 
-static VIRUS_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r"^\s*(.+)\s+\((\w+)\)\s*$").expect("could not compile virus regex"));
+static VIRUS_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r"^\s*(.+)\s+\((\w+,?\s?\w+?)\)\s*$").expect("could not compile virus regex"));
 static CR_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r"^CR\s+(\d+)$").expect("could not compile CR regex"));
 static HP_AC_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r"(?i)hp:\s+(\d+)\s+\|\s+ac:\s+(\d+)").expect("could not compile HP regex"));
 static M_B_S_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r"(?i)mind:\s+(\d+)\s+\|\s+body:\s+(\d+)\s+\|\sspirit:\s+(\d+)").expect("could not compile mbs regex"));
