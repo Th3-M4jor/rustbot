@@ -13,6 +13,8 @@ use serde_json::json;
 
 use crate::library::blights::{
     Panels,
+    Blights,
+    Statuses,
     StatusLike,
 };
 
@@ -157,6 +159,12 @@ async fn create_shuffle_cmd(ctx: &Context) -> Result<(), serenity::Error> {
 
 async fn create_status_command(ctx: &Context) -> Result<(), serenity::Error> {
 
+    let data = ctx.data.read().await;
+    let status_lock = data.get::<Statuses>().expect("Statuses unavailable");
+    let statuses = status_lock.read().await;
+
+    let status_opts = statuses.to_slash_opts();
+    
     let payload = json!({
         "name": "status",
         "description": "Get info about a status type",
@@ -166,6 +174,7 @@ async fn create_status_command(ctx: &Context) -> Result<(), serenity::Error> {
             "description": "The kind of status to get info on",
             "type": 3,
             "required": true,
+            "choices": status_opts,
         },
         ],
     });
@@ -174,7 +183,6 @@ async fn create_status_command(ctx: &Context) -> Result<(), serenity::Error> {
     
     #[cfg(debug_assertions)]
     {
-        let data = ctx.data.read().await;
         let config = data.get::<BotData>().expect("No bot data available");
         let guild_id = config.primary_guild;
         ctx.http.create_guild_application_command(self_id.0, guild_id, &payload).await?;
@@ -189,6 +197,12 @@ async fn create_status_command(ctx: &Context) -> Result<(), serenity::Error> {
 
 async fn create_blight_command(ctx: &Context) -> Result<(), serenity::Error> {
     
+    let data = ctx.data.read().await;
+    let blights_lock = data.get::<Blights>().expect("Statuses unavailable");
+    let blights = blights_lock.read().await;
+
+    let blight_opts = blights.to_slash_opts();
+
     let payload = json!({
         "name": "blight",
         "description": "Get info about what a blight does",
@@ -198,6 +212,7 @@ async fn create_blight_command(ctx: &Context) -> Result<(), serenity::Error> {
             "description": "The element to get info on the blight for",
             "type": 3,
             "required": true,
+            "choices": blight_opts
         },
         ],
     });
