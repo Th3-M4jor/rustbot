@@ -74,9 +74,9 @@ impl std::fmt::Display for BattleChip {
         };
 
         let hits = if self.hits == "1" {
-            Cow::Borrowed("1 hit.")
+            Cow::Borrowed("1 hit")
         } else {
-            Cow::Owned(format!("{} hits.", self.hits))
+            Cow::Owned(format!("{} hits", self.hits))
         };
 
         let skills = self.skills.iter().format_with(", ", |s, f| f(&format_args!("{}", s.abbreviation())));
