@@ -1,5 +1,5 @@
 use crate::library::{
-    battlechip::{chip_type::ChipType, ranges::Ranges, skills::Skills},
+    battlechip::{chip_type::{ChipClass, ChipType}, ranges::Ranges, skills::Skills},
     elements::Elements,
 };
 
@@ -32,8 +32,9 @@ pub struct BattleChip {
     pub skills: Vec<Skills>,
     pub range: Ranges,
     pub damage: String,
-    #[serde(rename(serialize = "Type"))]
-    pub class: ChipType,
+    pub class: ChipClass,
+    #[serde(rename = "Type")]
+    pub kind: ChipType,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub blight: Option<Elements>,
     pub hits: String,
@@ -81,10 +82,10 @@ impl std::fmt::Display for BattleChip {
         let skills = self.skills.iter().format_with(", ", |s, f| f(&format_args!("{}", s.abbreviation())));
         let elements = self.element.iter().format(", ");
 
-        if self.class == ChipType::Standard {
-            write!(f, "```{} - {} | {} | {} | {} | {}\n{}```", self.name, elements, skills, self.range, damage, hits, self.description)
+        if self.class == ChipClass::Standard {
+            write!(f, "```{} - {} | {} | {} | {} | {} | {}\n{}```", self.name, elements, skills, self.range, damage, hits, self.kind, self.description)
         } else {
-            write!(f, "```{} - {} | {} | {} | {} | {} | {}\n{}```", self.name, elements, skills, self.range, damage, self.class, hits, self.description)
+            write!(f, "```{} - {} | {} | {} | {} | {} | {} | {}\n{}```", self.name, elements, skills, self.range, damage, self.class, hits, self.kind, self.description)
         }
 
         //write!(f, "```{} - {} | {} | {}```");
@@ -104,7 +105,8 @@ impl LibraryObject for BattleChip {
     }
 }
 
-static RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"(.+?)\s-\s(.+?)\s\|\s(.+?)\s\|\s(.+?)\s\|\s(\d+d\d+|--)\s?(?:damage)?\s?\|?\s?(Mega|Giga|Dark|Support)?\s\|\s(\d+|\d+-\d+|--)\s?(?:hits?)\.?").expect("could not compile chip regex"));
+
+static RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"^\s*?(.+?)\s-\s(.+?)\s\|\s(.+?)\s\|\s(.+?)\s\|\s(\d+d\d+|--)\s?(?:damage)?\s?\|?\s?(Mega|Giga|Dark)?\s\|\s(\d+|\d+-\d+|--)\s?(?:hits?)\s\|\s(.+?)$").expect("could not compile chip regex"));
 static R_SAVE : Lazy<Regex> = Lazy::new(|| Regex::new(r"an?\s(\w+)\scheck\sof\s\[DC\s\d+\s\+\s(\w+)]").expect("could not compile save regex"));
 static R_BLIGHT : Lazy<Regex> = Lazy::new(|| Regex::new(r"[bB]light\s\((\w+)\)").expect("could not compile blight regex"));
 
@@ -131,7 +133,9 @@ impl BattleChip {
         first_line: &str,
         second_line: &str,
     ) -> Result<BattleChip, SimpleError> {
-         
+        
+        
+
         let chip_val: Captures = RE
             .captures(first_line)
             .ok_or_else(|| SimpleError::new("Failed at capture stage"))?;
@@ -141,12 +145,11 @@ impl BattleChip {
             .ok_or_else(|| SimpleError::new("Could not get name"))?
             .as_str()
             .trim();
-        let chip_range = Ranges::from_str(
+        let chip_range =
             chip_val
                 .get(4)
                 .ok_or_else(|| SimpleError::new("Failed to convert range"))?
-                .as_str(),
-        )?;
+                .as_str().parse::<Ranges>()?;
         let chip_damage = chip_val
             .get(5)
             .ok_or_else(|| SimpleError::new("failed to get damage"))?
@@ -155,13 +158,17 @@ impl BattleChip {
             .get(7)
             .ok_or_else(|| SimpleError::new("failed to get hits"))?
             .as_str();
-        let chip_type: ChipType;
 
-        if let Some(chip_type_str) = chip_val.get(6) {
-            chip_type = ChipType::from_str(chip_type_str.as_str())?;
-        } else {
-            chip_type = ChipType::Standard;
-        }
+        let chip_kind = chip_val.get(8).ok_or_else(|| SimpleError::new("Failed to get chip type"))?.as_str().parse::<ChipType>()?;
+
+        let chip_class = match chip_val.get(6) {
+            Some(chip_class_str) => {
+                chip_class_str.as_str().parse::<ChipClass>()?
+            }
+            None => {
+                chip_kind.to_std_chip_class()
+            }
+        };
 
         let parsed_elements = BattleChip::parse_elements(
             chip_val
@@ -215,7 +222,8 @@ impl BattleChip {
             skills: parsed_skills,
             range: chip_range,
             damage: chip_damage.nfc().collect::<String>(),
-            class: chip_type,
+            class: chip_class,
+            kind: chip_kind,
             blight,
             hits: chip_hits.nfc().collect::<String>(),
             description: second_line.nfc().collect::<String>(),

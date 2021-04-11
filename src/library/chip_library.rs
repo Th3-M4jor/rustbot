@@ -109,10 +109,11 @@ impl ChipLibrary {
                 let second_line = val.1;
                 let chip = match BattleChip::from_chip_string(first_line, second_line) {
                     Ok(val) => val,
-                    Err(_) => {
+                    Err(e) => {
                         return Err(SimpleError::new(format!(
-                            "Found an invalid chip:\n{}",
-                            first_line
+                            "Found an invalid chip:{} {}",
+                            first_line,
+                            e.as_str(),
                         )))
                     }
                 };
