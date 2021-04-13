@@ -82,7 +82,7 @@ impl std::fmt::Display for BattleChip {
         let skills = self.skills.iter().format_with(", ", |s, f| f(&format_args!("{}", s.abbreviation())));
         let elements = self.element.iter().format(", ");
 
-        if self.class == ChipClass::Standard {
+        if self.class == ChipClass::Standard || self.class == ChipClass::Support {
             write!(f, "```{} - {} | {} | {} | {} | {} | {}\n{}```", self.name, elements, skills, self.range, damage, hits, self.kind, self.description)
         } else {
             write!(f, "```{} - {} | {} | {} | {} | {} | {} | {}\n{}```", self.name, elements, skills, self.range, damage, self.class, hits, self.kind, self.description)
