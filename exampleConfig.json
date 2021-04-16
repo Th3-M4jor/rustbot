@@ -9,5 +9,6 @@
     "chip_url": "https://docs.google.com/feeds/download/documents/export/Export?id=1lvAKkymOplIJj6jS-N5__9aLIDXI6bETIMz01MK9MfY&exportFormat=txt",
     "custom_chip_url": "https://docs.google.com/feeds/download/documents/export/Export?id=1XxBBSR8WtLfzZRCOFY1cKNfNspLH6B4lqjEu1c0spzI&exportFormat=txt",
     "virus_url": "https://docs.google.com/feeds/download/documents/export/Export?id=1PZKYP0mzzxMTmjJ8CfrUMapgQPHgi24Ev6VB3XLBUrU&exportFormat=txt",
-    "ncp_url": "https://docs.google.com/feeds/download/documents/export/Export?id=1VhZSnjvwSTMxKKfJvKcwqaJDqxD_dXarmAlAYRmlV2k&exportFormat=txt"
+    "ncp_url": "https://docs.google.com/feeds/download/documents/export/Export?id=1VhZSnjvwSTMxKKfJvKcwqaJDqxD_dXarmAlAYRmlV2k&exportFormat=txt",
+    "load_custom_chips": false
   }
