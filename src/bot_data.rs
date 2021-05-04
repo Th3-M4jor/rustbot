@@ -18,13 +18,12 @@ pub struct BotData {
     #[serde(default)]
     pub manager: String,
     #[serde(default)]
+    pub groups_url: String,
     pub chip_url: String,
+    pub virus_url: String,
+    pub ncp_url: String,
     #[serde(default)]
     pub custom_chip_url: String,
-    #[serde(default)]
-    pub virus_url: String,
-    #[serde(default)]
-    pub ncp_url: String,
     #[serde(default)]
     pub load_custom_chips: bool,
 }

@@ -375,7 +375,9 @@ async fn ping(ctx: &Context, msg: &Message, _: Args) -> CommandResult {
 
 #[command]
 async fn groups(ctx: &Context, msg: &Message, _: Args) -> CommandResult {
-    let res = reqwest::get("http://spartan364.hopto.org/groups").await;
+    let data = ctx.data.read().await;
+    let bot_data = data.get::<BotData>().expect("No bot data");
+    let res = reqwest::get(&bot_data.groups_url).await;
     let error_msg = "Error occurred checking open folder groups, please try again later. If the problem persists inform Major";
     let resp = match res {
         Ok(resp) => resp,

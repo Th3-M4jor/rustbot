@@ -5,6 +5,7 @@
     "primary_guild": 0,
     "cmd_prefix": "!",
     "manager" : " ",
+    "groups_url": " ",
     "phb": "https://docs.google.com/document/d/1cPLJ2tAUebIVZU4k7SVnyABpR9jQd7jarzix7oVys9M/edit?usp=sharing",
     "chip_url": "https://docs.google.com/feeds/download/documents/export/Export?id=1lvAKkymOplIJj6jS-N5__9aLIDXI6bETIMz01MK9MfY&exportFormat=txt",
     "custom_chip_url": "https://docs.google.com/feeds/download/documents/export/Export?id=1XxBBSR8WtLfzZRCOFY1cKNfNspLH6B4lqjEu1c0spzI&exportFormat=txt",
