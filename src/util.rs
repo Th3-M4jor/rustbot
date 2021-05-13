@@ -280,7 +280,7 @@ async fn add_reactions(http: Arc<Http>, len: usize, channel_id: u64, msg_id: u64
             return false;
         }
     }
-    return true;
+    true
 }
 
 #[command]
@@ -305,7 +305,7 @@ pub(crate) async fn audit(ctx: &Context, msg: &Message, _: Args) -> CommandResul
             say!(ctx, msg, format!("unable to get log, {}", err.to_string()));
         }
     }
-    return Ok(());
+    Ok(())
 }
 
 #[command]
@@ -314,7 +314,7 @@ async fn manager(ctx: &Context, msg: &Message, _: Args) -> CommandResult {
     let data = ctx.data.read().await;
     let config = data.get::<BotData>().expect("could not get config");
     reply!(ctx, msg, &config.manager);
-    return Ok(());
+    Ok(())
 }
 
 #[command]
@@ -323,7 +323,7 @@ async fn phb(ctx: &Context, msg: &Message, _: Args) -> CommandResult {
     let data = ctx.data.read().await;
     let config = data.get::<BotData>().expect("could not get config");
     reply!(ctx, msg, &config.phb);
-    return Ok(());
+    Ok(())
 }
 
 #[command]
@@ -338,7 +338,7 @@ async fn die(ctx: &Context, msg: &Message, _: Args) -> CommandResult {
         let _ = msg.reply(ctx, "There was a problem getting the shard manager");
         std::process::exit(1);
     }
-    return Ok(());
+    Ok(())
 }
 
 #[command]

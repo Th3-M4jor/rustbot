@@ -26,6 +26,7 @@ pub struct BotData {
     pub custom_chip_url: String,
     #[serde(default)]
     pub load_custom_chips: bool,
+    pub bot_id: u64,
 }
 
 impl BotData {

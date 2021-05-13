@@ -211,7 +211,7 @@ async fn reload(ctx: &Context, msg: &Message, _: Args) -> CommandResult {
     }
 
     say!(ctx, msg, str_to_send);
-    return Ok(());
+    Ok(())
 }
 
 #[command("about")]
@@ -381,6 +381,7 @@ async fn main() {
     let mut client = Client::builder(&config.token)
         .event_handler(Handler)
         .framework(framework)
+        .application_id(config.bot_id)
         .intents(
             GatewayIntents::GUILD_MESSAGE_REACTIONS
                 | GatewayIntents::DIRECT_MESSAGES

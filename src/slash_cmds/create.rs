@@ -76,18 +76,16 @@ async fn create_panel_cmd(ctx: &Context) -> Result<(), serenity::Error> {
         },
         ],
     });
-
-    let self_id = ctx.cache.current_user_id().await;
     
     #[cfg(debug_assertions)]
     {
         let config = data.get::<BotData>().expect("No bot data available");
         let guild_id = config.primary_guild;
-        ctx.http.create_guild_application_command(self_id.0, guild_id, &payload).await?;
+        ctx.http.create_guild_application_command(guild_id, &payload).await?;
     }
     #[cfg(not(debug_assertions))]
     {
-        ctx.http.create_global_application_command(self_id.0, &payload).await?;
+        ctx.http.create_global_application_command(&payload).await?;
     }
 
 
@@ -110,18 +108,16 @@ async fn create_roll_cmd(ctx: &Context) -> Result<(), serenity::Error> {
         ],
     });
     
-    let self_id = ctx.cache.current_user_id().await;
-    
     #[cfg(debug_assertions)]
     {
         let data = ctx.data.read().await;
         let config = data.get::<BotData>().expect("No bot data available");
         let guild_id = config.primary_guild;
-        ctx.http.create_guild_application_command(self_id.0, guild_id, &payload).await?;
+        ctx.http.create_guild_application_command(guild_id, &payload).await?;
     }
     #[cfg(not(debug_assertions))]
     {
-        ctx.http.create_global_application_command(self_id.0, &payload).await?;
+        ctx.http.create_global_application_command(&payload).await?;
     }
     Ok(())
 }
@@ -140,18 +136,16 @@ async fn create_shuffle_cmd(ctx: &Context) -> Result<(), serenity::Error> {
         ],
     });
 
-    let self_id = ctx.cache.current_user_id().await;
-
     #[cfg(debug_assertions)]
     {
         let data = ctx.data.read().await;
         let config = data.get::<BotData>().expect("No bot data available");
         let guild_id = config.primary_guild;
-        ctx.http.create_guild_application_command(self_id.0, guild_id, &payload).await?;
+        ctx.http.create_guild_application_command(guild_id, &payload).await?;
     }
     #[cfg(not(debug_assertions))]
     {
-        ctx.http.create_global_application_command(self_id.0, &payload).await?;
+        ctx.http.create_global_application_command(&payload).await?;
     }
 
     Ok(())
@@ -178,18 +172,16 @@ async fn create_status_command(ctx: &Context) -> Result<(), serenity::Error> {
         },
         ],
     });
-
-    let self_id = ctx.cache.current_user_id().await;
     
     #[cfg(debug_assertions)]
     {
         let config = data.get::<BotData>().expect("No bot data available");
         let guild_id = config.primary_guild;
-        ctx.http.create_guild_application_command(self_id.0, guild_id, &payload).await?;
+        ctx.http.create_guild_application_command(guild_id, &payload).await?;
     }
     #[cfg(not(debug_assertions))]
     {
-        ctx.http.create_global_application_command(self_id.0, &payload).await?;
+        ctx.http.create_global_application_command(&payload).await?;
     }
 
     Ok(())
@@ -216,19 +208,17 @@ async fn create_blight_command(ctx: &Context) -> Result<(), serenity::Error> {
         },
         ],
     });
-
-    let self_id = ctx.cache.current_user_id().await;
     
     #[cfg(debug_assertions)]
     {
         let data = ctx.data.read().await;
         let config = data.get::<BotData>().expect("No bot data available");
         let guild_id = config.primary_guild;
-        ctx.http.create_guild_application_command(self_id.0, guild_id, &payload).await?;
+        ctx.http.create_guild_application_command(guild_id, &payload).await?;
     }
     #[cfg(not(debug_assertions))]
     {
-        ctx.http.create_global_application_command(self_id.0, &payload).await?;
+        ctx.http.create_global_application_command(&payload).await?;
     }
 
     Ok(())
