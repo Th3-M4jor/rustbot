@@ -304,7 +304,7 @@ async fn send_chip_skill(ctx: &Context, msg: &Message, mut args: Args) -> Comman
         },
         None => reply!(ctx, msg, "nothing matched your search", false),
     }
-    return Ok(());
+    Ok(())
 }
 
 #[command("user")]
@@ -326,7 +326,7 @@ async fn send_chip_skill_user(ctx: &Context, msg: &Message, mut args: Args) -> C
         },
         None => reply!(ctx, msg, "nothing matched your search", false),
     }
-    return Ok(());
+    Ok(())
 }
 
 #[command("target")]

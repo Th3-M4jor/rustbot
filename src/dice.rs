@@ -120,7 +120,7 @@ async fn reroll(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
         return Ok(());
     }
     perform_roll(ctx, msg, args.rest(), true).await;
-    return Ok(());
+    Ok(())
 }
 
 #[command]
@@ -137,7 +137,7 @@ pub(crate) async fn roll(ctx: &Context, msg: &Message, args: Args) -> CommandRes
         return Ok(());
     }
     perform_roll(ctx, msg, args.rest(), false).await;
-    return Ok(());
+    Ok(())
 }
 
 #[command("rollstats")]
@@ -164,7 +164,7 @@ pub(crate) async fn roll_stats(ctx: &Context, msg: &Message, _: Args) -> Command
             stats
         )
     );
-    return Ok(());
+    Ok(())
 }
 
 pub(crate) fn perform_shuffle(size: usize) -> Cow<'static, str> {

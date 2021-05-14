@@ -223,7 +223,7 @@ pub(crate) async fn send_ncp(ctx: &Context, msg: &Message, args: Args) -> Comman
     let library = library_lock.read().await;
     library.reaction_name_search(ctx, msg, to_get).await;
     
-    return Ok(());
+    Ok(())
 }
 
 #[command("color")]
@@ -253,5 +253,5 @@ pub(crate) async fn send_ncp_color(ctx: &Context, msg: &Message, args: Args) -> 
             )
         ),
     }
-    return Ok(());
+    Ok(())
 }

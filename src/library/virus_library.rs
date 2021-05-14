@@ -730,7 +730,7 @@ pub(crate) async fn send_virus_element(ctx: &Context, msg: &Message, args: Args)
             "nothing matched your search, are you sure you gave an element?"
         ),
     }
-    return Ok(());
+    Ok(())
 }
 
 #[command("cr")]
@@ -761,7 +761,7 @@ pub(crate) async fn send_virus_cr(ctx: &Context, msg: &Message, mut args: Args) 
         },
         None => reply!(ctx, msg, "There are currently no viruses in that CR", false),
     }
-    return Ok(());
+    Ok(())
 }
 
 #[command("encounter")]
@@ -839,7 +839,7 @@ pub(crate) async fn send_random_encounter(
         };
     }
     long_say!(ctx, msg, to_send, ", ");
-    return Ok(());
+    Ok(())
 }
 
 pub(crate) fn virus_as_lib_obj(obj: Arc<Virus>) -> Arc<dyn LibraryObject> {
@@ -869,5 +869,5 @@ pub(crate) async fn send_family(ctx: &Context, msg: &Message, args: Args) -> Com
         },
         None => reply!(ctx, msg, "There is no family under that name", false),
     }
-    return Ok(());
+    Ok(())
 }
