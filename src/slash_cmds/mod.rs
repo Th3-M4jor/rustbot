@@ -20,7 +20,7 @@ pub(crate) async fn handle_interaction(ctx: &Context, interaction: &Interaction)
         if let Err(why) = handle_interaction_ping(ctx, interaction).await {
             eprintln!("Error responding to a ping, {:?}", why);
         }
-    } else if let Some(data) = &interaction.data {
+    } else if let Some(InteractionData::ApplicationCommand(data)) = &interaction.data {
         if let Err(why) = handle_command_call(ctx, interaction, data).await {
             eprintln!("Error responding to a command, {:?}", why);
         }
