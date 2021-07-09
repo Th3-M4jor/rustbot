@@ -26,13 +26,6 @@ log = "*"
 pretty_env_logger = "*"
 itertools = "*"
 
-#[dependencies.serenity]
-#git = "https://github.com/Lakelezz/serenity"
-#branch = "tokio-0.2-compat"
-#default-features = false
-#features = ["builder", "cache", "client", "framework", "gateway", "model", "http", "standard_framework", "utils", "rustls_tokio_0_2_backend", "collector"]
-
-
 [profile.release]
 lto = true
 opt-level = 3
